@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- The GHCR publish workflow now supports explicit `GHCR_USERNAME` and `GHCR_TOKEN` repository secrets as a fallback when the default `GITHUB_TOKEN` cannot read existing package blobs.
+
 ## [0.8.10-publicshare.8] - 2026-03-15
 
 Fork release based on upstream `0.8.10`.

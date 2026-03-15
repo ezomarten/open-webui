@@ -17,6 +17,7 @@ This fork is based on Open WebUI `v0.8.10` and carries a small set of deployment
 - If [../.env](../.env) points to a GHCR tag, compose recreate will continue to run the GHCR image even after a successful local `docker build`
 - Current GHCR baseline remains `0.8.10-publicshare.8`
 - Current local fork head should be treated as the source of truth for future local image rebuilds
+- For GHCR pushes from GitHub Actions, either grant the package Actions access for this repository or configure repository secrets `GHCR_USERNAME` and `GHCR_TOKEN`; otherwise `docker/build-push-action` can fail with `403 Forbidden` on blob HEAD requests even when login succeeds with `GITHUB_TOKEN`
 
 ## Included Customizations
 
@@ -94,6 +95,7 @@ If the change affects public-share or public-link UI strings, also update [src/l
 
 ## Maintenance Record
 
+- 2026-03-16: updated GHCR publish workflow to support `GHCR_USERNAME`/`GHCR_TOKEN` secret fallback and documented the package access requirement after tag builds failed with blob HEAD `403 Forbidden`; key files: `.github/workflows/docker-build.yaml`, `CHANGELOG.md`; validation: GHCR secret provisioning and manual workflow dispatch
 - 2026-03-15: added a Settings > About fork disclosure for license transparency without adding the notice to other app pages; key files: `src/lib/components/chat/Settings/About.svelte`, `src/lib/i18n/locales/ja-JP/translation.json`; validation: frontend type check
 - 2026-03-15: hardened public-share image delivery to require owner-scoped file lookup and corrected share permission failures to return 403; key files: `backend/open_webui/routers/public_shares.py`; validation: `pytest open_webui/test/util/test_public_share.py -q`, local image rebuild, `docker compose up -d --force-recreate open-webui`, `docker inspect open-webui --format '{{.Config.Image}}'`, `curl.exe -I http://localhost:3000`, and container health reached `healthy`
 - 2026-03-15: aligned GitHub Actions and release policy for this private fork; validation: local formatting/build checks plus green `Python CI` and `Frontend Build`
