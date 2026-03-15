@@ -8,6 +8,16 @@ This fork is based on Open WebUI `v0.8.10` and carries a small set of deployment
 - Serve anonymous public share pages from a separate host
 - Keep the patch set small enough to rebase onto upstream releases
 
+## Current Operating Assumptions
+
+- Protected host: `https://ai.adgj.at`
+- Anonymous public-share host: `https://s-ai.adgj.at`
+- Deployment workspace operator runbook lives in [../README.md](../README.md)
+- Local rebuilds only affect runtime when workspace root [../.env](../.env) sets `OPENWEBUI_IMAGE=open-webui-public-share:0.8.10-publicshare-local`
+- If [../.env](../.env) points to a GHCR tag, compose recreate will continue to run the GHCR image even after a successful local `docker build`
+- Current GHCR baseline remains `0.8.10-publicshare.7`
+- Current local fork head should be treated as the source of truth for future local image rebuilds
+
 ## Included Customizations
 
 ### Anonymous public shares
@@ -52,6 +62,37 @@ Other routes on the public host return `404`.
 - Image attachments are included, but other file types and citations remain excluded
 - Public-link generation requires both a valid absolute `PUBLIC_SHARE_BASE_URL` and `Enable Public Links` turned on
 
+## Maintenance Record Rules
+
+Whenever a fork-only customization is added, changed, or removed, update this file in the same task.
+
+Each update should keep the following current:
+
+- `Included Customizations`
+- `Current Operating Assumptions`
+- `Maintenance Record`
+- `Upstream Base`
+- `Upstream Sync Checklist`
+
+Each maintenance entry should include:
+
+- date
+- intent
+- key files or areas touched
+- validation that was actually performed
+
+If the change affects deployment behavior, also update [../README.md](../README.md).
+
+If the change is release-worthy, also update [CHANGELOG.md](CHANGELOG.md).
+
+If the change affects public-share or public-link UI strings, also update [src/lib/i18n/locales/ja-JP/translation.json](src/lib/i18n/locales/ja-JP/translation.json).
+
+## Maintenance Record
+
+- 2026-03-15: aligned GitHub Actions and release policy for this private fork; validation: local formatting/build checks plus green `Python CI` and `Frontend Build`
+- 2026-03-15: added Japanese translations for public-share and public-link UI strings in [src/lib/i18n/locales/ja-JP/translation.json](src/lib/i18n/locales/ja-JP/translation.json); validation: local image rebuild plus runtime container inspection confirmed translated assets in the container
+- 2026-03-15: clarified local deployment rule that workspace root [../.env](../.env) must point at the local image tag for local rebuilds to take effect; validation: `docker inspect open-webui --format '{{.Config.Image}}'` showed `open-webui-public-share:0.8.10-publicshare-local`
+
 ## Fork Release Summary
 
 - `0.8.10-publicshare.7`: admin-managed public link settings
@@ -68,3 +109,16 @@ Fork-only commits currently on top of upstream `v0.8.10`:
 - `b46c6c54f` Include images in public shares
 - `90e60366c` Allow Pyodide assets on public shares
 - `d46c3cf3f` Add admin settings for public links
+
+## Upstream Sync Checklist
+
+When following a newer upstream Open WebUI release, verify at minimum:
+
+1. public-share routes and snapshot logic still work for anonymous access
+2. public-host allowlist behavior in backend entry routing is still intentionally narrow
+3. public-share image delivery still works and remains image-only
+4. public-page TTS fallback still avoids authenticated server-side TTS assumptions
+5. `/pyodide/*` public-host access still works
+6. admin public-link settings still persist via `ui.enable_public_chat_sharing` and `ui.public_share_base_url`
+7. public-link and public-share UI strings still have at least ja-JP translations when changed
+8. workspace root [../README.md](../README.md) still matches the real deployment/apply procedure
