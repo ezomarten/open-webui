@@ -35,6 +35,11 @@
 	export let showUserInfo = false;
 	export let showSearch = true;
 	export let readOnly = false;
+	export let itemHref: null | ((chat: any) => string) = null;
+	export let copyHref: null | ((chat: any) => string | null) = null;
+	export let copyTooltip: string | null = null;
+	export let copySuccessMessage: string | null = null;
+	export let unshareTooltip: string | null = null;
 
 	export let query = '';
 
@@ -54,6 +59,26 @@
 	export let loadHandler: null | Function = null;
 	export let unarchiveHandler: null | Function = null;
 	export let unshareHandler: null | Function = null;
+
+	const resolveItemHref = (chat) => {
+		if (itemHref) {
+			return itemHref(chat);
+		}
+
+		return shareUrl ? `/s/${chat.id}` : `/c/${chat.id}`;
+	};
+
+	const resolveCopyHref = (chat) => {
+		if (copyHref) {
+			return copyHref(chat);
+		}
+
+		if (unshareHandler && chat.share_id) {
+			return `${window.location.origin}/s/${chat.share_id}`;
+		}
+
+		return null;
+	};
 
 	const setSortKey = (key) => {
 		if (orderBy === key) {
@@ -89,6 +114,7 @@
 			<div class=" text-lg font-medium self-center">{title}</div>
 			<button
 				class="self-center"
+				aria-label={$i18n.t('Close')}
 				on:click={() => {
 					show = false;
 				}}
@@ -215,7 +241,9 @@
 								<div
 									class="text-xs text-gray-500 dark:text-gray-400 text-center px-5 min-h-20 w-full h-full flex justify-center items-center"
 								>
-									{$i18n.t('No results found')}
+									{query === '' && emptyPlaceholder
+										? emptyPlaceholder
+										: $i18n.t('No results found')}
 								</div>
 							{/if}
 
@@ -266,7 +294,7 @@
 									{/if}
 									<a
 										class={showUserInfo ? 'flex-1' : 'basis-3/5'}
-										href={shareUrl ? `/s/${chat.id}` : `/c/${chat.id}`}
+										href={resolveItemHref(chat)}
 										on:click={() => (show = false)}
 									>
 										<div class="text-ellipsis line-clamp-1 w-full">
@@ -294,6 +322,7 @@
 													<Tooltip content={$i18n.t('Unarchive Chat')}>
 														<button
 															class="self-center w-fit px-1 text-sm rounded-xl"
+															aria-label={$i18n.t('Unarchive Chat')}
 															on:click={async (e) => {
 																e.stopImmediatePropagation();
 																e.stopPropagation();
@@ -318,35 +347,43 @@
 													</Tooltip>
 												{/if}
 
-												{#if unshareHandler && chat.share_id}
-													<Tooltip content={$i18n.t('Copy Share Link')}>
+												{#if unshareHandler && resolveCopyHref(chat)}
+													<Tooltip content={copyTooltip ?? $i18n.t('Copy Share Link')}>
 														<button
 															class="self-center w-fit px-1 text-sm rounded-xl"
+															aria-label={copyTooltip ?? $i18n.t('Copy Share Link')}
 															on:click={async (e) => {
 																e.stopImmediatePropagation();
 																e.stopPropagation();
-																const shareUrl = `${window.location.origin}/s/${chat.share_id}`;
-																await navigator.clipboard.writeText(shareUrl);
-																toast.success($i18n.t('Share link copied to clipboard.'));
+																const resolvedCopyHref = resolveCopyHref(chat);
+																if (resolvedCopyHref) {
+																	await navigator.clipboard.writeText(resolvedCopyHref);
+																	toast.success(
+																		copySuccessMessage ?? $i18n.t('Share link copied to clipboard.')
+																	);
+																}
 															}}
 														>
-															<Clipboard class="size-4" strokeWidth="1.5" />
+															<Clipboard className="size-4" strokeWidth="1.5" />
 														</button>
 													</Tooltip>
 												{/if}
 
 												<Tooltip
 													content={unshareHandler
-														? $i18n.t('Unshare Chat')
+														? unshareTooltip ?? $i18n.t('Unshare Chat')
 														: $i18n.t('Delete Chat')}
 												>
 													<button
 														class="self-center w-fit px-1 text-sm rounded-xl"
+														aria-label={unshareHandler
+															? unshareTooltip ?? $i18n.t('Unshare Chat')
+															: $i18n.t('Delete Chat')}
 														on:click={async (e) => {
 															e.stopImmediatePropagation();
 															e.stopPropagation();
 															if (unshareHandler) {
-																unshareHandler(chat.id);
+																unshareHandler(chat);
 															} else {
 																selectedChatId = chat.id;
 																showDeleteConfirmDialog = true;

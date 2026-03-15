@@ -4,6 +4,7 @@
 
 	import {
 		chats,
+		config,
 		user,
 		settings,
 		scrollPaginationEnabled,
@@ -24,6 +25,7 @@
 	import { goto } from '$app/navigation';
 	import { toast } from 'svelte-sonner';
 	import ArchivedChatsModal from '$lib/components/layout/ArchivedChatsModal.svelte';
+	import PublicSharesModal from '$lib/components/layout/PublicSharesModal.svelte';
 	import SharedChatsModal from '$lib/components/layout/SharedChatsModal.svelte';
 	import FilesModal from '$lib/components/layout/FilesModal.svelte';
 	import ConfirmDialog from '$lib/components/common/ConfirmDialog.svelte';
@@ -38,6 +40,7 @@
 	let showArchiveConfirmDialog = false;
 	let showDeleteConfirmDialog = false;
 	let showArchivedChatsModal = false;
+	let showPublicSharesModal = false;
 	let showSharedChatsModal = false;
 	let showFilesModal = false;
 
@@ -140,6 +143,7 @@
 </script>
 
 <ArchivedChatsModal bind:show={showArchivedChatsModal} onUpdate={handleArchivedChatsChange} />
+<PublicSharesModal bind:show={showPublicSharesModal} />
 <SharedChatsModal bind:show={showSharedChatsModal} />
 <FilesModal bind:show={showFilesModal} />
 
@@ -238,6 +242,23 @@
 					</button>
 				</div>
 			</div>
+
+			{#if $config?.features?.enable_public_chat_sharing}
+				<div>
+					<div class="py-0.5 flex w-full justify-between">
+						<div class="self-center text-xs">{$i18n.t('Public Shares')}</div>
+						<button
+							class="p-1 px-3 text-xs flex rounded-sm transition"
+							on:click={() => {
+								showPublicSharesModal = true;
+							}}
+							type="button"
+						>
+							<span class="self-center">{$i18n.t('Manage')}</span>
+						</button>
+					</div>
+				</div>
+			{/if}
 
 			<div>
 				<div class="py-0.5 flex w-full justify-between">

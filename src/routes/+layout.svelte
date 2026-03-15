@@ -103,6 +103,7 @@
 	let heartbeatInterval = null;
 
 	const BREAKPOINT = 768;
+	const isPublicSharePath = (pathname) => /^\/p\/[^/]+$/.test(pathname);
 
 	const setupSocket = async (enableWebsocket) => {
 		const _socket = io(`${WEBUI_BASE_URL}` || undefined, {
@@ -862,12 +863,26 @@
 			await WEBUI_NAME.set(backendConfig.name);
 
 			if ($config) {
-				await setupSocket($config.features?.enable_websocket ?? true);
-
 				const currentUrl = `${window.location.pathname}${window.location.search}`;
 				const encodedUrl = encodeURIComponent(currentUrl);
+				const publicSharePath = isPublicSharePath($page.url.pathname);
 
-				if (localStorage.token) {
+				if (publicSharePath) {
+					let localStorageSettings = {};
+
+					try {
+						localStorageSettings = JSON.parse(localStorage.getItem('settings') ?? '{}');
+					} catch (error) {
+						console.error('Failed to parse settings from localStorage', error);
+					}
+
+					settings.set(localStorageSettings);
+					setTextScale(localStorageSettings?.textScale ?? 1);
+				} else {
+					await setupSocket($config.features?.enable_websocket ?? true);
+				}
+
+				if (!publicSharePath && localStorage.token) {
 					// Get Session User Info
 					const sessionUser = await getSessionUser(localStorage.token).catch((error) => {
 						toast.error(`${error}`);
@@ -886,7 +901,7 @@
 						localStorage.removeItem('token');
 						await goto(`/auth?redirect=${encodedUrl}`);
 					}
-				} else {
+				} else if (!publicSharePath) {
 					// Don't redirect if we're already on the auth page
 					// Needed because we pass in tokens from OAuth logins via URL fragments
 					if ($page.url.pathname !== '/auth') {

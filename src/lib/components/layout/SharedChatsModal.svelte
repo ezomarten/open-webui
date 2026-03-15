@@ -82,8 +82,8 @@
 		chatListLoading = false;
 	};
 
-	const unshareHandler = async (chatId: string) => {
-		const res = await deleteSharedChatById(localStorage.token, chatId).catch((error) => {
+	const unshareHandler = async (chat: any) => {
+		const res = await deleteSharedChatById(localStorage.token, chat.id).catch((error) => {
 			toast.error(`${error}`);
 			return null;
 		});

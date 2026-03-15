@@ -6,6 +6,7 @@ from typing import Optional
 
 from sqlalchemy.orm import Session
 from open_webui.internal.db import Base, JSONField, get_db, get_db_context
+from open_webui.models.public_shares import PublicShares
 from open_webui.models.tags import TagModel, Tag, Tags
 from open_webui.models.folders import Folders
 from open_webui.models.chat_messages import ChatMessage, ChatMessages
@@ -1517,6 +1518,7 @@ class ChatTable:
     def delete_chat_by_id(self, id: str, db: Optional[Session] = None) -> bool:
         try:
             with get_db_context(db) as db:
+                PublicShares.delete_public_share_by_chat_id(id, db=db)
                 db.query(ChatMessage).filter_by(chat_id=id).delete()
                 db.query(Chat).filter_by(id=id).delete()
                 db.commit()
@@ -1530,6 +1532,7 @@ class ChatTable:
     ) -> bool:
         try:
             with get_db_context(db) as db:
+                PublicShares.delete_public_share_by_chat_id(id, db=db)
                 db.query(ChatMessage).filter_by(chat_id=id).delete()
                 db.query(Chat).filter_by(id=id, user_id=user_id).delete()
                 db.commit()
@@ -1544,6 +1547,9 @@ class ChatTable:
         try:
             with get_db_context(db) as db:
                 self.delete_shared_chats_by_user_id(user_id, db=db)
+
+                chat_ids = [chat_id for (chat_id,) in db.query(Chat.id).filter_by(user_id=user_id).all()]
+                PublicShares.delete_public_shares_by_chat_ids(chat_ids, db=db)
 
                 chat_id_subquery = (
                     db.query(Chat.id).filter_by(user_id=user_id).subquery()
@@ -1563,6 +1569,14 @@ class ChatTable:
     ) -> bool:
         try:
             with get_db_context(db) as db:
+                chat_ids = [
+                    chat_id
+                    for (chat_id,) in db.query(Chat.id)
+                    .filter_by(user_id=user_id, folder_id=folder_id)
+                    .all()
+                ]
+                PublicShares.delete_public_shares_by_chat_ids(chat_ids, db=db)
+
                 chat_id_subquery = (
                     db.query(Chat.id)
                     .filter_by(user_id=user_id, folder_id=folder_id)

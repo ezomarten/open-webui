@@ -298,6 +298,7 @@ dist
 
 # Stores VSCode versions used for testing VSCode extensions
 .vscode-test
+build-exit-code.txt
 
 # yarn v2
 .yarn/cache

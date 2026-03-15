@@ -80,6 +80,7 @@ from open_webui.routers import (
     auths,
     channels,
     chats,
+    public_shares,
     notes,
     folders,
     configs,
@@ -508,6 +509,7 @@ from open_webui.env import (
     ENABLE_EASTER_EGGS,
     LOG_FORMAT,
 )
+from open_webui.env import PUBLIC_SHARE_BASE_URL
 
 
 from open_webui.utils.models import (
@@ -922,6 +924,12 @@ app.state.AUTH_TRUSTED_EMAIL_HEADER = WEBUI_AUTH_TRUSTED_EMAIL_HEADER
 app.state.AUTH_TRUSTED_NAME_HEADER = WEBUI_AUTH_TRUSTED_NAME_HEADER
 app.state.WEBUI_AUTH_SIGNOUT_REDIRECT_URL = WEBUI_AUTH_SIGNOUT_REDIRECT_URL
 app.state.EXTERNAL_PWA_MANIFEST_URL = EXTERNAL_PWA_MANIFEST_URL
+app.state.PUBLIC_SHARE_BASE_URL = PUBLIC_SHARE_BASE_URL
+app.state.PUBLIC_SHARE_HOST = (
+    (urlparse(PUBLIC_SHARE_BASE_URL).hostname or "").lower()
+    if PUBLIC_SHARE_BASE_URL
+    else ""
+)
 
 app.state.USER_COUNT = None
 
@@ -1466,6 +1474,47 @@ async def commit_session_after_request(request: Request, call_next):
 @app.middleware("http")
 async def check_url(request: Request, call_next):
     start_time = int(time.time())
+
+    request_host = (
+        (request.url.hostname or "")
+        or (request.headers.get("host", "").split(":", 1)[0])
+    ).lower()
+
+    if app.state.PUBLIC_SHARE_HOST and request_host == app.state.PUBLIC_SHARE_HOST:
+        request_path = request.url.path
+        public_share_api_prefix = "/api/v1/public-shares/"
+        public_share_api_remainder = request_path[len(public_share_api_prefix) :].strip("/")
+        public_share_page_remainder = request_path[len("/p/") :].strip("/") if request_path.startswith("/p/") else ""
+
+        is_allowed_public_share_api = (
+            request.method in {"GET", "HEAD"}
+            and request_path.startswith(public_share_api_prefix)
+            and bool(public_share_api_remainder)
+            and "/" not in public_share_api_remainder
+            and public_share_api_remainder not in {"list", "mine"}
+        )
+
+        is_allowed_public_share_page = (
+            request.method in {"GET", "HEAD"}
+            and request_path.startswith("/p/")
+            and bool(public_share_page_remainder)
+            and "/" not in public_share_page_remainder
+        )
+
+        is_allowed_public_host_request = (
+            (request.method == "GET" and request_path in {"/api/config", "/manifest.json", "/opensearch.xml"})
+            or (request.method == "GET" and request_path.startswith("/_app/"))
+            or (request.method == "GET" and request_path.startswith("/static/"))
+            or is_allowed_public_share_api
+            or is_allowed_public_share_page
+        )
+
+        if not is_allowed_public_host_request:
+            return JSONResponse(
+                status_code=status.HTTP_404_NOT_FOUND,
+                content={"detail": ERROR_MESSAGES.NOT_FOUND},
+            )
+
     request.state.token = get_http_authorization_cred(
         request.headers.get("Authorization")
     )
@@ -1543,6 +1592,11 @@ app.include_router(users.router, prefix="/api/v1/users", tags=["users"])
 
 app.include_router(channels.router, prefix="/api/v1/channels", tags=["channels"])
 app.include_router(chats.router, prefix="/api/v1/chats", tags=["chats"])
+app.include_router(
+    public_shares.router,
+    prefix="/api/v1/public-shares",
+    tags=["public-shares"],
+)
 app.include_router(notes.router, prefix="/api/v1/notes", tags=["notes"])
 
 
@@ -2149,6 +2203,7 @@ async def get_app_config(request: Request):
             "enable_websocket": ENABLE_WEBSOCKET_SUPPORT,
             "enable_version_update_check": ENABLE_VERSION_UPDATE_CHECK,
             "enable_public_active_users_count": ENABLE_PUBLIC_ACTIVE_USERS_COUNT,
+            "enable_public_chat_sharing": bool(app.state.PUBLIC_SHARE_BASE_URL),
             "enable_easter_eggs": ENABLE_EASTER_EGGS,
             **(
                 {

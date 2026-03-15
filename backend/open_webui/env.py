@@ -547,6 +547,8 @@ WEBUI_AUTH_SIGNOUT_REDIRECT_URL = os.environ.get(
     "WEBUI_AUTH_SIGNOUT_REDIRECT_URL", None
 )
 
+PUBLIC_SHARE_BASE_URL = os.environ.get("PUBLIC_SHARE_BASE_URL", "").rstrip("/")
+
 ####################################
 # WEBUI_SECRET_KEY
 ####################################
