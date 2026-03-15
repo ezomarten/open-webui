@@ -79,6 +79,9 @@
 				done: true,
 				parentId: previous?.id ?? null,
 				childrenIds: next ? [next.id] : [],
+				...(Array.isArray(current.sources) && current.sources.length > 0
+					? { sources: current.sources }
+					: {}),
 				...(files.length > 0 ? { files } : {})
 			};
 		}

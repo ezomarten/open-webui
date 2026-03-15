@@ -450,7 +450,7 @@
 	"Created by": "作成者",
 	"Created by you": "自分が作成",
 	"Created on {{date}}": "",
-	"Creates an anonymous read-only public page. Image attachments are included. Other files and citations are omitted.": "匿名で閲覧専用の公開ページを作成します。画像添付は含まれますが、その他のファイルと引用は含まれません。",
+	"Creates an anonymous read-only public page. Image attachments and public web citations are included. Other files and private citations are omitted.": "匿名で閲覧専用の公開ページを作成します。画像添付と公開ウェブ引用は含まれますが、その他のファイルと非公開引用は含まれません。",
 	"CSV Import": "CSVインポート",
 	"Ctrl+Enter to Send": "Ctrl+Enterで送信",
 	"Current Model": "現在のモデル",

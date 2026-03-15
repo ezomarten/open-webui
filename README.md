@@ -33,7 +33,7 @@ This repository is a deployment-focused fork of Open WebUI `v0.8.10`. It keeps t
 
 - Anonymous public share pages under `/p/{public_share_id}` with matching `/api/v1/public-shares/*` endpoints
 - Public-host allowlist so the anonymous host exposes only public pages, public APIs, image content, and Pyodide assets
-- Image support inside public-share snapshots
+- Image and public web citation support inside public-share snapshots
 - Browser speech fallback on public pages when server-side TTS is unavailable
 - Admin-configurable `Enable Public Links` and `Public Link URL` settings in **Admin > General**
 

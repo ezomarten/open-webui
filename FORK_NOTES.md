@@ -29,6 +29,7 @@ This fork is based on Open WebUI `v0.8.10` and carries a small set of deployment
 ### Public page compatibility
 
 - Public-share snapshots preserve image attachments and expose a share-scoped file content route
+- Public-share snapshots also preserve public web citations so anonymous pages can show source links and preview snippets
 - Public pages fall back to browser speech synthesis when authenticated TTS settings are unavailable
 - Public pages can load `/pyodide/*` assets so browser-side Python execution continues to work
 
@@ -59,7 +60,7 @@ Other routes on the public host return `404`.
 ## Current Limitations
 
 - Public shares expose the current branch transcript only
-- Image attachments are included, but other file types and citations remain excluded
+- Image attachments and public web citations are included, but other file types and private citations remain excluded
 - Public-link generation requires both a valid absolute `PUBLIC_SHARE_BASE_URL` and `Enable Public Links` turned on
 
 ## Maintenance Record Rules
@@ -92,6 +93,7 @@ If the change affects public-share or public-link UI strings, also update [src/l
 - 2026-03-15: aligned GitHub Actions and release policy for this private fork; validation: local formatting/build checks plus green `Python CI` and `Frontend Build`
 - 2026-03-15: added Japanese translations for public-share and public-link UI strings in [src/lib/i18n/locales/ja-JP/translation.json](src/lib/i18n/locales/ja-JP/translation.json); validation: local image rebuild plus runtime container inspection confirmed translated assets in the container
 - 2026-03-15: clarified local deployment rule that workspace root [../.env](../.env) must point at the local image tag for local rebuilds to take effect; validation: `docker inspect open-webui --format '{{.Config.Image}}'` showed `open-webui-public-share:0.8.10-publicshare-local`
+- 2026-03-15: added public-share support for public web citations while continuing to exclude private/file-backed citations; validation: backend sanitizer checks, local image rebuild, local `/p/{id}` verification, and operator-confirmed public-host verification
 
 ## Fork Release Summary
 
@@ -120,5 +122,6 @@ When following a newer upstream Open WebUI release, verify at minimum:
 4. public-page TTS fallback still avoids authenticated server-side TTS assumptions
 5. `/pyodide/*` public-host access still works
 6. admin public-link settings still persist via `ui.enable_public_chat_sharing` and `ui.public_share_base_url`
-7. public-link and public-share UI strings still have at least ja-JP translations when changed
-8. workspace root [../README.md](../README.md) still matches the real deployment/apply procedure
+7. public-share snapshots still expose only public-safe citations and do not leak private/file-backed source metadata
+8. public-link and public-share UI strings still have at least ja-JP translations when changed
+9. workspace root [../README.md](../README.md) still matches the real deployment/apply procedure

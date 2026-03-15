@@ -254,7 +254,7 @@
 						<div class="text-sm font-medium dark:text-gray-200">{$i18n.t('Public Link')}</div>
 						<div class="text-sm dark:text-gray-300 mt-1">
 							{$i18n.t(
-								'Creates an anonymous read-only public page. Image attachments are included. Other files and citations are omitted.'
+								'Creates an anonymous read-only public page. Image attachments and public web citations are included. Other files and private citations are omitted.'
 							)}
 						</div>
 

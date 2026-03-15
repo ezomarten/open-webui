@@ -5,7 +5,7 @@ from urllib.parse import urlparse
 
 ATTACHMENT_OMITTED_TEXT = "[Attachment omitted]"
 PUBLIC_SHARE_ID_PREFIX = "ps_"
-PUBLIC_SHARE_SCHEMA_VERSION = 2
+PUBLIC_SHARE_SCHEMA_VERSION = 3
 
 _INTERNAL_FILE_URL_PATTERNS = (
     re.compile(r"^/api/v1/files/(?P<file_id>[^/]+)/content(?:/[^/]+)?/?$"),
@@ -88,8 +88,9 @@ def sanitize_public_message(message: dict, index: int = 0) -> Optional[dict]:
         return None
 
     public_files = _sanitize_public_files(message)
-    content = _sanitize_content(message, public_files)
-    if content is None and len(public_files) == 0:
+    public_sources = _sanitize_public_sources(message)
+    content = _sanitize_content(message, public_files, public_sources)
+    if content is None and len(public_files) == 0 and len(public_sources) == 0:
         return None
 
     message_id = str(message.get("id") or f"psm_{index}")
@@ -111,6 +112,9 @@ def sanitize_public_message(message: dict, index: int = 0) -> Optional[dict]:
 
     if public_files:
         public_message["files"] = public_files
+
+    if public_sources:
+        public_message["sources"] = public_sources
 
     return public_message
 
@@ -159,10 +163,12 @@ def build_public_share_snapshot(chat: Any) -> dict:
     }
 
 
-def _sanitize_content(message: dict, public_files: list[dict]) -> Optional[str]:
+def _sanitize_content(
+    message: dict, public_files: list[dict], public_sources: list[dict]
+) -> Optional[str]:
     parts, content_has_attachment = _extract_text_parts(message.get("content"))
 
-    if _message_has_omitted_attachment_fields(message, public_files):
+    if _message_has_omitted_attachment_fields(message, public_files, public_sources):
         content_has_attachment = True
 
     normalized_parts = []
@@ -180,7 +186,7 @@ def _sanitize_content(message: dict, public_files: list[dict]) -> Optional[str]:
     if content_has_attachment:
         return ATTACHMENT_OMITTED_TEXT
 
-    if public_files:
+    if public_files or public_sources:
         return ""
 
     return None
@@ -276,11 +282,146 @@ def _sanitize_public_file(file: Any) -> Optional[dict]:
     return public_file
 
 
+def _sanitize_public_sources(message: dict) -> list[dict]:
+    sources = message.get("sources")
+    if sources is None:
+        sources = message.get("citations")
+
+    if not isinstance(sources, list):
+        return []
+
+    public_sources = []
+    for source in sources:
+        sanitized_source = _sanitize_public_source(source)
+        if sanitized_source is not None:
+            public_sources.append(sanitized_source)
+
+    return public_sources
+
+
+def _sanitize_public_source(source: Any) -> Optional[dict]:
+    if not isinstance(source, dict):
+        return None
+
+    source_info = _sanitize_public_source_info(source.get("source"))
+
+    documents = source.get("document") or []
+    metadata_items = source.get("metadata") or []
+    distances = source.get("distances") or []
+
+    if not isinstance(documents, list) or len(documents) == 0:
+        return None
+
+    public_documents = []
+    public_metadata = []
+    public_distances = []
+    include_distances = True
+
+    for index, document in enumerate(documents):
+        sanitized_document = _sanitize_public_document(document)
+        if sanitized_document is None:
+            continue
+
+        metadata = metadata_items[index] if isinstance(metadata_items, list) and index < len(metadata_items) else None
+        public_reference = _get_public_source_reference(metadata, source_info)
+        if public_reference is None:
+            continue
+
+        public_documents.append(sanitized_document)
+        public_metadata.append(
+            _sanitize_public_source_metadata(metadata, public_reference)
+        )
+
+        distance = distances[index] if isinstance(distances, list) and index < len(distances) else None
+        if isinstance(distance, (int, float)):
+            public_distances.append(distance)
+        else:
+            include_distances = False
+
+    if len(public_documents) == 0:
+        return None
+
+    public_source = {
+        "source": source_info,
+        "document": public_documents,
+        "metadata": public_metadata,
+    }
+
+    if include_distances and len(public_distances) == len(public_documents):
+        public_source["distances"] = public_distances
+
+    return public_source
+
+
+def _sanitize_public_source_info(source: Any) -> dict:
+    if not isinstance(source, dict):
+        return {}
+
+    public_source = {}
+
+    for key in ("id", "name", "type"):
+        value = _normalize_optional_string(source.get(key))
+        if value:
+            public_source[key] = value
+
+    public_url = _normalize_public_url(source.get("url"))
+    if public_url:
+        public_source["url"] = public_url
+
+    embed_url = _normalize_public_url(source.get("embed_url"))
+    if embed_url:
+        public_source["embed_url"] = embed_url
+
+    return public_source
+
+
+def _sanitize_public_document(document: Any) -> Optional[str]:
+    if document is None:
+        return None
+
+    normalized_document = str(document).strip()
+    return normalized_document if normalized_document else None
+
+
+def _sanitize_public_source_metadata(
+    metadata: Any, public_reference: str
+) -> dict:
+    public_metadata = {
+        "source": public_reference,
+        "url": public_reference,
+    }
+
+    if isinstance(metadata, dict):
+        name = _normalize_optional_string(metadata.get("name"))
+        if name:
+            public_metadata["name"] = name
+
+        page = _coerce_int(metadata.get("page"))
+        if page is not None:
+            public_metadata["page"] = page
+
+    return public_metadata
+
+
+def _get_public_source_reference(metadata: Any, source: dict) -> Optional[str]:
+    if isinstance(metadata, dict):
+        for key in ("url", "source"):
+            public_url = _normalize_public_url(metadata.get(key))
+            if public_url:
+                return public_url
+
+    for key in ("url", "embed_url", "id", "name"):
+        public_url = _normalize_public_url(source.get(key))
+        if public_url:
+            return public_url
+
+    return None
+
+
 def _message_has_omitted_attachment_fields(
-    message: dict, public_files: list[dict]
+    message: dict, public_files: list[dict], public_sources: list[dict]
 ) -> bool:
     attachment_fields = (
-        "sources",
         "embeds",
         "statusHistory",
         "annotation",
@@ -292,6 +433,20 @@ def _message_has_omitted_attachment_fields(
     for field in attachment_fields:
         value = message.get(field)
         if value:
+            return True
+
+    raw_sources = message.get("sources")
+    if raw_sources is None:
+        raw_sources = message.get("citations")
+
+    if raw_sources:
+        if not isinstance(raw_sources, list):
+            return True
+
+        if len(raw_sources) != len(public_sources):
+            return True
+
+        if _count_source_documents(raw_sources) != _count_source_documents(public_sources):
             return True
 
     public_file_ids = {
@@ -347,6 +502,35 @@ def _normalize_model_name(value: Any) -> Optional[str]:
 
     model_name = str(value).strip()
     return model_name if model_name else None
+
+
+def _count_source_documents(sources: list[Any]) -> int:
+    count = 0
+
+    for source in sources:
+        if not isinstance(source, dict):
+            continue
+
+        documents = source.get("document") or []
+        if isinstance(documents, list):
+            count += len(documents)
+
+    return count
+
+
+def _normalize_public_url(value: Any) -> Optional[str]:
+    if value is None:
+        return None
+
+    candidate = str(value).strip()
+    if not candidate:
+        return None
+
+    parsed = urlparse(candidate)
+    if parsed.scheme not in {"http", "https"} or not parsed.hostname:
+        return None
+
+    return candidate
 
 
 def _normalize_optional_string(value: Any) -> Optional[str]:

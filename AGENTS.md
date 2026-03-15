@@ -6,7 +6,7 @@ This repository is a small-patch fork of Open WebUI. The goal is to stay close t
 
 - Anonymous public share pages and APIs
 - Snapshot-based public shares that do not require the owner session
-- Public-share image attachment support
+- Public-share image attachment and public web citation support
 - Browser TTS fallback on public pages
 - Public-host `/pyodide/*` access
 - Admin > General public-link settings backed by:
