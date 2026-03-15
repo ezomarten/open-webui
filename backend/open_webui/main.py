@@ -1511,10 +1511,16 @@ async def check_url(request: Request, call_next):
             and "/" not in public_share_page_remainder
         )
 
+        is_allowed_public_pyodide_asset = (
+            request.method in {"GET", "HEAD"}
+            and (request_path == "/pyodide" or request_path.startswith("/pyodide/"))
+        )
+
         is_allowed_public_host_request = (
             (request.method == "GET" and request_path in {"/api/config", "/manifest.json", "/opensearch.xml"})
             or (request.method == "GET" and request_path.startswith("/_app/"))
             or (request.method == "GET" and request_path.startswith("/static/"))
+            or is_allowed_public_pyodide_asset
             or is_allowed_public_share_snapshot_api
             or is_allowed_public_share_file_api
             or is_allowed_public_share_page
