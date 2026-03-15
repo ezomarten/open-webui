@@ -1484,14 +1484,24 @@ async def check_url(request: Request, call_next):
         request_path = request.url.path
         public_share_api_prefix = "/api/v1/public-shares/"
         public_share_api_remainder = request_path[len(public_share_api_prefix) :].strip("/")
+        public_share_api_segments = [
+            segment for segment in public_share_api_remainder.split("/") if segment
+        ]
         public_share_page_remainder = request_path[len("/p/") :].strip("/") if request_path.startswith("/p/") else ""
 
-        is_allowed_public_share_api = (
+        is_allowed_public_share_snapshot_api = (
             request.method in {"GET", "HEAD"}
             and request_path.startswith(public_share_api_prefix)
-            and bool(public_share_api_remainder)
-            and "/" not in public_share_api_remainder
-            and public_share_api_remainder not in {"list", "mine"}
+            and len(public_share_api_segments) == 1
+            and public_share_api_segments[0] not in {"list", "mine"}
+        )
+
+        is_allowed_public_share_file_api = (
+            request.method in {"GET", "HEAD"}
+            and request_path.startswith(public_share_api_prefix)
+            and len(public_share_api_segments) == 4
+            and public_share_api_segments[1] == "files"
+            and public_share_api_segments[3] == "content"
         )
 
         is_allowed_public_share_page = (
@@ -1505,7 +1515,8 @@ async def check_url(request: Request, call_next):
             (request.method == "GET" and request_path in {"/api/config", "/manifest.json", "/opensearch.xml"})
             or (request.method == "GET" and request_path.startswith("/_app/"))
             or (request.method == "GET" and request_path.startswith("/static/"))
-            or is_allowed_public_share_api
+            or is_allowed_public_share_snapshot_api
+            or is_allowed_public_share_file_api
             or is_allowed_public_share_page
         )
 

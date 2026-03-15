@@ -1,10 +1,17 @@
+import re
 import secrets
 from typing import Any, Optional
+from urllib.parse import urlparse
 
 
 ATTACHMENT_OMITTED_TEXT = "[Attachment omitted]"
 PUBLIC_SHARE_ID_PREFIX = "ps_"
-PUBLIC_SHARE_SCHEMA_VERSION = 1
+PUBLIC_SHARE_SCHEMA_VERSION = 2
+
+_INTERNAL_FILE_URL_PATTERNS = (
+    re.compile(r"^/api/v1/files/(?P<file_id>[^/]+)/content(?:/[^/]+)?/?$"),
+    re.compile(r"^/api/v1/files/(?P<file_id>[^/]+)/?$"),
+)
 
 
 def new_public_share_id() -> str:
@@ -49,8 +56,9 @@ def sanitize_public_message(message: dict, index: int = 0) -> Optional[dict]:
     if role not in {"user", "assistant"}:
         return None
 
-    content = _sanitize_content(message)
-    if content is None:
+    public_files = _sanitize_public_files(message)
+    content = _sanitize_content(message, public_files)
+    if content is None and len(public_files) == 0:
         return None
 
     message_id = str(message.get("id") or f"psm_{index}")
@@ -62,13 +70,18 @@ def sanitize_public_message(message: dict, index: int = 0) -> Optional[dict]:
         or message.get("time")
     )
 
-    return {
+    public_message = {
         "id": message_id,
         "role": role,
-        "content": content,
+        "content": content if content is not None else "",
         "model": model,
         "timestamp": timestamp,
     }
+
+    if public_files:
+        public_message["files"] = public_files
+
+    return public_message
 
 
 def build_public_share_snapshot(chat: Any) -> dict:
@@ -113,10 +126,10 @@ def build_public_share_snapshot(chat: Any) -> dict:
     }
 
 
-def _sanitize_content(message: dict) -> Optional[str]:
+def _sanitize_content(message: dict, public_files: list[dict]) -> Optional[str]:
     parts, content_has_attachment = _extract_text_parts(message.get("content"))
 
-    if _message_has_attachment_fields(message):
+    if _message_has_omitted_attachment_fields(message, public_files):
         content_has_attachment = True
 
     normalized_parts = []
@@ -133,6 +146,9 @@ def _sanitize_content(message: dict) -> Optional[str]:
 
     if content_has_attachment:
         return ATTACHMENT_OMITTED_TEXT
+
+    if public_files:
+        return ""
 
     return None
 
@@ -182,9 +198,53 @@ def _extract_text_parts(value: Any) -> tuple[list[str], bool]:
     return parts, True
 
 
-def _message_has_attachment_fields(message: dict) -> bool:
+def _sanitize_public_files(message: dict) -> list[dict]:
+    files = message.get("files") or []
+    if not isinstance(files, list):
+        return []
+
+    public_files = []
+    for file in files:
+        sanitized_file = _sanitize_public_file(file)
+        if sanitized_file is not None:
+            public_files.append(sanitized_file)
+
+    return public_files
+
+
+def _sanitize_public_file(file: Any) -> Optional[dict]:
+    if not isinstance(file, dict):
+        return None
+
+    if not _is_image_file(file):
+        return None
+
+    file_id = _extract_file_id(file.get("url"))
+    if file_id is None:
+        return None
+
+    public_file = {
+        "type": "image",
+        "file_id": file_id,
+    }
+
+    content_type = _normalize_optional_string(file.get("content_type"))
+    if content_type:
+        public_file["content_type"] = content_type
+
+    name = _normalize_optional_string(file.get("name"))
+    if name:
+        public_file["name"] = name
+
+    size = _coerce_int(file.get("size"))
+    if size is not None:
+        public_file["size"] = size
+
+    return public_file
+
+
+def _message_has_omitted_attachment_fields(message: dict, public_files: list[dict]) -> bool:
     attachment_fields = (
-        "files",
         "sources",
         "embeds",
         "statusHistory",
@@ -199,7 +259,51 @@ def _message_has_attachment_fields(message: dict) -> bool:
         if value:
             return True
 
+    public_file_ids = {
+        str(file.get("file_id"))
+        for file in public_files
+        if isinstance(file, dict) and file.get("file_id")
+    }
+
+    files = message.get("files") or []
+    if not isinstance(files, list):
+        return True
+
+    for file in files:
+        if not isinstance(file, dict):
+            return True
+
+        file_id = _extract_file_id(file.get("url"))
+        if file_id is None or file_id not in public_file_ids:
+            return True
+
     return False
+
+
+def _is_image_file(file: dict) -> bool:
+    file_type = (_normalize_optional_string(file.get("type")) or "").lower()
+    content_type = (_normalize_optional_string(file.get("content_type")) or "").lower()
+    return file_type == "image" or content_type.startswith("image/")
+
+
+def _extract_file_id(value: Any) -> Optional[str]:
+    if value is None:
+        return None
+
+    candidate = str(value).strip()
+    if not candidate:
+        return None
+
+    if "/" not in candidate and "?" not in candidate and "#" not in candidate:
+        return candidate
+
+    path = urlparse(candidate).path or candidate
+    for pattern in _INTERNAL_FILE_URL_PATTERNS:
+        match = pattern.match(path)
+        if match:
+            return match.group("file_id")
+
+    return None
 
 
 def _normalize_model_name(value: Any) -> Optional[str]:
@@ -210,7 +314,25 @@ def _normalize_model_name(value: Any) -> Optional[str]:
     return model_name if model_name else None
 
 
+def _normalize_optional_string(value: Any) -> Optional[str]:
+    if value is None:
+        return None
+
+    normalized_value = str(value).strip()
+    return normalized_value if normalized_value else None
+
+
 def _coerce_timestamp(value: Any) -> Optional[int]:
+    if value is None:
+        return None
+
+    try:
+        return int(value)
+    except (TypeError, ValueError):
+        return None
+
+
+def _coerce_int(value: Any) -> Optional[int]:
     if value is None:
         return None
 

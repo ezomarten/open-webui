@@ -7,6 +7,7 @@ from sqlalchemy.orm import Session
 
 from open_webui.internal.db import Base, get_db_context
 from open_webui.utils.public_share import (
+    PUBLIC_SHARE_SCHEMA_VERSION,
     build_public_share_snapshot,
     build_public_share_url,
     new_public_share_id,
@@ -83,6 +84,16 @@ class PublicShareSnapshotResponse(BaseModel):
 
 
 class PublicShareTable:
+    def _is_snapshot_schema_stale(self, public_share: PublicShare) -> bool:
+        snapshot = getattr(public_share, "snapshot_json", None) or {}
+
+        try:
+            snapshot_schema_version = int(snapshot.get("schema_version") or 0)
+        except (TypeError, ValueError, AttributeError):
+            snapshot_schema_version = 0
+
+        return snapshot_schema_version < PUBLIC_SHARE_SCHEMA_VERSION
+
     def _to_access_response(
         self,
         public_share: PublicShare,
@@ -103,7 +114,10 @@ class PublicShareTable:
             source_chat_updated_at=public_share.source_chat_updated_at,
             created_at=public_share.created_at,
             updated_at=public_share.updated_at,
-            is_stale=effective_source_updated_at > public_share.source_chat_updated_at,
+            is_stale=(
+                effective_source_updated_at > public_share.source_chat_updated_at
+                or self._is_snapshot_schema_stale(public_share)
+            ),
         )
 
     def _to_list_item(

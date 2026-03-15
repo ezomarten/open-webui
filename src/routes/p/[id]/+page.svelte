@@ -24,34 +24,62 @@
 	let updatedAt: number | null = null;
 
 	let title = '';
-	let messages = [];
-	let history = {
+	let messages: any[] = [];
+	let history: { messages: Record<string, any>; currentId: string | null } = {
 		messages: {},
 		currentId: null
 	};
 
 	$: messages = createMessagesList(history, history.currentId);
 
-	const toHistory = (items) => {
+	const toPublicShareFileUrl = (publicShareId: string, file: any) => {
+		if (!file?.file_id) {
+			return file?.url ?? '';
+		}
+
+		const pathname = `/api/v1/public-shares/${publicShareId}/files/${file.file_id}/content`;
+		if (typeof window === 'undefined') {
+			return pathname;
+		}
+
+		return new URL(pathname, window.location.origin).toString();
+	};
+
+	const toHistory = (publicShareId: string, items: any[]) => {
 		const nextHistory = {
 			messages: {},
 			currentId: null
-		};
+		} as { messages: Record<string, any>; currentId: string | null };
 
 		for (let index = 0; index < items.length; index += 1) {
 			const current = items[index];
 			const previous = items[index - 1] ?? null;
 			const next = items[index + 1] ?? null;
+			const files = (Array.isArray(current.files) ? current.files : [])
+				.map((file: any) => {
+					const url = toPublicShareFileUrl(publicShareId, file);
+					if (!url) {
+						return null;
+					}
+
+					return {
+						...file,
+						type: file?.type ?? 'image',
+						url
+					};
+				})
+				.filter(Boolean);
 
 			nextHistory.messages[current.id] = {
 				id: current.id,
 				role: current.role,
-				content: current.content,
+				content: current.content ?? '',
 				model: current.model,
 				timestamp: current.timestamp,
 				done: true,
 				parentId: previous?.id ?? null,
-				childrenIds: next ? [next.id] : []
+				childrenIds: next ? [next.id] : [],
+				...(files.length > 0 ? { files } : {})
 			};
 		}
 
@@ -60,7 +88,7 @@
 	};
 
 	const loadPublicShare = async () => {
-		let localStorageSettings = {};
+		let localStorageSettings: Record<string, any> = {};
 
 		try {
 			localStorageSettings = JSON.parse(localStorage.getItem('settings') ?? '{}');
@@ -85,7 +113,7 @@
 		title = snapshot.title;
 		updatedAt = snapshot.updated_at ?? null;
 		selectedModels = snapshot.models?.length ? snapshot.models : [''];
-		history = toHistory(snapshot.messages ?? []);
+		history = toHistory(snapshot.id ?? $page.params.id, snapshot.messages ?? []);
 
 		await tick();
 		if (messages.length > 0 && messages.at(-1)?.id && messages.at(-1)?.id in history.messages) {
