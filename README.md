@@ -25,6 +25,92 @@ Passionate about open-source AI? [Join our team →](https://careers.openwebui.c
 
 For more information, be sure to check out our [Open WebUI Documentation](https://docs.openwebui.com/).
 
+## Fork Overview
+
+This repository is a deployment-focused fork of Open WebUI `v0.8.10`. It keeps the upstream application intact where possible and adds the minimum patch set needed for a dual-host deployment where the main app stays protected while anonymous public shares are exposed from a separate host.
+
+### Fork-specific additions
+
+- Anonymous public share pages under `/p/{public_share_id}` with matching `/api/v1/public-shares/*` endpoints
+- Public-host allowlist so the anonymous host exposes only public pages, public APIs, image content, and Pyodide assets
+- Image support inside public-share snapshots
+- Browser speech fallback on public pages when server-side TTS is unavailable
+- Admin-configurable `Enable Public Links` and `Public Link URL` settings in **Admin > General**
+
+### Fork Quick Start
+
+Build locally:
+
+```bash
+docker build --provenance=false --sbom=false --build-arg USE_SLIM=true -t open-webui-public-share:0.8.10-publicshare-local .
+```
+
+Or pull the current published fork image:
+
+```bash
+docker pull ghcr.io/farefore/open-webui-public-share:0.8.10-publicshare.7
+```
+
+Relevant configuration for this fork:
+
+- `WEBUI_SECRET_KEY`: required for a safe production deployment
+- `PUBLIC_SHARE_BASE_URL`: absolute public base URL such as `https://s-ai.example.com`
+- `ENABLE_PUBLIC_CHAT_SHARING`: optional initial state for public links
+
+### Example deployment with docker compose
+
+The example below runs a single Open WebUI container and assumes your reverse proxy or tunnel sends both the protected app host and the anonymous public-share host to that same container.
+
+Example `.env`:
+
+```dotenv
+OPEN_WEBUI_IMAGE=ghcr.io/farefore/open-webui-public-share:0.8.10-publicshare.7
+WEBUI_SECRET_KEY=replace-with-a-random-secret-of-32-bytes-or-more
+PUBLIC_SHARE_BASE_URL=https://s-ai.example.com
+ENABLE_PUBLIC_CHAT_SHARING=true
+OLLAMA_BASE_URL=http://host.docker.internal:11434
+# OPENAI_API_BASE_URL=https://your-openai-compatible-endpoint/v1
+# OPENAI_API_KEY=sk-...
+```
+
+Example `compose.yaml`:
+
+```yaml
+services:
+  open-webui:
+    image: ${OPEN_WEBUI_IMAGE}
+    container_name: open-webui
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:3000:8080"
+    extra_hosts:
+      - host.docker.internal:host-gateway
+    volumes:
+      - open-webui:/app/backend/data
+    environment:
+      WEBUI_SECRET_KEY: ${WEBUI_SECRET_KEY}
+      PUBLIC_SHARE_BASE_URL: ${PUBLIC_SHARE_BASE_URL}
+      ENABLE_PUBLIC_CHAT_SHARING: ${ENABLE_PUBLIC_CHAT_SHARING}
+      OLLAMA_BASE_URL: ${OLLAMA_BASE_URL:-}
+      OPENAI_API_BASE_URL: ${OPENAI_API_BASE_URL:-}
+      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+
+volumes:
+  open-webui: {}
+```
+
+Start the container with:
+
+```bash
+docker compose up -d
+```
+
+If you publish the service through two hostnames, keep the container bound to loopback and let the reverse proxy enforce authentication only on the protected host.
+
+After the first start, administrators can manage `Enable Public Links` and `Public Link URL` from **Admin > General**. The environment variables above seed the initial state; the saved admin settings become the source of truth afterward.
+
+See [FORK_NOTES.md](./FORK_NOTES.md) for the fork scope, limitations, and release history.
+
 ## Key Features of Open WebUI ⭐
 
 - 🚀 **Effortless Setup**: Install seamlessly using Docker or Kubernetes (kubectl, kustomize or helm) for a hassle-free experience with support for both `:ollama` and `:cuda` tagged images.

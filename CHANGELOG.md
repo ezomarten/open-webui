@@ -5,6 +5,44 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.8.10-publicshare.7] - 2026-03-15
+
+Fork release based on upstream `0.8.10`.
+
+### Added
+
+- Admin settings for `Enable Public Links` and `Public Link URL`, backed by persistent config keys `ui.enable_public_chat_sharing` and `ui.public_share_base_url`.
+
+### Changed
+
+- Public-link availability now depends on both the admin toggle and a valid absolute `PUBLIC_SHARE_BASE_URL`.
+- Environment variables `ENABLE_PUBLIC_CHAT_SHARING` and `PUBLIC_SHARE_BASE_URL` now seed the initial state, after which saved admin settings become the source of truth.
+
+## [0.8.10-publicshare.6] - 2026-03-15
+
+Fork release based on upstream `0.8.10`.
+
+### Changed
+
+- The public-host allowlist now explicitly includes `/pyodide/*` so anonymous public pages can load browser-side Python assets.
+
+### Fixed
+
+- Browser-side Python execution on anonymous public pages works again by allowing `/pyodide/*` on the public host.
+
+## [0.8.10-publicshare.5] - 2026-03-15
+
+Fork release based on upstream `0.8.10`.
+
+### Added
+
+- Public-share image snapshot support so anonymous pages can render image attachments safely.
+- A share-scoped file content route at `/api/v1/public-shares/{public_share_id}/files/{file_id}/content` for image delivery.
+
+### Changed
+
+- Public-share stale detection now also considers the snapshot schema version so older shares are prompted for refresh when image support is introduced.
+
 ## [0.8.10] - 2026-03-08
 
 ### Added
