@@ -13,7 +13,6 @@ import sqlalchemy as sa
 
 from open_webui.migrations.util import get_existing_tables
 
-
 revision: str = "9c0d8a1b2e3f"
 down_revision: Union[str, None] = "b2c3d4e5f6a7"
 branch_labels: Union[str, Sequence[str], None] = None

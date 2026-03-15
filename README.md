@@ -82,7 +82,7 @@ services:
     container_name: open-webui
     restart: unless-stopped
     ports:
-      - "127.0.0.1:3000:8080"
+      - '127.0.0.1:3000:8080'
     extra_hosts:
       - host.docker.internal:host-gateway
     volumes:

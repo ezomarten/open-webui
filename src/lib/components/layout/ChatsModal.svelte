@@ -371,13 +371,13 @@
 
 												<Tooltip
 													content={unshareHandler
-														? unshareTooltip ?? $i18n.t('Unshare Chat')
+														? (unshareTooltip ?? $i18n.t('Unshare Chat'))
 														: $i18n.t('Delete Chat')}
 												>
 													<button
 														class="self-center w-fit px-1 text-sm rounded-xl"
 														aria-label={unshareHandler
-															? unshareTooltip ?? $i18n.t('Unshare Chat')
+															? (unshareTooltip ?? $i18n.t('Unshare Chat'))
 															: $i18n.t('Delete Chat')}
 														on:click={async (e) => {
 															e.stopImmediatePropagation();

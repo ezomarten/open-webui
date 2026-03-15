@@ -140,7 +140,9 @@
 
 {#if loaded}
 	{#if unavailable}
-		<div class="h-screen max-h-[100dvh] w-full flex flex-col text-gray-700 dark:text-gray-100 bg-white dark:bg-gray-900">
+		<div
+			class="h-screen max-h-[100dvh] w-full flex flex-col text-gray-700 dark:text-gray-100 bg-white dark:bg-gray-900"
+		>
 			<div class="m-auto w-full max-w-xl px-6 text-center">
 				<h1 class="text-2xl font-medium">{$i18n.t('This public share is unavailable')}</h1>
 				<p class="mt-3 text-sm text-gray-500 dark:text-gray-400">
@@ -149,15 +151,24 @@
 			</div>
 		</div>
 	{:else}
-		<div class="h-screen max-h-[100dvh] w-full flex flex-col text-gray-700 dark:text-gray-100 bg-white dark:bg-gray-900">
+		<div
+			class="h-screen max-h-[100dvh] w-full flex flex-col text-gray-700 dark:text-gray-100 bg-white dark:bg-gray-900"
+		>
 			<div class="flex flex-col flex-auto justify-center relative">
 				<div class="flex flex-col w-full flex-auto overflow-auto h-0" id="messages-container">
-					<div class="pt-5 px-2 w-full {($settings?.widescreenMode ?? null) ? 'max-w-full' : 'max-w-5xl'} mx-auto">
+					<div
+						class="pt-5 px-2 w-full {($settings?.widescreenMode ?? null)
+							? 'max-w-full'
+							: 'max-w-5xl'} mx-auto"
+					>
 						<div class="px-3">
 							<h1 class="text-2xl font-medium line-clamp-1 m-0">{title}</h1>
 
 							<div class="flex flex-wrap gap-x-4 gap-y-1 text-sm justify-between items-center mt-1">
-								<time class="text-gray-400" datetime={updatedAt ? new Date(updatedAt * 1000).toISOString() : undefined}>
+								<time
+									class="text-gray-400"
+									datetime={updatedAt ? new Date(updatedAt * 1000).toISOString() : undefined}
+								>
 									{updatedAt ? dayjs(updatedAt * 1000).format('LLL') : ''}
 								</time>
 

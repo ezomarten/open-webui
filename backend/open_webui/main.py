@@ -1483,11 +1483,17 @@ async def check_url(request: Request, call_next):
     if app.state.PUBLIC_SHARE_HOST and request_host == app.state.PUBLIC_SHARE_HOST:
         request_path = request.url.path
         public_share_api_prefix = "/api/v1/public-shares/"
-        public_share_api_remainder = request_path[len(public_share_api_prefix) :].strip("/")
+        public_share_api_remainder = request_path[len(public_share_api_prefix) :].strip(
+            "/"
+        )
         public_share_api_segments = [
             segment for segment in public_share_api_remainder.split("/") if segment
         ]
-        public_share_page_remainder = request_path[len("/p/") :].strip("/") if request_path.startswith("/p/") else ""
+        public_share_page_remainder = (
+            request_path[len("/p/") :].strip("/")
+            if request_path.startswith("/p/")
+            else ""
+        )
         public_share_enabled = is_public_share_enabled(
             app.state.config.ENABLE_PUBLIC_CHAT_SHARING,
             app.state.PUBLIC_SHARE_BASE_URL,
@@ -1518,13 +1524,15 @@ async def check_url(request: Request, call_next):
             and "/" not in public_share_page_remainder
         )
 
-        is_allowed_public_pyodide_asset = (
-            request.method in {"GET", "HEAD"}
-            and (request_path == "/pyodide" or request_path.startswith("/pyodide/"))
+        is_allowed_public_pyodide_asset = request.method in {"GET", "HEAD"} and (
+            request_path == "/pyodide" or request_path.startswith("/pyodide/")
         )
 
         is_allowed_public_host_request = (
-            (request.method == "GET" and request_path in {"/api/config", "/manifest.json", "/opensearch.xml"})
+            (
+                request.method == "GET"
+                and request_path in {"/api/config", "/manifest.json", "/opensearch.xml"}
+            )
             or (request.method == "GET" and request_path.startswith("/_app/"))
             or (request.method == "GET" and request_path.startswith("/static/"))
             or is_allowed_public_pyodide_asset

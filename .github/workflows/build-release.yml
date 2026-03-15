@@ -2,8 +2,11 @@ name: Release
 
 on:
   push:
-    branches:
-      - main # or whatever branch you want to use
+    tags:
+      - "v*"
+
+permissions:
+  contents: write
 
 jobs:
   release:
@@ -12,50 +15,41 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
 
-      - name: Check for changes in package.json
+      - name: Determine release version
+        id: version
+        shell: bash
         run: |
-          git diff --cached --diff-filter=d package.json || {
-            echo "No changes to package.json"
+          echo "value=${GITHUB_REF_NAME#v}" >> "$GITHUB_OUTPUT"
+
+      - name: Extract matching CHANGELOG entry
+        shell: bash
+        run: |
+          VERSION="${{ steps.version.outputs.value }}"
+          awk -v version="$VERSION" '
+            index($0, "## [" version "]") == 1 { found = 1; next }
+            /^## \[/ && found { exit }
+            found { print }
+          ' CHANGELOG.md > /tmp/release-notes.md
+
+          if [ ! -s /tmp/release-notes.md ]; then
+            echo "No CHANGELOG entry found for ${VERSION}" >&2
             exit 1
-          }
+          fi
 
-      - name: Get version number from package.json
-        id: get_version
-        run: |
-          VERSION=$(jq -r '.version' package.json)
-          echo "::set-output name=version::$VERSION"
-
-      - name: Extract latest CHANGELOG entry
-        run: |
-          VERSION="${{ steps.get_version.outputs.version }}"
-          awk "/^## \[${VERSION}\]/{found=1; next} /^## \[/{if(found) exit} found{print}" CHANGELOG.md > /tmp/release-notes.md
-
-      - name: Create GitHub release
+      - name: Create or update GitHub release
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        shell: bash
         run: |
-          gh release create "v${{ steps.get_version.outputs.version }}" \
-            --title "v${{ steps.get_version.outputs.version }}" \
-            --notes-file /tmp/release-notes.md
-
-      - name: Upload package to GitHub release
-        uses: actions/upload-artifact@v4
-        with:
-          name: package
-          path: |
-            .
-            !.git
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Trigger Docker build workflow
-        uses: actions/github-script@v8
-        with:
-          script: |
-            github.rest.actions.createWorkflowDispatch({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              workflow_id: 'docker-build.yaml',
-              ref: 'v${{ steps.get_version.outputs.version }}',
-            })
+          if gh release view "${GITHUB_REF_NAME}" >/dev/null 2>&1; then
+            gh release edit "${GITHUB_REF_NAME}" \
+              --title "${GITHUB_REF_NAME}" \
+              --notes-file /tmp/release-notes.md
+          else
+            gh release create "${GITHUB_REF_NAME}" \
+              --title "${GITHUB_REF_NAME}" \
+              --notes-file /tmp/release-notes.md
+          fi

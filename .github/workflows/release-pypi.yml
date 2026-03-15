@@ -1,19 +1,19 @@
 name: Release to PyPI
 
 on:
-  push:
-    branches:
-      - main # or whatever branch you want to use
-      - pypi-release
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  id-token: write
 
 jobs:
   release:
+    if: github.repository == 'open-webui/open-webui'
     runs-on: ubuntu-latest
     environment:
       name: pypi
       url: https://pypi.org/p/open-webui
-    permissions:
-      id-token: write
     steps:
       - name: Checkout repository
         uses: actions/checkout@v5

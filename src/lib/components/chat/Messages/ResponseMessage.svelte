@@ -220,7 +220,8 @@
 			split_on: 'punctuation'
 		};
 		const useBrowserKokoro = $settings?.audio?.tts?.engine === 'browser-kokoro';
-		const useServerTTS = Boolean(localStorage.token) && ttsConfig.engine !== '' && !useBrowserKokoro;
+		const useServerTTS =
+			Boolean(localStorage.token) && ttsConfig.engine !== '' && !useBrowserKokoro;
 
 		// Get voice: model-specific > user settings > config default
 		const getVoiceId = () => {

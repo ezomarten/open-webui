@@ -3,7 +3,6 @@ import secrets
 from typing import Any, Optional
 from urllib.parse import urlparse
 
-
 ATTACHMENT_OMITTED_TEXT = "[Attachment omitted]"
 PUBLIC_SHARE_ID_PREFIX = "ps_"
 PUBLIC_SHARE_SCHEMA_VERSION = 2
@@ -118,7 +117,9 @@ def sanitize_public_message(message: dict, index: int = 0) -> Optional[dict]:
 
 def build_public_share_snapshot(chat: Any) -> dict:
     chat_body = getattr(chat, "chat", None) or {}
-    title = str(getattr(chat, "title", None) or chat_body.get("title") or "Untitled Chat")
+    title = str(
+        getattr(chat, "title", None) or chat_body.get("title") or "Untitled Chat"
+    )
 
     branch = extract_public_branch(chat_body)
     public_messages = []
@@ -275,7 +276,9 @@ def _sanitize_public_file(file: Any) -> Optional[dict]:
     return public_file
 
 
-def _message_has_omitted_attachment_fields(message: dict, public_files: list[dict]) -> bool:
+def _message_has_omitted_attachment_fields(
+    message: dict, public_files: list[dict]
+) -> bool:
     attachment_fields = (
         "sources",
         "embeds",

@@ -20,14 +20,8 @@ on:
 
 jobs:
   build:
-    name: 'Format Backend'
+    name: 'Black Check'
     runs-on: ubuntu-latest
-
-    strategy:
-      matrix:
-        python-version:
-          - 3.11.x
-          - 3.12.x
 
     steps:
       - uses: actions/checkout@v5
@@ -35,15 +29,12 @@ jobs:
       - name: Set up Python
         uses: actions/setup-python@v6
         with:
-          python-version: '${{ matrix.python-version }}'
+          python-version: '3.11'
 
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
           pip install black
 
-      - name: Format backend
-        run: npm run format:backend
-
-      - name: Check for changes after format
-        run: git diff --exit-code
+      - name: Check backend formatting
+        run: black --check backend

@@ -18,7 +18,9 @@ class PublicShare(Base):
     __tablename__ = "public_share"
 
     id = Column(Text, primary_key=True, unique=True)
-    chat_id = Column(Text, ForeignKey("chat.id", ondelete="CASCADE"), nullable=False, unique=True)
+    chat_id = Column(
+        Text, ForeignKey("chat.id", ondelete="CASCADE"), nullable=False, unique=True
+    )
     user_id = Column(Text, nullable=False)
     title = Column(Text, nullable=False)
     snapshot_json = Column(JSON, nullable=False)
@@ -27,9 +29,7 @@ class PublicShare(Base):
     created_at = Column(BigInteger, nullable=False)
     updated_at = Column(BigInteger, nullable=False)
 
-    __table_args__ = (
-        Index("public_share_user_updated_idx", "user_id", "updated_at"),
-    )
+    __table_args__ = (Index("public_share_user_updated_idx", "user_id", "updated_at"),)
 
 
 class PublicShareModel(BaseModel):
@@ -137,15 +137,23 @@ class PublicShareTable:
         self, chat_id: str, user_id: str, db: Optional[Session] = None
     ) -> Optional[PublicShareModel]:
         with get_db_context(db) as db:
-            public_share = db.query(PublicShare).filter_by(chat_id=chat_id, user_id=user_id).first()
-            return PublicShareModel.model_validate(public_share) if public_share else None
+            public_share = (
+                db.query(PublicShare)
+                .filter_by(chat_id=chat_id, user_id=user_id)
+                .first()
+            )
+            return (
+                PublicShareModel.model_validate(public_share) if public_share else None
+            )
 
     def get_public_share_by_id(
         self, public_share_id: str, db: Optional[Session] = None
     ) -> Optional[PublicShareModel]:
         with get_db_context(db) as db:
             public_share = db.get(PublicShare, public_share_id)
-            return PublicShareModel.model_validate(public_share) if public_share else None
+            return (
+                PublicShareModel.model_validate(public_share) if public_share else None
+            )
 
     def get_public_share_list_by_user_id(
         self,
@@ -173,7 +181,9 @@ class PublicShareTable:
                         PublicShare.id,
                     )
                 else:
-                    query = query.order_by(PublicShare.updated_at.desc(), PublicShare.id)
+                    query = query.order_by(
+                        PublicShare.updated_at.desc(), PublicShare.id
+                    )
             else:
                 query = query.order_by(PublicShare.updated_at.desc(), PublicShare.id)
 
@@ -186,7 +196,9 @@ class PublicShareTable:
 
             items = query.all()
             return PublicShareListResponse(
-                items=[self._to_list_item(item, public_share_base_url) for item in items],
+                items=[
+                    self._to_list_item(item, public_share_base_url) for item in items
+                ],
                 total=total,
             )
 
@@ -201,10 +213,16 @@ class PublicShareTable:
             snapshot = build_public_share_snapshot(chat)
             now = int(time.time())
             chat_updated_at = int(getattr(chat, "updated_at", now) or now)
-            title = str(snapshot.get("title") or getattr(chat, "title", "Untitled Chat"))
+            title = str(
+                snapshot.get("title") or getattr(chat, "title", "Untitled Chat")
+            )
             message_count = len(snapshot.get("messages") or [])
 
-            public_share = db.query(PublicShare).filter_by(chat_id=getattr(chat, "id"), user_id=user_id).first()
+            public_share = (
+                db.query(PublicShare)
+                .filter_by(chat_id=getattr(chat, "id"), user_id=user_id)
+                .first()
+            )
 
             if public_share is None:
                 public_share = PublicShare(
@@ -229,14 +247,18 @@ class PublicShareTable:
             db.commit()
             db.refresh(public_share)
 
-            return self._to_access_response(public_share, public_share_base_url, chat_updated_at)
+            return self._to_access_response(
+                public_share, public_share_base_url, chat_updated_at
+            )
 
     def delete_public_share_by_chat_id_and_user_id(
         self, chat_id: str, user_id: str, db: Optional[Session] = None
     ) -> bool:
         try:
             with get_db_context(db) as db:
-                db.query(PublicShare).filter_by(chat_id=chat_id, user_id=user_id).delete()
+                db.query(PublicShare).filter_by(
+                    chat_id=chat_id, user_id=user_id
+                ).delete()
                 db.commit()
                 return True
         except Exception:

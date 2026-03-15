@@ -1548,7 +1548,10 @@ class ChatTable:
             with get_db_context(db) as db:
                 self.delete_shared_chats_by_user_id(user_id, db=db)
 
-                chat_ids = [chat_id for (chat_id,) in db.query(Chat.id).filter_by(user_id=user_id).all()]
+                chat_ids = [
+                    chat_id
+                    for (chat_id,) in db.query(Chat.id).filter_by(user_id=user_id).all()
+                ]
                 PublicShares.delete_public_shares_by_chat_ids(chat_ids, db=db)
 
                 chat_id_subquery = (
