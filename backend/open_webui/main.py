@@ -383,6 +383,7 @@ from open_webui.config import (
     ENABLE_CHANNELS,
     ENABLE_NOTES,
     ENABLE_USER_STATUS,
+    ENABLE_PUBLIC_CHAT_SHARING,
     ENABLE_COMMUNITY_SHARING,
     ENABLE_MESSAGE_RATING,
     ENABLE_USER_WEBHOOKS,
@@ -437,6 +438,7 @@ from open_webui.config import (
     DEFAULT_LOCALE,
     OAUTH_PROVIDERS,
     WEBUI_URL,
+    PUBLIC_SHARE_BASE_URL,
     RESPONSE_WATERMARK,
     # Admin
     ENABLE_ADMIN_CHAT_ACCESS,
@@ -509,7 +511,6 @@ from open_webui.env import (
     ENABLE_EASTER_EGGS,
     LOG_FORMAT,
 )
-from open_webui.env import PUBLIC_SHARE_BASE_URL
 
 
 from open_webui.utils.models import (
@@ -530,6 +531,7 @@ from open_webui.utils.middleware import (
     process_chat_response,
 )
 from open_webui.utils.tools import set_tool_servers, set_terminal_servers
+from open_webui.utils.public_share import get_public_share_host, is_public_share_enabled
 
 from open_webui.utils.auth import (
     get_license_data,
@@ -861,6 +863,8 @@ app.state.config.RESPONSE_WATERMARK = RESPONSE_WATERMARK
 app.state.config.USER_PERMISSIONS = USER_PERMISSIONS
 app.state.config.WEBHOOK_URL = WEBHOOK_URL
 app.state.config.BANNERS = WEBUI_BANNERS
+app.state.config.ENABLE_PUBLIC_CHAT_SHARING = ENABLE_PUBLIC_CHAT_SHARING
+app.state.config.PUBLIC_SHARE_BASE_URL = PUBLIC_SHARE_BASE_URL
 
 
 app.state.config.ENABLE_FOLDERS = ENABLE_FOLDERS
@@ -924,12 +928,8 @@ app.state.AUTH_TRUSTED_EMAIL_HEADER = WEBUI_AUTH_TRUSTED_EMAIL_HEADER
 app.state.AUTH_TRUSTED_NAME_HEADER = WEBUI_AUTH_TRUSTED_NAME_HEADER
 app.state.WEBUI_AUTH_SIGNOUT_REDIRECT_URL = WEBUI_AUTH_SIGNOUT_REDIRECT_URL
 app.state.EXTERNAL_PWA_MANIFEST_URL = EXTERNAL_PWA_MANIFEST_URL
-app.state.PUBLIC_SHARE_BASE_URL = PUBLIC_SHARE_BASE_URL
-app.state.PUBLIC_SHARE_HOST = (
-    (urlparse(PUBLIC_SHARE_BASE_URL).hostname or "").lower()
-    if PUBLIC_SHARE_BASE_URL
-    else ""
-)
+app.state.PUBLIC_SHARE_BASE_URL = app.state.config.PUBLIC_SHARE_BASE_URL
+app.state.PUBLIC_SHARE_HOST = get_public_share_host(app.state.PUBLIC_SHARE_BASE_URL)
 
 app.state.USER_COUNT = None
 
@@ -1488,16 +1488,22 @@ async def check_url(request: Request, call_next):
             segment for segment in public_share_api_remainder.split("/") if segment
         ]
         public_share_page_remainder = request_path[len("/p/") :].strip("/") if request_path.startswith("/p/") else ""
+        public_share_enabled = is_public_share_enabled(
+            app.state.config.ENABLE_PUBLIC_CHAT_SHARING,
+            app.state.PUBLIC_SHARE_BASE_URL,
+        )
 
         is_allowed_public_share_snapshot_api = (
-            request.method in {"GET", "HEAD"}
+            public_share_enabled
+            and request.method in {"GET", "HEAD"}
             and request_path.startswith(public_share_api_prefix)
             and len(public_share_api_segments) == 1
             and public_share_api_segments[0] not in {"list", "mine"}
         )
 
         is_allowed_public_share_file_api = (
-            request.method in {"GET", "HEAD"}
+            public_share_enabled
+            and request.method in {"GET", "HEAD"}
             and request_path.startswith(public_share_api_prefix)
             and len(public_share_api_segments) == 4
             and public_share_api_segments[1] == "files"
@@ -1505,7 +1511,8 @@ async def check_url(request: Request, call_next):
         )
 
         is_allowed_public_share_page = (
-            request.method in {"GET", "HEAD"}
+            public_share_enabled
+            and request.method in {"GET", "HEAD"}
             and request_path.startswith("/p/")
             and bool(public_share_page_remainder)
             and "/" not in public_share_page_remainder
@@ -2220,7 +2227,10 @@ async def get_app_config(request: Request):
             "enable_websocket": ENABLE_WEBSOCKET_SUPPORT,
             "enable_version_update_check": ENABLE_VERSION_UPDATE_CHECK,
             "enable_public_active_users_count": ENABLE_PUBLIC_ACTIVE_USERS_COUNT,
-            "enable_public_chat_sharing": bool(app.state.PUBLIC_SHARE_BASE_URL),
+            "enable_public_chat_sharing": is_public_share_enabled(
+                app.state.config.ENABLE_PUBLIC_CHAT_SHARING,
+                app.state.PUBLIC_SHARE_BASE_URL,
+            ),
             "enable_easter_eggs": ENABLE_EASTER_EGGS,
             **(
                 {

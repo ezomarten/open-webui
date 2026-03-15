@@ -18,8 +18,40 @@ def new_public_share_id() -> str:
     return f"{PUBLIC_SHARE_ID_PREFIX}{secrets.token_urlsafe(18)}"
 
 
+def normalize_public_share_base_url(base_url: Any) -> str:
+    return str(base_url or "").strip().rstrip("/")
+
+
+def validate_public_share_base_url(base_url: Any) -> str:
+    normalized = normalize_public_share_base_url(base_url)
+    if not normalized:
+        return ""
+
+    parsed = urlparse(normalized)
+    if parsed.scheme not in {"http", "https"} or not parsed.hostname:
+        raise ValueError("PUBLIC_SHARE_BASE_URL must be an absolute HTTP(S) URL")
+
+    return normalized
+
+
+def get_public_share_host(base_url: Any) -> str:
+    normalized = normalize_public_share_base_url(base_url)
+    if not normalized:
+        return ""
+
+    parsed = urlparse(normalized)
+    if parsed.scheme not in {"http", "https"}:
+        return ""
+
+    return (parsed.hostname or "").lower()
+
+
+def is_public_share_enabled(enabled: bool, base_url: Any) -> bool:
+    return bool(enabled and get_public_share_host(base_url))
+
+
 def build_public_share_url(base_url: str, public_share_id: str) -> str:
-    return f"{base_url.rstrip('/')}/p/{public_share_id}"
+    return f"{normalize_public_share_base_url(base_url)}/p/{public_share_id}"
 
 
 def extract_public_branch(chat_body: dict) -> list[dict]:

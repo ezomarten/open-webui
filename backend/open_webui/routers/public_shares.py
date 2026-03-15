@@ -21,7 +21,10 @@ from open_webui.models.public_shares import (
 from open_webui.storage.provider import Storage
 from open_webui.utils.access_control import has_permission
 from open_webui.utils.auth import get_verified_user
-from open_webui.utils.public_share import PUBLIC_SHARE_SCHEMA_VERSION
+from open_webui.utils.public_share import (
+    PUBLIC_SHARE_SCHEMA_VERSION,
+    is_public_share_enabled,
+)
 
 
 log = logging.getLogger(__name__)
@@ -31,7 +34,10 @@ router = APIRouter()
 
 def _get_public_share_base_url(request: Request) -> str:
     public_share_base_url = str(getattr(request.app.state, "PUBLIC_SHARE_BASE_URL", "") or "")
-    if not public_share_base_url:
+    if not is_public_share_enabled(
+        bool(getattr(request.app.state.config, "ENABLE_PUBLIC_CHAT_SHARING", False)),
+        public_share_base_url,
+    ):
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail=ERROR_MESSAGES.NOT_FOUND,

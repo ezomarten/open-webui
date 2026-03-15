@@ -703,6 +703,37 @@
 					</div>
 
 					<div class="mb-2.5 flex w-full items-center justify-between pr-2">
+						<div class=" self-center text-xs font-medium">
+							{$i18n.t('Enable Public Links')}
+						</div>
+
+						<Switch bind:state={adminConfig.ENABLE_PUBLIC_CHAT_SHARING} />
+					</div>
+
+					<div class="mb-2.5 w-full justify-between">
+						<div class="flex w-full justify-between">
+							<div class=" self-center text-xs font-medium">
+								{$i18n.t('Public Link URL')}
+							</div>
+						</div>
+
+						<div class="flex mt-2 space-x-2">
+							<input
+								class="w-full rounded-lg py-2 px-4 text-sm bg-gray-50 dark:text-gray-300 dark:bg-gray-850 outline-hidden"
+								type="text"
+								placeholder={`e.g.) "https://share.example.com"`}
+								bind:value={adminConfig.PUBLIC_SHARE_BASE_URL}
+							/>
+						</div>
+
+						<div class="mt-2 text-xs text-gray-400 dark:text-gray-500">
+							{$i18n.t(
+								'Enter the public base URL used for anonymous public links. Leave empty to disable link generation until configured.'
+							)}
+						</div>
+					</div>
+
+					<div class="mb-2.5 flex w-full items-center justify-between pr-2">
 						<div class=" self-center text-xs font-medium">{$i18n.t('Enable Message Rating')}</div>
 
 						<Switch bind:state={adminConfig.ENABLE_MESSAGE_RATING} />

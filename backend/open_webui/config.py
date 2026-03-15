@@ -1221,6 +1221,22 @@ TERMINAL_SERVER_CONNECTIONS = PersistentConfig(
 
 WEBUI_URL = PersistentConfig("WEBUI_URL", "webui.url", os.environ.get("WEBUI_URL", ""))
 
+PUBLIC_SHARE_BASE_URL = PersistentConfig(
+    "PUBLIC_SHARE_BASE_URL",
+    "ui.public_share_base_url",
+    os.environ.get("PUBLIC_SHARE_BASE_URL", "").rstrip("/"),
+)
+
+ENABLE_PUBLIC_CHAT_SHARING = PersistentConfig(
+    "ENABLE_PUBLIC_CHAT_SHARING",
+    "ui.enable_public_chat_sharing",
+    os.environ.get(
+        "ENABLE_PUBLIC_CHAT_SHARING",
+        "True" if os.environ.get("PUBLIC_SHARE_BASE_URL", "").strip() else "False",
+    ).lower()
+    == "true",
+)
+
 
 ENABLE_SIGNUP = PersistentConfig(
     "ENABLE_SIGNUP",

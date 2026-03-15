@@ -6,6 +6,7 @@ import datetime
 import logging
 from aiohttp import ClientSession
 import urllib
+from urllib.parse import urlparse
 
 
 from open_webui.models.auths import (
@@ -77,6 +78,7 @@ from open_webui.utils.groups import apply_default_group_assignment
 
 from open_webui.utils.redis import get_redis_client
 from open_webui.utils.rate_limit import RateLimiter
+from open_webui.utils.public_share import validate_public_share_base_url
 
 
 from typing import Optional, List
@@ -1001,6 +1003,8 @@ async def get_admin_config(request: Request, user=Depends(get_admin_user)):
         "SHOW_ADMIN_DETAILS": request.app.state.config.SHOW_ADMIN_DETAILS,
         "ADMIN_EMAIL": request.app.state.config.ADMIN_EMAIL,
         "WEBUI_URL": request.app.state.config.WEBUI_URL,
+        "ENABLE_PUBLIC_CHAT_SHARING": request.app.state.config.ENABLE_PUBLIC_CHAT_SHARING,
+        "PUBLIC_SHARE_BASE_URL": request.app.state.config.PUBLIC_SHARE_BASE_URL,
         "ENABLE_SIGNUP": request.app.state.config.ENABLE_SIGNUP,
         "ENABLE_API_KEYS": request.app.state.config.ENABLE_API_KEYS,
         "ENABLE_API_KEYS_ENDPOINT_RESTRICTIONS": request.app.state.config.ENABLE_API_KEYS_ENDPOINT_RESTRICTIONS,
@@ -1027,6 +1031,8 @@ class AdminConfig(BaseModel):
     SHOW_ADMIN_DETAILS: bool
     ADMIN_EMAIL: Optional[str] = None
     WEBUI_URL: str
+    ENABLE_PUBLIC_CHAT_SHARING: bool
+    PUBLIC_SHARE_BASE_URL: str
     ENABLE_SIGNUP: bool
     ENABLE_API_KEYS: bool
     ENABLE_API_KEYS_ENDPOINT_RESTRICTIONS: bool
@@ -1052,10 +1058,31 @@ class AdminConfig(BaseModel):
 async def update_admin_config(
     request: Request, form_data: AdminConfig, user=Depends(get_admin_user)
 ):
+    try:
+        public_share_base_url = validate_public_share_base_url(
+            form_data.PUBLIC_SHARE_BASE_URL
+        )
+    except ValueError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=str(exc),
+        ) from exc
+
     request.app.state.config.SHOW_ADMIN_DETAILS = form_data.SHOW_ADMIN_DETAILS
     request.app.state.config.ADMIN_EMAIL = form_data.ADMIN_EMAIL
     request.app.state.config.WEBUI_URL = form_data.WEBUI_URL
+    request.app.state.config.ENABLE_PUBLIC_CHAT_SHARING = (
+        form_data.ENABLE_PUBLIC_CHAT_SHARING
+    )
+    request.app.state.config.PUBLIC_SHARE_BASE_URL = public_share_base_url
     request.app.state.config.ENABLE_SIGNUP = form_data.ENABLE_SIGNUP
+
+    request.app.state.PUBLIC_SHARE_BASE_URL = public_share_base_url
+    request.app.state.PUBLIC_SHARE_HOST = (
+        (urlparse(public_share_base_url).hostname or "").lower()
+        if public_share_base_url
+        else ""
+    )
 
     request.app.state.config.ENABLE_API_KEYS = form_data.ENABLE_API_KEYS
     request.app.state.config.ENABLE_API_KEYS_ENDPOINT_RESTRICTIONS = (
@@ -1105,6 +1132,8 @@ async def update_admin_config(
         "SHOW_ADMIN_DETAILS": request.app.state.config.SHOW_ADMIN_DETAILS,
         "ADMIN_EMAIL": request.app.state.config.ADMIN_EMAIL,
         "WEBUI_URL": request.app.state.config.WEBUI_URL,
+        "ENABLE_PUBLIC_CHAT_SHARING": request.app.state.config.ENABLE_PUBLIC_CHAT_SHARING,
+        "PUBLIC_SHARE_BASE_URL": request.app.state.config.PUBLIC_SHARE_BASE_URL,
         "ENABLE_SIGNUP": request.app.state.config.ENABLE_SIGNUP,
         "ENABLE_API_KEYS": request.app.state.config.ENABLE_API_KEYS,
         "ENABLE_API_KEYS_ENDPOINT_RESTRICTIONS": request.app.state.config.ENABLE_API_KEYS_ENDPOINT_RESTRICTIONS,
