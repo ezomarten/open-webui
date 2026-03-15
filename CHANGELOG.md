@@ -9,6 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- Settings > About now shows a fork disclosure clarifying that this deployment is a customized fork of Open WebUI and is not affiliated with or maintained by the official Open WebUI team.
 - Anonymous public-share pages now preserve public web citations so shared chats can show source URLs and preview snippets without exposing private or file-backed citations.
 
 ### Fixed

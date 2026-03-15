@@ -41,6 +41,10 @@ This fork is based on Open WebUI `v0.8.10` and carries a small set of deployment
   - `ui.public_share_base_url`
 - `ENABLE_PUBLIC_CHAT_SHARING` and `PUBLIC_SHARE_BASE_URL` still work as initial env seeds, but saved admin settings take precedence after startup
 
+### About disclosure
+
+- Settings > About includes a fork disclosure that states this deployment is a customized fork of Open WebUI and is not affiliated with or maintained by the official Open WebUI team
+
 ## Public Host Allowlist
 
 When a request arrives on the public share host derived from `PUBLIC_SHARE_BASE_URL`, the fork only allows the following routes:
@@ -90,6 +94,7 @@ If the change affects public-share or public-link UI strings, also update [src/l
 
 ## Maintenance Record
 
+- 2026-03-15: added a Settings > About fork disclosure for license transparency without adding the notice to other app pages; key files: `src/lib/components/chat/Settings/About.svelte`, `src/lib/i18n/locales/ja-JP/translation.json`; validation: frontend type check
 - 2026-03-15: hardened public-share image delivery to require owner-scoped file lookup and corrected share permission failures to return 403; key files: `backend/open_webui/routers/public_shares.py`; validation: `pytest open_webui/test/util/test_public_share.py -q`, local image rebuild, `docker compose up -d --force-recreate open-webui`, `docker inspect open-webui --format '{{.Config.Image}}'`, `curl.exe -I http://localhost:3000`, and container health reached `healthy`
 - 2026-03-15: aligned GitHub Actions and release policy for this private fork; validation: local formatting/build checks plus green `Python CI` and `Frontend Build`
 - 2026-03-15: added Japanese translations for public-share and public-link UI strings in [src/lib/i18n/locales/ja-JP/translation.json](src/lib/i18n/locales/ja-JP/translation.json); validation: local image rebuild plus runtime container inspection confirmed translated assets in the container
@@ -124,5 +129,6 @@ When following a newer upstream Open WebUI release, verify at minimum:
 5. `/pyodide/*` public-host access still works
 6. admin public-link settings still persist via `ui.enable_public_chat_sharing` and `ui.public_share_base_url`
 7. public-share snapshots still expose only public-safe citations and do not leak private/file-backed source metadata
-8. public-link and public-share UI strings still have at least ja-JP translations when changed
-9. workspace root [../README.md](../README.md) still matches the real deployment/apply procedure
+8. Settings > About still shows a fork disclosure that explicitly says the deployment is a customized fork of Open WebUI and not official
+9. public-link and public-share UI strings still have at least ja-JP translations when changed
+10. workspace root [../README.md](../README.md) still matches the real deployment/apply procedure

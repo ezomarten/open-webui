@@ -5,14 +5,16 @@
 	import { WEBUI_NAME, config, showChangelog } from '$lib/stores';
 	import { compareVersion } from '$lib/utils';
 	import { onMount, getContext } from 'svelte';
+	import type { Writable } from 'svelte/store';
+	import type { i18n as i18nType } from 'i18next';
 
 	import Tooltip from '$lib/components/common/Tooltip.svelte';
 
-	const i18n = getContext('i18n');
+	const i18n = getContext<Writable<i18nType>>('i18n');
 
 	let ollamaVersion = '';
 
-	let updateAvailable = null;
+	let updateAvailable: boolean | null = null;
 	let version = {
 		current: '',
 		latest: ''
@@ -95,6 +97,15 @@
 					</button>
 				{/if}
 			</div>
+		</div>
+
+		<div
+			role="note"
+			class="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-xs text-gray-700 dark:border-amber-900/50 dark:bg-amber-950/30 dark:text-gray-200"
+		>
+			{$i18n.t(
+				'This deployment is a customized fork of Open WebUI. It is not affiliated with or maintained by the official Open WebUI team.'
+			)}
 		</div>
 
 		{#if ollamaVersion}
