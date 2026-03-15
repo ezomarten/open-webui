@@ -11,6 +11,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Anonymous public-share pages now preserve public web citations so shared chats can show source URLs and preview snippets without exposing private or file-backed citations.
 
+### Fixed
+
+- Public-share image delivery now verifies the requested file belongs to the share owner before serving it, preventing cross-user file exposure through injected file references.
+
 ## [0.8.10-publicshare.7] - 2026-03-15
 
 Fork release based on upstream `0.8.10`.

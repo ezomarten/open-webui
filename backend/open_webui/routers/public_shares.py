@@ -51,7 +51,7 @@ def _assert_share_permission(request: Request, user) -> None:
         user.id, "chat.share", request.app.state.config.USER_PERMISSIONS
     ):
         raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
+            status_code=status.HTTP_403_FORBIDDEN,
             detail=ERROR_MESSAGES.ACCESS_PROHIBITED,
         )
 
@@ -293,7 +293,7 @@ async def get_public_share_file_content(
             detail=ERROR_MESSAGES.NOT_FOUND,
         )
 
-    file = Files.get_file_by_id(file_id, db=db)
+    file = Files.get_file_by_id_and_user_id(file_id, public_share.user_id, db=db)
     if file is None or not getattr(file, "path", None):
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
