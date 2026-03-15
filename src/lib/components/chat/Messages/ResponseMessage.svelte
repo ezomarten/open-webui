@@ -214,6 +214,13 @@
 
 		speaking = true;
 		const content = removeAllDetails(message.content);
+		const ttsConfig = $config?.audio?.tts ?? {
+			engine: '',
+			voice: '',
+			split_on: 'punctuation'
+		};
+		const useBrowserKokoro = $settings?.audio?.tts?.engine === 'browser-kokoro';
+		const useServerTTS = Boolean(localStorage.token) && ttsConfig.engine !== '' && !useBrowserKokoro;
 
 		// Get voice: model-specific > user settings > config default
 		const getVoiceId = () => {
@@ -222,13 +229,13 @@
 				return model.info.meta.tts.voice;
 			}
 			// Fall back to user settings or config default
-			if ($settings?.audio?.tts?.defaultVoice === $config.audio.tts.voice) {
-				return $settings?.audio?.tts?.voice ?? $config?.audio?.tts?.voice;
+			if ($settings?.audio?.tts?.defaultVoice === ttsConfig.voice) {
+				return $settings?.audio?.tts?.voice ?? ttsConfig.voice;
 			}
-			return $config?.audio?.tts?.voice;
+			return ttsConfig.voice;
 		};
 
-		if ($config.audio.tts.engine === '') {
+		if (!useServerTTS && !useBrowserKokoro) {
 			let voices = [];
 			const getVoicesLoop = setInterval(() => {
 				voices = speechSynthesis.getVoices();
@@ -270,7 +277,7 @@
 			loadingSpeech = true;
 			const messageContentParts: string[] = getMessageContentParts(
 				content,
-				$config?.audio?.tts?.split_on ?? 'punctuation'
+				ttsConfig.split_on ?? 'punctuation'
 			);
 
 			if (!messageContentParts.length) {
@@ -285,7 +292,7 @@
 			const voiceId = getVoiceId();
 			console.debug('Prepared message content for TTS', messageContentParts, 'voice:', voiceId);
 
-			if ($settings.audio?.tts?.engine === 'browser-kokoro') {
+			if (useBrowserKokoro) {
 				if (!$TTSWorker) {
 					await TTSWorker.set(
 						new KokoroWorker({
