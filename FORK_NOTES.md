@@ -15,7 +15,7 @@ This fork is based on Open WebUI `v0.8.10` and carries a small set of deployment
 - Deployment workspace operator runbook lives in [../README.md](../README.md)
 - Local rebuilds only affect runtime when workspace root [../.env](../.env) sets `OPENWEBUI_IMAGE=open-webui-public-share:0.8.10-publicshare-local`
 - If [../.env](../.env) points to a GHCR tag, compose recreate will continue to run the GHCR image even after a successful local `docker build`
-- Current GHCR baseline remains `0.8.10-publicshare.7`
+- Current GHCR baseline remains `0.8.10-publicshare.8`
 - Current local fork head should be treated as the source of truth for future local image rebuilds
 
 ## Included Customizations
@@ -103,6 +103,7 @@ If the change affects public-share or public-link UI strings, also update [src/l
 
 ## Fork Release Summary
 
+- `0.8.10-publicshare.8`: About fork disclosure, public web citations in share snapshots, and owner-scoped public-share image delivery hardening
 - `0.8.10-publicshare.7`: admin-managed public link settings
 - `0.8.10-publicshare.6`: Pyodide assets allowed on the public host
 - `0.8.10-publicshare.5`: image attachments included in public shares

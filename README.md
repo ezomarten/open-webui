@@ -48,7 +48,7 @@ docker build --provenance=false --sbom=false --build-arg USE_SLIM=true -t open-w
 Or pull the current published fork image:
 
 ```bash
-docker pull ghcr.io/farefore/open-webui-public-share:0.8.10-publicshare.7
+docker pull ghcr.io/farefore/open-webui-public-share:0.8.10-publicshare.8
 ```
 
 Relevant configuration for this fork:
@@ -64,7 +64,7 @@ The example below runs a single Open WebUI container and assumes your reverse pr
 Example `.env`:
 
 ```dotenv
-OPEN_WEBUI_IMAGE=ghcr.io/farefore/open-webui-public-share:0.8.10-publicshare.7
+OPEN_WEBUI_IMAGE=ghcr.io/farefore/open-webui-public-share:0.8.10-publicshare.8
 WEBUI_SECRET_KEY=replace-with-a-random-secret-of-32-bytes-or-more
 PUBLIC_SHARE_BASE_URL=https://s-ai.example.com
 ENABLE_PUBLIC_CHAT_SHARING=true
