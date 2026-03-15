@@ -322,7 +322,11 @@ def _sanitize_public_source(source: Any) -> Optional[dict]:
         if sanitized_document is None:
             continue
 
-        metadata = metadata_items[index] if isinstance(metadata_items, list) and index < len(metadata_items) else None
+        metadata = (
+            metadata_items[index]
+            if isinstance(metadata_items, list) and index < len(metadata_items)
+            else None
+        )
         public_reference = _get_public_source_reference(metadata, source_info)
         if public_reference is None:
             continue
@@ -332,7 +336,11 @@ def _sanitize_public_source(source: Any) -> Optional[dict]:
             _sanitize_public_source_metadata(metadata, public_reference)
         )
 
-        distance = distances[index] if isinstance(distances, list) and index < len(distances) else None
+        distance = (
+            distances[index]
+            if isinstance(distances, list) and index < len(distances)
+            else None
+        )
         if isinstance(distance, (int, float)):
             public_distances.append(distance)
         else:
@@ -383,9 +391,7 @@ def _sanitize_public_document(document: Any) -> Optional[str]:
     return normalized_document if normalized_document else None
 
 
-def _sanitize_public_source_metadata(
-    metadata: Any, public_reference: str
-) -> dict:
+def _sanitize_public_source_metadata(metadata: Any, public_reference: str) -> dict:
     public_metadata = {
         "source": public_reference,
         "url": public_reference,
@@ -446,7 +452,9 @@ def _message_has_omitted_attachment_fields(
         if len(raw_sources) != len(public_sources):
             return True
 
-        if _count_source_documents(raw_sources) != _count_source_documents(public_sources):
+        if _count_source_documents(raw_sources) != _count_source_documents(
+            public_sources
+        ):
             return True
 
     public_file_ids = {
