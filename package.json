@@ -14,6 +14,7 @@
 		"lint:frontend": "eslint . --fix",
 		"lint:types": "npm run check",
 		"lint:backend": "pylint backend/",
+		"check:format": "prettier --check \"**/*.{js,ts,svelte,css,md,html,json}\"",
 		"format": "prettier --plugin-search-dir --write \"**/*.{js,ts,svelte,css,md,html,json}\"",
 		"format:backend": "black . --exclude \".venv/|/venv/\"",
 		"check:i18n": "npm run i18n:parse && git diff --exit-code -- src/lib/i18n/locales",

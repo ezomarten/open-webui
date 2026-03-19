@@ -347,11 +347,11 @@
 
 					for (const line of lines) {
 						if (line !== '') {
-								const data = parseOllamaStreamLine(line);
+							const data = parseOllamaStreamLine(line);
 
-								if (!data) {
-									continue;
-								}
+							if (!data) {
+								continue;
+							}
 
 							if (data.progress) {
 								if (uploadMessage) {
@@ -403,11 +403,11 @@
 						for (const line of lines) {
 							if (line !== '') {
 								console.log(line);
-									const data = parseOllamaStreamLine(line);
+								const data = parseOllamaStreamLine(line);
 
-									if (!data) {
-										continue;
-									}
+								if (!data) {
+									continue;
+								}
 								console.log(data);
 
 								if (data.error) {
@@ -551,11 +551,11 @@
 					for (const line of lines) {
 						if (line !== '') {
 							console.log(line);
-								const data = parseOllamaStreamLine(line);
+							const data = parseOllamaStreamLine(line);
 
-								if (!data) {
-									continue;
-								}
+							if (!data) {
+								continue;
+							}
 							console.log(data);
 
 							if (data.error) {

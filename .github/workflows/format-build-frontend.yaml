@@ -40,7 +40,7 @@ jobs:
         run: npm ci --force
 
       - name: Check Frontend Formatting
-        run: npx prettier --check "**/*.{js,ts,svelte,css,md,html,json}"
+        run: npm run check:format
 
       - name: Check generated i18n catalogs
         run: npm run check:i18n

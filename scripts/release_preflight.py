@@ -27,6 +27,7 @@ def main() -> int:
 
     commands = [
         [python, "-m", "black", "--check", "backend"],
+        [npm, "run", "check:format"],
         [npm, "run", "check:i18n"],
         [npm, "run", "test:frontend"],
         [npm, "run", "build"],
