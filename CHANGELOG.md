@@ -7,9 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.8.10-publicshare.10] - 2026-03-19
+
+Fork release based on upstream `0.8.10`.
+
 ### Fixed
 
 - Automatic web search now enforces `WEB_SEARCH_RESULT_COUNT` across the combined results of generated queries before loading pages or injecting snippet-only context.
+- Admin Settings > Models no longer intermittently fails with `Unexpected token 'd'` when Ollama model management operations stream SSE `data:` lines instead of raw JSON lines.
 - Release pushes now use a repo-local preflight that checks backend Black formatting, regenerated i18n catalogs, frontend tests, and frontend builds before pushing.
 - GitHub Actions backend formatting checks are now aligned with Python 3.12 and the pinned Black version used by this fork, avoiding first-run failures after release commits.
 

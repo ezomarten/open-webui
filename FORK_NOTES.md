@@ -15,7 +15,7 @@ This fork is based on Open WebUI `v0.8.10` and carries a small set of deployment
 - Deployment workspace operator runbook lives in [../README.md](../README.md)
 - Local rebuilds only affect runtime when workspace root [../.env](../.env) sets `OPENWEBUI_IMAGE=open-webui-public-share:0.8.10-publicshare-local`
 - If [../.env](../.env) points to a GHCR tag, compose recreate will continue to run the GHCR image even after a successful local `docker build`
-- Current GHCR baseline remains `0.8.10-publicshare.9`
+- Current GHCR baseline remains `0.8.10-publicshare.10`
 - Current local fork head should be treated as the source of truth for future local image rebuilds
 - Before pushing a release commit or tag, run `python scripts/release_preflight.py` from an environment that has the repo's Python and Node dependencies installed
 - For GHCR pushes from GitHub Actions, either grant the package Actions access for this repository or configure repository secrets `GHCR_USERNAME` and `GHCR_TOKEN`; otherwise `docker/build-push-action` can fail with `403 Forbidden` on blob HEAD requests even when login succeeds with `GITHUB_TOKEN`
@@ -108,6 +108,7 @@ If the change affects public-share or public-link UI strings, also update [src/l
 ## Maintenance Record
 
 - 2026-03-19: fixed automatic web search so generated multi-query searches respect the configured global result count before fetching pages or building snippet-only docs; key files: `backend/open_webui/routers/retrieval.py`, `backend/open_webui/utils/web_search.py`, `backend/open_webui/test/util/test_web_search.py`, `CHANGELOG.md`; validation: `pytest open_webui/test/util/test_web_search.py -q`
+- 2026-03-19: fixed admin Settings > Models so Ollama management streams accept either raw JSON lines or SSE `data:` lines, avoiding intermittent `Unexpected token 'd'` parse failures; key files: `src/lib/components/admin/Settings/Models/Manage/ManageOllama.svelte`; validation: `npm run build`, user-confirmed runtime verification
 - 2026-03-19: hardened release preflight after post-release Actions failures by aligning backend Black checks to Python 3.12, committing generated i18n catalogs, and adding `scripts/release_preflight.py`; key files: `.github/workflows/format-backend.yaml`, `.github/workflows/format-build-frontend.yaml`, `package.json`, `scripts/release_preflight.py`; validation: local `python -m black --check backend`, `npm run check:i18n`, `npm run test:frontend`, and `npm run build`
 - 2026-03-19: published `ghcr.io/farefore/open-webui-public-share:0.8.10-publicshare.9` and moved `stable` to digest `sha256:9af0015f3e63ae585e3af2742aa947392d6cb2df2a748092bb535eccbe6a70a0`; validation: local rebuild, `pytest open_webui/test/util/test_openrouter_zdr.py -q`, `docker compose up -d --force-recreate open-webui`, `docker inspect open-webui --format '{{.Config.Image}}'`, `curl.exe -I http://localhost:3000`, user-confirmed ZDR behavior, and GHCR push success
 - 2026-03-19: added an optional OpenRouter Zero Retention mode for admin and direct connections so model discovery can use `/api/v1/endpoints/zdr` and runtime requests force `provider.zdr=true`; key files: `backend/open_webui/routers/openai.py`, `backend/open_webui/utils/openrouter.py`, `backend/open_webui/test/util/test_openrouter_zdr.py`, `src/lib/components/AddConnectionModal.svelte`, `src/lib/apis/openai/index.ts`, `src/lib/apis/index.ts`, `src/routes/+layout.svelte`, `src/lib/i18n/locales/ja-JP/translation.json`, `CHANGELOG.md`; validation: `pytest open_webui/test/util/test_openrouter_zdr.py -q`
@@ -121,6 +122,7 @@ If the change affects public-share or public-link UI strings, also update [src/l
 
 ## Fork Release Summary
 
+- `0.8.10-publicshare.10`: web search result limiting, Ollama admin model stream parsing fix, and release preflight hardening
 - `0.8.10-publicshare.9`: OpenRouter Zero Retention admin/direct connections, merged-model loading fix, and GHCR publish secret fallback release
 - `0.8.10-publicshare.8`: About fork disclosure, public web citations in share snapshots, and owner-scoped public-share image delivery hardening
 - `0.8.10-publicshare.7`: admin-managed public link settings
