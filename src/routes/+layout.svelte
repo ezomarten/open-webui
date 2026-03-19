@@ -486,14 +486,15 @@
 				const { session_id, channel, form_data, model } = data;
 
 				try {
+					/** @type {{ OPENAI_API_BASE_URLS?: string[]; OPENAI_API_KEYS?: string[]; OPENAI_API_CONFIGS?: Record<string, any>; }} */
 					const directConnections = $settings?.directConnections ?? {};
 
-					if (directConnections) {
+					if (directConnections?.OPENAI_API_BASE_URLS && directConnections?.OPENAI_API_KEYS) {
 						const urlIdx = model?.urlIdx;
 
 						const OPENAI_API_URL = directConnections.OPENAI_API_BASE_URLS[urlIdx];
 						const OPENAI_API_KEY = directConnections.OPENAI_API_KEYS[urlIdx];
-						const API_CONFIG = directConnections.OPENAI_API_CONFIGS[urlIdx];
+						const API_CONFIG = directConnections.OPENAI_API_CONFIGS?.[urlIdx] ?? {};
 
 						try {
 							if (API_CONFIG?.prefix_id) {
@@ -504,7 +505,8 @@
 							const [res, controller] = await chatCompletion(
 								OPENAI_API_KEY,
 								form_data,
-								OPENAI_API_URL
+								OPENAI_API_URL,
+								API_CONFIG ?? {}
 							);
 
 							if (res) {

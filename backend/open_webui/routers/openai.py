@@ -58,6 +58,12 @@ from open_webui.utils.misc import (
 from open_webui.utils.auth import get_admin_user, get_verified_user
 from open_webui.utils.headers import include_user_info_headers
 from open_webui.utils.anthropic import is_anthropic_url, get_anthropic_models
+from open_webui.utils.openrouter import (
+    apply_openrouter_zdr_preferences,
+    get_models_list_url,
+    is_openrouter_zdr_model_list_enabled,
+    normalize_models_response,
+)
 
 log = logging.getLogger(__name__)
 
@@ -69,20 +75,28 @@ log = logging.getLogger(__name__)
 ##########################################
 
 
-async def send_get_request(url, key=None, user: UserModel = None):
+async def send_get_request(
+    url,
+    key=None,
+    headers: Optional[dict] = None,
+    cookies: Optional[dict] = None,
+    user: UserModel = None,
+):
     timeout = aiohttp.ClientTimeout(total=AIOHTTP_CLIENT_TIMEOUT_MODEL_LIST)
     try:
         async with aiohttp.ClientSession(timeout=timeout, trust_env=True) as session:
-            headers = {
+            request_headers = {
                 **({"Authorization": f"Bearer {key}"} if key else {}),
+                **(headers or {}),
             }
 
             if ENABLE_FORWARD_USER_INFO_HEADERS and user:
-                headers = include_user_info_headers(headers, user)
+                request_headers = include_user_info_headers(request_headers, user)
 
             async with session.get(
                 url,
-                headers=headers,
+                headers=request_headers,
+                cookies=cookies,
                 ssl=AIOHTTP_CLIENT_SESSION_SSL,
             ) as response:
                 return await response.json()
@@ -92,10 +106,28 @@ async def send_get_request(url, key=None, user: UserModel = None):
         return None
 
 
-async def get_models_request(url, key=None, user: UserModel = None):
+async def get_models_request(
+    request: Request,
+    url,
+    key=None,
+    config: Optional[dict] = None,
+    user: UserModel = None,
+):
     if is_anthropic_url(url):
         return await get_anthropic_models(url, key, user=user)
-    return await send_get_request(f"{url}/models", key, user=user)
+
+    api_config = config or {}
+    headers, cookies = await get_headers_and_cookies(
+        request, url, key, api_config, user=user
+    )
+
+    response = await send_get_request(
+        get_models_list_url(url, api_config),
+        headers=headers,
+        cookies=cookies,
+    )
+
+    return normalize_models_response(url, api_config, response)
 
 
 def openai_reasoning_model_handler(payload):
@@ -371,42 +403,43 @@ async def get_all_models_responses(request: Request, user: UserModel) -> list:
 
     request_tasks = []
     for idx, url in enumerate(api_base_urls):
-        if (str(idx) not in api_configs) and (url not in api_configs):  # Legacy support
-            request_tasks.append(get_models_request(url, api_keys[idx], user=user))
-        else:
-            api_config = api_configs.get(
-                str(idx),
-                api_configs.get(url, {}),  # Legacy support
-            )
+        api_config = api_configs.get(
+            str(idx),
+            api_configs.get(url, {}),  # Legacy support
+        )
 
-            enable = api_config.get("enable", True)
-            model_ids = api_config.get("model_ids", [])
+        enable = api_config.get("enable", True)
+        model_ids = api_config.get("model_ids", [])
 
-            if enable:
-                if len(model_ids) == 0:
-                    request_tasks.append(
-                        get_models_request(url, api_keys[idx], user=user)
+        if enable:
+            if len(model_ids) == 0:
+                request_tasks.append(
+                    get_models_request(
+                        request,
+                        url,
+                        api_keys[idx],
+                        api_config,
+                        user=user,
                     )
-                else:
-                    model_list = {
-                        "object": "list",
-                        "data": [
-                            {
-                                "id": model_id,
-                                "name": model_id,
-                                "owned_by": "openai",
-                                "openai": {"id": model_id},
-                                "urlIdx": idx,
-                            }
-                            for model_id in model_ids
-                        ],
-                    }
-
-                    request_tasks.append(
-                        asyncio.ensure_future(asyncio.sleep(0, model_list))
-                    )
+                )
             else:
-                request_tasks.append(asyncio.ensure_future(asyncio.sleep(0, None)))
+                model_list = {
+                    "object": "list",
+                    "data": [
+                        {
+                            "id": model_id,
+                            "name": model_id,
+                            "owned_by": "openai",
+                            "openai": {"id": model_id},
+                            "urlIdx": idx,
+                        }
+                        for model_id in model_ids
+                    ],
+                }
+
+                request_tasks.append(asyncio.ensure_future(asyncio.sleep(0, model_list)))
+        else:
+            request_tasks.append(asyncio.ensure_future(asyncio.sleep(0, None)))
 
     responses = await asyncio.gather(*request_tasks)
 
@@ -597,7 +630,7 @@ async def get_models(
                         raise Exception("Failed to connect to Anthropic API")
                 else:
                     async with session.get(
-                        f"{url}/models",
+                        get_models_list_url(url, api_config),
                         headers=headers,
                         cookies=cookies,
                         ssl=AIOHTTP_CLIENT_SESSION_SSL,
@@ -614,7 +647,11 @@ async def get_models(
 
                         response_data = await r.json()
 
-                        if "api.openai.com" in url:
+                        if is_openrouter_zdr_model_list_enabled(url, api_config):
+                            response_data = normalize_models_response(
+                                url, api_config, response_data
+                            )
+                        elif "api.openai.com" in url:
                             response_data["data"] = [
                                 model
                                 for model in response_data.get("data", [])
@@ -716,7 +753,7 @@ async def verify_connection(
                 return result
             else:
                 async with session.get(
-                    f"{url}/models",
+                    get_models_list_url(url, api_config),
                     headers=headers,
                     cookies=cookies,
                     ssl=AIOHTTP_CLIENT_SESSION_SSL,
@@ -736,7 +773,7 @@ async def verify_connection(
                                 status_code=r.status, content=response_data
                             )
 
-                    return response_data
+                    return normalize_models_response(url, api_config, response_data)
 
         except aiohttp.ClientError as e:
             # ClientError covers all aiohttp requests issues
@@ -1053,6 +1090,8 @@ async def generate_chat_completion(
     if "max_tokens" in payload and "max_completion_tokens" in payload:
         del payload["max_tokens"]
 
+    payload = apply_openrouter_zdr_preferences(url, api_config, payload)
+
     # Convert the modified body back to JSON
     if "logit_bias" in payload and payload["logit_bias"]:
         logit_bias = convert_logit_bias_input_to_json(payload["logit_bias"])
@@ -1264,7 +1303,6 @@ async def responses(
     Routes to the correct upstream backend based on the model field.
     """
     payload = form_data.model_dump(exclude_none=True)
-    body = json.dumps(payload)
 
     idx = 0
     model_id = form_data.model
@@ -1282,6 +1320,9 @@ async def responses(
         str(idx),
         request.app.state.config.OPENAI_API_CONFIGS.get(url, {}),  # Legacy support
     )
+
+    payload = apply_openrouter_zdr_preferences(url, api_config, payload)
+    body = json.dumps(payload)
 
     r = None
     session = None
@@ -1390,6 +1431,10 @@ async def proxy(path: str, request: Request, user=Depends(get_verified_user)):
             request.app.state.config.OPENAI_API_BASE_URLS[idx], {}
         ),  # Legacy support
     )
+
+    if isinstance(payload, dict):
+        payload = apply_openrouter_zdr_preferences(url, api_config, payload)
+        body = json.dumps(payload).encode()
 
     r = None
     session = None

@@ -208,10 +208,97 @@ export const updateOpenAIKeys = async (token: string = '', keys: string[]) => {
 	return res.OPENAI_API_KEYS;
 };
 
-export const getOpenAIModelsDirect = async (url: string, key: string) => {
+const isOpenRouterUrl = (url: string) => {
+	try {
+		return new URL(url).hostname.endsWith('openrouter.ai');
+	} catch {
+		return url.toLowerCase().includes('openrouter.ai');
+	}
+};
+
+const isOpenRouterZdrEnabled = (url: string, config: object = {}) => {
+	return isOpenRouterUrl(url) && !!config?.openrouter_zdr_only;
+};
+
+const getOpenAIModelsListUrl = (url: string, config: object = {}) => {
+	return isOpenRouterZdrEnabled(url, config) ? `${url}/endpoints/zdr` : `${url}/models`;
+};
+
+const normalizeOpenRouterZdrModelsResponse = (response) => {
+	const endpointData = Array.isArray(response?.data) ? response.data : [];
+	const modelsById = {};
+
+	for (const endpoint of endpointData) {
+		if (!endpoint || typeof endpoint !== 'object') {
+			continue;
+		}
+
+		const modelId = endpoint.model_id;
+		if (!modelId) {
+			continue;
+		}
+
+		const model =
+			modelsById[modelId] ??
+			(modelsById[modelId] = {
+				id: modelId,
+				name: endpoint.model_name ?? endpoint.name ?? modelId,
+				owned_by: 'openai',
+				openai: { id: modelId },
+				providers: [],
+				provider_tags: [],
+				zdr_only: true
+			});
+
+		if (endpoint.provider_name && !model.providers.includes(endpoint.provider_name)) {
+			model.providers.push(endpoint.provider_name);
+		}
+
+		if (endpoint.tag && !model.provider_tags.includes(endpoint.tag)) {
+			model.provider_tags.push(endpoint.tag);
+		}
+
+		if (!model.context_length && endpoint.context_length) {
+			model.context_length = endpoint.context_length;
+		}
+	}
+
+	return {
+		object: 'list',
+		data: Object.values(modelsById)
+	};
+};
+
+const normalizeOpenAIModelsResponse = (url: string, config: object = {}, response) => {
+	if (!response) {
+		return response;
+	}
+
+	return isOpenRouterZdrEnabled(url, config)
+		? normalizeOpenRouterZdrModelsResponse(response)
+		: response;
+};
+
+const applyOpenRouterZdrPreferences = (url: string, config: object = {}, body: object = {}) => {
+	if (!isOpenRouterZdrEnabled(url, config) || typeof body !== 'object' || body === null) {
+		return body;
+	}
+
+	const provider = body?.provider;
+
+	return {
+		...body,
+		provider: {
+			...(provider && typeof provider === 'object' && !Array.isArray(provider) ? provider : {}),
+			zdr: true
+		}
+	};
+};
+
+export const getOpenAIModelsDirect = async (url: string, key: string, config: object = {}) => {
 	let error = null;
 
-	const res = await fetch(`${url}/models`, {
+	const res = await fetch(getOpenAIModelsListUrl(url, config), {
 		method: 'GET',
 		headers: {
 			Accept: 'application/json',
@@ -232,7 +319,7 @@ export const getOpenAIModelsDirect = async (url: string, key: string) => {
 		throw error;
 	}
 
-	return res;
+	return normalizeOpenAIModelsResponse(url, config, res);
 };
 
 export const getOpenAIModels = async (token: string, urlIdx?: number) => {
@@ -279,22 +366,10 @@ export const verifyOpenAIConnection = async (
 	let res = null;
 
 	if (direct) {
-		res = await fetch(`${url}/models`, {
-			method: 'GET',
-			headers: {
-				Accept: 'application/json',
-				Authorization: `Bearer ${key}`,
-				'Content-Type': 'application/json'
-			}
-		})
-			.then(async (res) => {
-				if (!res.ok) throw await res.json();
-				return res.json();
-			})
-			.catch((err) => {
-				error = `OpenAI: ${err?.error?.message ?? 'Network Problem'}`;
-				return [];
-			});
+		res = await getOpenAIModelsDirect(url, key, config).catch((err) => {
+			error = err;
+			return [];
+		});
 
 		if (error) {
 			throw error;
@@ -333,19 +408,21 @@ export const verifyOpenAIConnection = async (
 export const chatCompletion = async (
 	token: string = '',
 	body: object,
-	url: string = `${WEBUI_BASE_URL}/api`
+	url: string = `${WEBUI_BASE_URL}/api`,
+	config: object = {}
 ): Promise<[Response | null, AbortController]> => {
 	const controller = new AbortController();
 	let error = null;
+	const payload = applyOpenRouterZdrPreferences(url, config, body);
 
 	const res = await fetch(`${url}/chat/completions`, {
 		signal: controller.signal,
 		method: 'POST',
 		headers: {
-			Authorization: `Bearer ${token}`,
+			...(token && { Authorization: `Bearer ${token}` }),
 			'Content-Type': 'application/json'
 		},
-		body: JSON.stringify(body)
+		body: JSON.stringify(payload)
 	}).catch((err) => {
 		console.error(err);
 		error = err;

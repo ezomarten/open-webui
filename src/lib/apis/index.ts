@@ -80,7 +80,7 @@ export const getModels = async (
 						} else {
 							requests.push(
 								(async () => {
-									return await getOpenAIModelsDirect(url, OPENAI_API_KEYS[idx])
+									return await getOpenAIModelsDirect(url, OPENAI_API_KEYS[idx], apiConfig)
 										.then((res) => {
 											return res;
 										})

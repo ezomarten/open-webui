@@ -7,9 +7,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.8.10-publicshare.9] - 2026-03-19
+
+Fork release based on upstream `0.8.10`.
+
+### Added
+
+- Admin and direct OpenRouter connections can now enable a Zero Retention mode that discovers models from `/api/v1/endpoints/zdr` and forces `provider.zdr=true` on proxied or browser-side direct requests.
+
 ### Fixed
 
 - The GHCR publish workflow now supports explicit `GHCR_USERNAME` and `GHCR_TOKEN` repository secrets as a fallback when the default `GITHUB_TOKEN` cannot read existing package blobs.
+- OpenRouter ZDR model loading no longer stalls in Settings after restoring the merged-model hostname parsing path used during model list aggregation.
 
 ## [0.8.10-publicshare.8] - 2026-03-15
 
