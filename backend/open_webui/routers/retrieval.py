@@ -95,6 +95,7 @@ from open_webui.utils.misc import (
     calculate_sha256_string,
     sanitize_text_for_db,
 )
+from open_webui.utils.web_search import collect_limited_search_results
 from open_webui.utils.auth import get_admin_user, get_verified_user
 from open_webui.utils.access_control import has_permission
 
@@ -2385,14 +2386,10 @@ async def process_web_search(
 
         search_results = await asyncio.gather(*search_tasks)
 
-        for result in search_results:
-            if result:
-                for item in result:
-                    if item and item.link:
-                        result_items.append(item)
-                        urls.append(item.link)
-
-        urls = list(dict.fromkeys(urls))
+        result_items, urls = collect_limited_search_results(
+            search_results,
+            request.app.state.config.WEB_SEARCH_RESULT_COUNT,
+        )
         log.debug(f"urls: {urls}")
 
     except Exception as e:
@@ -2411,10 +2408,6 @@ async def process_web_search(
 
     try:
         if request.app.state.config.BYPASS_WEB_SEARCH_WEB_LOADER:
-            search_results = [
-                item for result in search_results for item in result if result
-            ]
-
             docs = [
                 Document(
                     page_content=result.snippet,
@@ -2425,7 +2418,7 @@ async def process_web_search(
                         "link": result.link,
                     },
                 )
-                for result in search_results
+                for result in result_items
                 if hasattr(result, "snippet") and result.snippet is not None
             ]
         else:

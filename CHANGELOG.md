@@ -9,6 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- Automatic web search now enforces `WEB_SEARCH_RESULT_COUNT` across the combined results of generated queries before loading pages or injecting snippet-only context.
 - Release pushes now use a repo-local preflight that checks backend Black formatting, regenerated i18n catalogs, frontend tests, and frontend builds before pushing.
 - GitHub Actions backend formatting checks are now aligned with Python 3.12 and the pinned Black version used by this fork, avoiding first-run failures after release commits.
 

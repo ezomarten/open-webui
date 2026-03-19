@@ -53,6 +53,10 @@ This fork is based on Open WebUI `v0.8.10` and carries a small set of deployment
 
 - Settings > About includes a fork disclosure that states this deployment is a customized fork of Open WebUI and is not affiliated with or maintained by the official Open WebUI team
 
+### Web search result limiting
+
+- When web search query generation is enabled, automatic web search now enforces `WEB_SEARCH_RESULT_COUNT` across the combined deduplicated result set before loading pages or injecting snippet-only context
+
 ## Public Host Allowlist
 
 When a request arrives on the public share host derived from `PUBLIC_SHARE_BASE_URL`, the fork only allows the following routes:
@@ -103,6 +107,7 @@ If the change affects public-share or public-link UI strings, also update [src/l
 
 ## Maintenance Record
 
+- 2026-03-19: fixed automatic web search so generated multi-query searches respect the configured global result count before fetching pages or building snippet-only docs; key files: `backend/open_webui/routers/retrieval.py`, `backend/open_webui/utils/web_search.py`, `backend/open_webui/test/util/test_web_search.py`, `CHANGELOG.md`; validation: `pytest open_webui/test/util/test_web_search.py -q`
 - 2026-03-19: hardened release preflight after post-release Actions failures by aligning backend Black checks to Python 3.12, committing generated i18n catalogs, and adding `scripts/release_preflight.py`; key files: `.github/workflows/format-backend.yaml`, `.github/workflows/format-build-frontend.yaml`, `package.json`, `scripts/release_preflight.py`; validation: local `python -m black --check backend`, `npm run check:i18n`, `npm run test:frontend`, and `npm run build`
 - 2026-03-19: published `ghcr.io/farefore/open-webui-public-share:0.8.10-publicshare.9` and moved `stable` to digest `sha256:9af0015f3e63ae585e3af2742aa947392d6cb2df2a748092bb535eccbe6a70a0`; validation: local rebuild, `pytest open_webui/test/util/test_openrouter_zdr.py -q`, `docker compose up -d --force-recreate open-webui`, `docker inspect open-webui --format '{{.Config.Image}}'`, `curl.exe -I http://localhost:3000`, user-confirmed ZDR behavior, and GHCR push success
 - 2026-03-19: added an optional OpenRouter Zero Retention mode for admin and direct connections so model discovery can use `/api/v1/endpoints/zdr` and runtime requests force `provider.zdr=true`; key files: `backend/open_webui/routers/openai.py`, `backend/open_webui/utils/openrouter.py`, `backend/open_webui/test/util/test_openrouter_zdr.py`, `src/lib/components/AddConnectionModal.svelte`, `src/lib/apis/openai/index.ts`, `src/lib/apis/index.ts`, `src/routes/+layout.svelte`, `src/lib/i18n/locales/ja-JP/translation.json`, `CHANGELOG.md`; validation: `pytest open_webui/test/util/test_openrouter_zdr.py -q`
@@ -148,3 +153,4 @@ When following a newer upstream Open WebUI release, verify at minimum:
 9. public-link and public-share UI strings still have at least ja-JP translations when changed
 10. OpenRouter admin and direct connections still optionally use `/api/v1/endpoints/zdr` and force `provider.zdr=true` when `openrouter_zdr_only` is enabled
 11. workspace root [../README.md](../README.md) still matches the real deployment/apply procedure
+12. automatic web search with generated queries still enforces `WEB_SEARCH_RESULT_COUNT` across the aggregated result set before loading pages or injecting snippet-only context

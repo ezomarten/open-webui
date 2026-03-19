@@ -66,6 +66,16 @@
 
 	let deleteModelTag = '';
 
+	const parseOllamaStreamLine = (line: string) => {
+		const normalizedLine = line.trim();
+
+		if (!normalizedLine || normalizedLine === 'data: [DONE]' || normalizedLine === '[DONE]') {
+			return null;
+		}
+
+		return JSON.parse(normalizedLine.replace(/^data:\s*/, ''));
+	};
+
 	const updateModelsHandler = async () => {
 		updateCancelled = false;
 		toast.info('Checking for model updates...');
@@ -107,7 +117,11 @@
 
 						for (const line of lines) {
 							if (line !== '') {
-								let data = JSON.parse(line);
+								const data = parseOllamaStreamLine(line);
+
+								if (!data) {
+									continue;
+								}
 
 								console.log(data);
 								if (data.error) {
@@ -203,7 +217,11 @@
 
 					for (const line of lines) {
 						if (line !== '') {
-							let data = JSON.parse(line);
+							const data = parseOllamaStreamLine(line);
+
+							if (!data) {
+								continue;
+							}
 							console.log(data);
 							if (data.error) {
 								throw data.error;
@@ -329,7 +347,11 @@
 
 					for (const line of lines) {
 						if (line !== '') {
-							let data = JSON.parse(line.replace(/^data: /, ''));
+								const data = parseOllamaStreamLine(line);
+
+								if (!data) {
+									continue;
+								}
 
 							if (data.progress) {
 								if (uploadMessage) {
@@ -381,7 +403,11 @@
 						for (const line of lines) {
 							if (line !== '') {
 								console.log(line);
-								let data = JSON.parse(line);
+									const data = parseOllamaStreamLine(line);
+
+									if (!data) {
+										continue;
+									}
 								console.log(data);
 
 								if (data.error) {
@@ -525,7 +551,11 @@
 					for (const line of lines) {
 						if (line !== '') {
 							console.log(line);
-							let data = JSON.parse(line);
+								const data = parseOllamaStreamLine(line);
+
+								if (!data) {
+									continue;
+								}
 							console.log(data);
 
 							if (data.error) {
