@@ -16,7 +16,9 @@
 		"lint:backend": "pylint backend/",
 		"format": "prettier --plugin-search-dir --write \"**/*.{js,ts,svelte,css,md,html,json}\"",
 		"format:backend": "black . --exclude \".venv/|/venv/\"",
+		"check:i18n": "npm run i18n:parse && git diff --exit-code -- src/lib/i18n/locales",
 		"i18n:parse": "i18next --config i18next-parser.config.ts && prettier --write \"src/lib/i18n/**/*.{js,json}\"",
+		"release:preflight": "python scripts/release_preflight.py",
 		"cy:open": "cypress open",
 		"test:frontend": "vitest --passWithNoTests",
 		"pyodide:fetch": "node scripts/prepare-pyodide.js"

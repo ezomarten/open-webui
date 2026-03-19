@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- Release pushes now use a repo-local preflight that checks backend Black formatting, regenerated i18n catalogs, frontend tests, and frontend builds before pushing.
+- GitHub Actions backend formatting checks are now aligned with Python 3.12 and the pinned Black version used by this fork, avoiding first-run failures after release commits.
+
 ## [0.8.10-publicshare.9] - 2026-03-19
 
 Fork release based on upstream `0.8.10`.

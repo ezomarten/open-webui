@@ -42,11 +42,8 @@ jobs:
       - name: Check Frontend Formatting
         run: npx prettier --check "**/*.{js,ts,svelte,css,md,html,json}"
 
-      - name: Regenerate i18n catalogs
-        run: npm run i18n:parse
-
-      - name: Check for generated file changes
-        run: git diff --exit-code
+      - name: Check generated i18n catalogs
+        run: npm run check:i18n
 
       - name: Build Frontend
         env:

@@ -437,7 +437,9 @@ async def get_all_models_responses(request: Request, user: UserModel) -> list:
                     ],
                 }
 
-                request_tasks.append(asyncio.ensure_future(asyncio.sleep(0, model_list)))
+                request_tasks.append(
+                    asyncio.ensure_future(asyncio.sleep(0, model_list))
+                )
         else:
             request_tasks.append(asyncio.ensure_future(asyncio.sleep(0, None)))
 
