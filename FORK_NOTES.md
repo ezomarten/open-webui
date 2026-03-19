@@ -15,7 +15,7 @@ This fork is based on Open WebUI `v0.8.10` and carries a small set of deployment
 - Deployment workspace operator runbook lives in [../README.md](../README.md)
 - Local rebuilds only affect runtime when workspace root [../.env](../.env) sets `OPENWEBUI_IMAGE=open-webui-public-share:0.8.10-publicshare-local`
 - If [../.env](../.env) points to a GHCR tag, compose recreate will continue to run the GHCR image even after a successful local `docker build`
-- Current GHCR baseline remains `0.8.10-publicshare.10`
+- Current GHCR baseline remains `0.8.10-publicshare.11`
 - Current local fork head should be treated as the source of truth for future local image rebuilds
 - Before pushing a release commit or tag, run `python scripts/release_preflight.py` from an environment that has the repo's Python and Node dependencies installed
 - For GHCR pushes from GitHub Actions, either grant the package Actions access for this repository or configure repository secrets `GHCR_USERNAME` and `GHCR_TOKEN`; otherwise `docker/build-push-action` can fail with `403 Forbidden` on blob HEAD requests even when login succeeds with `GITHUB_TOKEN`
@@ -123,6 +123,7 @@ If the change affects public-share or public-link UI strings, also update [src/l
 
 ## Fork Release Summary
 
+- `0.8.10-publicshare.11`: shared Prettier frontend formatting checks between release preflight and Frontend Build
 - `0.8.10-publicshare.10`: web search result limiting, Ollama admin model stream parsing fix, and release preflight hardening
 - `0.8.10-publicshare.9`: OpenRouter Zero Retention admin/direct connections, merged-model loading fix, and GHCR publish secret fallback release
 - `0.8.10-publicshare.8`: About fork disclosure, public web citations in share snapshots, and owner-scoped public-share image delivery hardening

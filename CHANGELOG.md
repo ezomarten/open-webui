@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.8.10-publicshare.11] - 2026-03-19
+
+Fork release based on upstream `0.8.10`.
+
+### Fixed
+
+- Release preflight now also runs the same Prettier-based frontend formatting check used by `Frontend Build`, preventing post-release formatting misses before pushing commits or tags.
+
 ## [0.8.10-publicshare.10] - 2026-03-19
 
 Fork release based on upstream `0.8.10`.
