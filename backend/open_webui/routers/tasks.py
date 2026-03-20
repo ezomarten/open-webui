@@ -6,7 +6,8 @@ from typing import Optional
 import logging
 import re
 
-from open_webui.utils.chat import generate_chat_completion
+from open_webui.utils.chat import generate_chat_completion as _generate_chat_completion
+from open_webui.utils.misc import normalize_task_response
 from open_webui.utils.task import (
     title_generation_template,
     follow_up_generation_template,
@@ -39,6 +40,16 @@ from open_webui.config import (
 log = logging.getLogger(__name__)
 
 router = APIRouter()
+
+
+async def generate_chat_completion(request: Request, form_data: dict, user, **kwargs):
+    response = await _generate_chat_completion(
+        request,
+        form_data=form_data,
+        user=user,
+        **kwargs,
+    )
+    return normalize_task_response(response)
 
 
 ##################################

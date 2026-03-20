@@ -15,7 +15,7 @@ This fork is based on Open WebUI `v0.8.10` and carries a small set of deployment
 - Deployment workspace operator runbook lives in [../README.md](../README.md)
 - Local rebuilds only affect runtime when workspace root [../.env](../.env) sets `OPENWEBUI_IMAGE=open-webui-public-share:0.8.10-publicshare-local`
 - If [../.env](../.env) points to a GHCR tag, compose recreate will continue to run the GHCR image even after a successful local `docker build`
-- Current GHCR baseline remains `0.8.10-publicshare.11`
+- Current GHCR baseline remains `0.8.10-publicshare.12`
 - Current local fork head should be treated as the source of truth for future local image rebuilds
 - Before pushing a release commit or tag, run `python scripts/release_preflight.py` from an environment that has the repo's Python and Node dependencies installed
 - For GHCR pushes from GitHub Actions, either grant the package Actions access for this repository or configure repository secrets `GHCR_USERNAME` and `GHCR_TOKEN`; otherwise `docker/build-push-action` can fail with `403 Forbidden` on blob HEAD requests even when login succeeds with `GITHUB_TOKEN`
@@ -56,6 +56,11 @@ This fork is based on Open WebUI `v0.8.10` and carries a small set of deployment
 ### Web search result limiting
 
 - When web search query generation is enabled, automatic web search now enforces `WEB_SEARCH_RESULT_COUNT` across the combined deduplicated result set before loading pages or injecting snippet-only context
+
+### Responses API task compatibility
+
+- Task endpoints now normalize non-streaming Responses API results back into chat-completion-style `choices[0].message.content` payloads before task-specific parsers consume them
+- Responses API streaming output items now receive fallback timing metadata so post-processing does not fail with missing `started_at` on reasoning blocks
 
 ## Public Host Allowlist
 
@@ -107,6 +112,8 @@ If the change affects public-share or public-link UI strings, also update [src/l
 
 ## Maintenance Record
 
+- 2026-03-20: published `ghcr.io/farefore/open-webui-public-share:0.8.10-publicshare.12` and moved `stable` to the same digest after fixing Responses API task normalization and streaming timing metadata; validation: `python scripts/release_preflight.py`, `pytest open_webui/test/util/test_web_search.py -q`, runtime helper assertions inside the rebuilt `open-webui` container, local image rebuild, `docker compose up -d --force-recreate open-webui`, `docker inspect open-webui --format '{{.Config.Image}} {{.Created}}'`, `curl.exe -I http://localhost:3000`, and GHCR push success
+- 2026-03-20: fixed Responses API compatibility for task-driven query/image prompt generation and hardened streaming reasoning output timing so chats no longer fail with `'choices'` or `'started_at'`; key files: `backend/open_webui/utils/misc.py`, `backend/open_webui/routers/tasks.py`, `backend/open_webui/utils/middleware.py`, `backend/open_webui/routers/channels.py`, `backend/open_webui/test/util/test_response_normalization.py`, `CHANGELOG.md`; validation: `pytest open_webui/test/util/test_web_search.py -q`, runtime helper assertions inside the rebuilt `open-webui` container, local image rebuild, `docker compose up -d --force-recreate open-webui`, `docker inspect open-webui --format '{{.Config.Image}} {{.Created}}'`, and `curl.exe -I http://localhost:3000`
 - 2026-03-19: added a shared Prettier format check to the repo release preflight after the `.10` release push still failed frontend formatting on `ManageOllama.svelte`; key files: `package.json`, `.github/workflows/format-build-frontend.yaml`, `scripts/release_preflight.py`, `src/lib/components/admin/Settings/Models/Manage/ManageOllama.svelte`; validation: `npm run check:format`, `python scripts/release_preflight.py`
 - 2026-03-19: fixed automatic web search so generated multi-query searches respect the configured global result count before fetching pages or building snippet-only docs; key files: `backend/open_webui/routers/retrieval.py`, `backend/open_webui/utils/web_search.py`, `backend/open_webui/test/util/test_web_search.py`, `CHANGELOG.md`; validation: `pytest open_webui/test/util/test_web_search.py -q`
 - 2026-03-19: fixed admin Settings > Models so Ollama management streams accept either raw JSON lines or SSE `data:` lines, avoiding intermittent `Unexpected token 'd'` parse failures; key files: `src/lib/components/admin/Settings/Models/Manage/ManageOllama.svelte`; validation: `npm run build`, user-confirmed runtime verification
@@ -123,6 +130,7 @@ If the change affects public-share or public-link UI strings, also update [src/l
 
 ## Fork Release Summary
 
+- `0.8.10-publicshare.12`: Responses API task normalization and streaming timing metadata hardening
 - `0.8.10-publicshare.11`: shared Prettier frontend formatting checks between release preflight and Frontend Build
 - `0.8.10-publicshare.10`: web search result limiting, Ollama admin model stream parsing fix, and release preflight hardening
 - `0.8.10-publicshare.9`: OpenRouter Zero Retention admin/direct connections, merged-model loading fix, and GHCR publish secret fallback release

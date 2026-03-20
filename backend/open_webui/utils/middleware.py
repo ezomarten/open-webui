@@ -25,7 +25,12 @@ from fastapi.responses import HTMLResponse
 from starlette.responses import Response, StreamingResponse, JSONResponse
 
 
-from open_webui.utils.misc import is_string_allowed
+from open_webui.utils.misc import (
+    ensure_output_timing,
+    get_message_content_from_response,
+    is_string_allowed,
+    mark_output_item_completed,
+)
 from open_webui.models.oauth_sessions import OAuthSessions
 from open_webui.models.chats import Chats
 from open_webui.models.folders import Folders
@@ -581,7 +586,7 @@ def handle_responses_streaming_event(
         item = data.get("item", {})
         if item:
             new_output = list(current_output)
-            new_output.append(item)
+            new_output.append(ensure_output_timing([copy.deepcopy(item)])[0])
             return new_output, None
         return current_output, None
 
@@ -853,9 +858,9 @@ def handle_responses_streaming_event(
 
         new_output = list(current_output)
         if item and 0 <= output_index < len(current_output):
-            new_output[output_index] = item
+            new_output[output_index] = ensure_output_timing([copy.deepcopy(item)])[0]
         elif item:
-            new_output.append(item)
+            new_output.append(ensure_output_timing([copy.deepcopy(item)])[0])
         return new_output, {}
 
     elif event_type == "response.completed":
@@ -863,7 +868,11 @@ def handle_responses_streaming_event(
         response_data = data.get("response", {})
         final_output = response_data.get("output")
 
-        new_output = final_output if final_output is not None else current_output
+        new_output = (
+            ensure_output_timing(copy.deepcopy(final_output))
+            if final_output is not None
+            else ensure_output_timing(list(current_output))
+        )
 
         # Ensure reasoning items are marked as completed in the final output
         if new_output:
@@ -1174,13 +1183,13 @@ async def chat_completion_tools_handler(
         if hasattr(response, "body_iterator"):
             async for chunk in response.body_iterator:
                 data = json.loads(chunk.decode("utf-8", "replace"))
-                content = data["choices"][0]["message"]["content"]
+                content = get_message_content_from_response(data)
 
             # Cleanup any remaining background tasks if necessary
             if response.background is not None:
                 await response.background()
         else:
-            content = response["choices"][0]["message"]["content"]
+            content = get_message_content_from_response(response)
         return content
 
     def get_tools_function_calling_payload(messages, task_model_id, content):
@@ -1474,7 +1483,9 @@ async def chat_web_search_handler(
             user,
         )
 
-        response = res["choices"][0]["message"]["content"]
+        response = get_message_content_from_response(res)
+        if response is None:
+            raise KeyError("choices")
 
         try:
             bracket_start = response.find("{")
@@ -1805,7 +1816,9 @@ async def chat_image_generation_handler(
                     user,
                 )
 
-                response = res["choices"][0]["message"]["content"]
+                response = get_message_content_from_response(res)
+                if response is None:
+                    raise KeyError("choices")
 
                 try:
                     bracket_start = response.find("{")
@@ -1911,7 +1924,9 @@ async def chat_completion_files_handler(
                     },
                     user,
                 )
-                queries_response = queries_response["choices"][0]["message"]["content"]
+                queries_response = get_message_content_from_response(queries_response)
+                if queries_response is None:
+                    raise KeyError("choices")
 
                 try:
                     bracket_start = queries_response.find("{")
@@ -3152,9 +3167,8 @@ async def non_streaming_chat_response_handler(response, ctx):
                     },
                 )
 
-            choices = response_data.get("choices", [])
-            if choices and choices[0].get("message", {}).get("content"):
-                content = response_data["choices"][0]["message"]["content"]
+            content = get_message_content_from_response(response_data)
+            if content:
 
                 if content:
                     await event_emitter(
@@ -3479,17 +3493,10 @@ async def streaming_chat_response_handler(response, ctx):
                                 item["content"] = [
                                     {"type": "output_text", "text": block_content}
                                 ]
-                                item["ended_at"] = time.time()
-                                item["duration"] = int(
-                                    item["ended_at"] - item["started_at"]
-                                )
-                                item["status"] = "completed"
+                                mark_output_item_completed(item)
                             elif last_type == "open_webui:code_interpreter":
                                 item["code"] = block_content
-                                item["ended_at"] = time.time()
-                                item["duration"] = int(
-                                    item["ended_at"] - item["started_at"]
-                                )
+                                mark_output_item_completed(item)
                             else:
                                 set_last_text(output, block_content)
                                 item["ended_at"] = time.time()
@@ -3955,12 +3962,7 @@ async def streaming_chat_response_handler(response, ctx):
                                             == "reasoning_content"
                                         ):
                                             reasoning_item = output[-1]
-                                            reasoning_item["ended_at"] = time.time()
-                                            reasoning_item["duration"] = int(
-                                                reasoning_item["ended_at"]
-                                                - reasoning_item["started_at"]
-                                            )
-                                            reasoning_item["status"] = "completed"
+                                            mark_output_item_completed(reasoning_item)
 
                                             output.append(
                                                 {
@@ -4187,12 +4189,7 @@ async def streaming_chat_response_handler(response, ctx):
                         if output[-1].get("type") == "reasoning":
                             reasoning_item = output[-1]
                             if reasoning_item.get("ended_at") is None:
-                                reasoning_item["ended_at"] = time.time()
-                                reasoning_item["duration"] = int(
-                                    reasoning_item["ended_at"]
-                                    - reasoning_item["started_at"]
-                                )
-                                reasoning_item["status"] = "completed"
+                                mark_output_item_completed(reasoning_item)
 
                     if response_tool_calls:
                         tool_calls.append(_split_tool_calls(response_tool_calls))

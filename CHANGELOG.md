@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.8.10-publicshare.12] - 2026-03-20
+
+Fork release based on upstream `0.8.10`.
+
+### Fixed
+
+- Task endpoints now normalize non-streaming Responses API payloads to chat-completion-style content before query, image-prompt, and similar task parsers run, fixing web search and related task failures on Responses-backed models.
+- Responses API streaming post-processing now backfills missing timing metadata for output items, preventing stray `'started_at'` errors after otherwise successful chat responses.
+
 ## [0.8.10-publicshare.11] - 2026-03-19
 
 Fork release based on upstream `0.8.10`.

@@ -37,6 +37,7 @@ from open_webui.models.channels import (
     ChannelWebhookForm,
 )
 from open_webui.models.access_grants import AccessGrants, has_public_read_access_grant
+from open_webui.utils.misc import get_message_content_from_response
 from open_webui.models.messages import (
     Messages,
     MessageModel,
@@ -1120,14 +1121,15 @@ async def model_response_handler(request, channel, message, user, db=None):
                 )
 
                 if res:
-                    if res.get("choices", []) and len(res["choices"]) > 0:
+                    response_content = get_message_content_from_response(res)
+                    if response_content:
                         await update_message_by_id(
                             request,
                             channel.id,
                             response_message.id,
                             MessageForm(
                                 **{
-                                    "content": res["choices"][0]["message"]["content"],
+                                    "content": response_content,
                                     "meta": {
                                         "done": True,
                                     },

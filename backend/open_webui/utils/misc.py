@@ -6,7 +6,7 @@ import uuid
 import logging
 from datetime import timedelta
 from pathlib import Path
-from typing import Callable, Optional, Sequence, Union
+from typing import Any, Callable, Optional, Sequence, Union
 import json
 import aiohttp
 import mimeparse
@@ -127,13 +127,28 @@ def get_last_user_message_item(messages: list[dict]) -> Optional[dict]:
 
 
 def get_content_from_message(message: dict) -> Optional[str]:
-    if isinstance(message.get("content"), list):
-        for item in message["content"]:
-            if item["type"] == "text":
-                return item["text"]
-    else:
-        return message.get("content")
-    return None
+    content = message.get("content")
+
+    if isinstance(content, list):
+        text_parts = []
+        for item in content:
+            if not isinstance(item, dict):
+                continue
+
+            if item.get("type") not in {"text", "output_text", "input_text"}:
+                continue
+
+            text = item.get("text")
+            if isinstance(text, str):
+                text_parts.append(text)
+            elif isinstance(text, dict):
+                value = text.get("value")
+                if isinstance(value, str):
+                    text_parts.append(value)
+
+        return "".join(text_parts) if text_parts else None
+
+    return content
 
 
 def convert_output_to_messages(output: list, raw: bool = False) -> list[dict]:
@@ -483,6 +498,89 @@ def openai_chat_completion_message_template(
     if usage:
         template["usage"] = usage
     return template
+
+
+def get_assistant_message_from_response(response: dict) -> Optional[dict]:
+    if not isinstance(response, dict):
+        return None
+
+    choices = response.get("choices") or []
+    if choices:
+        return choices[0].get("message")
+
+    if response.get("object") == "response":
+        for message in reversed(convert_output_to_messages(response.get("output", []))):
+            if message.get("role") == "assistant":
+                return message
+
+    return None
+
+
+def get_message_content_from_response(response: dict) -> Optional[str]:
+    message = get_assistant_message_from_response(response)
+    if not message:
+        return None
+
+    return get_content_from_message(message)
+
+
+def normalize_task_response(response: Any) -> Any:
+    if not isinstance(response, dict):
+        return response
+
+    if response.get("object") != "response" or response.get("choices"):
+        return response
+
+    normalized = openai_chat_completion_message_template(
+        model=response.get("model", ""),
+        message=get_message_content_from_response(response) or "",
+        usage=response.get("usage"),
+    )
+
+    if response.get("id"):
+        normalized["id"] = response["id"]
+
+    if response.get("created_at") is not None:
+        normalized["created"] = response["created_at"]
+
+    normalized["done"] = True
+
+    if "output" in response:
+        normalized["output"] = response["output"]
+
+    return normalized
+
+
+def ensure_output_item_timing(item: dict, now: Optional[float] = None) -> dict:
+    if not isinstance(item, dict):
+        return item
+
+    timestamp = time.time() if now is None else now
+    item.setdefault("started_at", timestamp)
+
+    if item.get("status") == "completed":
+        item.setdefault("ended_at", timestamp)
+
+    ended_at = item.get("ended_at")
+    started_at = item.get("started_at")
+    if ended_at is not None and started_at is not None:
+        item["duration"] = max(0, int(ended_at - started_at))
+
+    return item
+
+
+def ensure_output_timing(output: list[dict], now: Optional[float] = None) -> list[dict]:
+    timestamp = time.time() if now is None else now
+    return [ensure_output_item_timing(item, timestamp) for item in output]
+
+
+def mark_output_item_completed(item: dict, ended_at: Optional[float] = None) -> dict:
+    timestamp = time.time() if ended_at is None else ended_at
+    item.setdefault("started_at", timestamp)
+    item["ended_at"] = timestamp
+    item["duration"] = max(0, int(timestamp - item["started_at"]))
+    item["status"] = "completed"
+    return item
 
 
 def get_gravatar_url(email):
