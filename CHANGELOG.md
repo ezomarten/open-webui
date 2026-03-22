@@ -5,7 +5,14 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+## [0.8.10-publicshare.13] - 2026-03-22
+
+Fork release based on upstream `0.8.10`.
+
+### Fixed
+
+- Streamed OpenAI-compatible and Ollama chat-style upstream requests now wait as long as needed for the first meaningful upstream output chunk, ignoring role-only or otherwise empty prelude chunks including Responses API status events such as `response.created` and `response.in_progress` before starting the idle read timeout, then enforce idle read timeout semantics between later chunks so model warmup and prompt processing do not get cut off solely because no token has arrived yet.
+- Stream timeout failures now preserve explicit stall text through backend error handling and still persist that text into chat error state when the timeout is raised during streamed response iteration, instead of collapsing into an empty red error banner.
 
 ## [0.8.10-publicshare.12] - 2026-03-20
 

@@ -14,6 +14,9 @@ import mimeparse
 
 import collections.abc
 from open_webui.env import CHAT_STREAM_RESPONSE_CHUNK_MAX_BUFFER_SIZE
+from open_webui.utils.http_timeouts import (
+    iterate_stream_with_post_first_chunk_timeout,
+)
 
 log = logging.getLogger(__name__)
 
@@ -970,7 +973,13 @@ async def cleanup_response(
         await session.close()
 
 
-async def stream_wrapper(response, session, content_handler=None):
+async def stream_wrapper(
+    response,
+    session,
+    content_handler=None,
+    read_timeout_seconds: int | None = None,
+    timeout_starts_after_chunk: Callable[[Any], bool] | None = None,
+):
     """
     Wrap a stream to ensure cleanup happens even if streaming is interrupted.
     This is more reliable than BackgroundTask which may not run if client disconnects.
@@ -979,7 +988,11 @@ async def stream_wrapper(response, session, content_handler=None):
         stream = (
             content_handler(response.content) if content_handler else response.content
         )
-        async for chunk in stream:
+        async for chunk in iterate_stream_with_post_first_chunk_timeout(
+            stream,
+            read_timeout_seconds,
+            timeout_starts_after_chunk,
+        ):
             yield chunk
     finally:
         await cleanup_response(response, session)

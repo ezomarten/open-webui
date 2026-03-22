@@ -502,6 +502,7 @@ from open_webui.env import (
     ENABLE_OTEL,
     EXTERNAL_PWA_MANIFEST_URL,
     AIOHTTP_CLIENT_SESSION_SSL,
+    AIOHTTP_CLIENT_TIMEOUT,
     ENABLE_STAR_SESSIONS_MIDDLEWARE,
     ENABLE_PUBLIC_ACTIVE_USERS_COUNT,
     # Admin Account Runtime Creation
@@ -532,6 +533,7 @@ from open_webui.utils.middleware import (
 )
 from open_webui.utils.tools import set_tool_servers, set_terminal_servers
 from open_webui.utils.public_share import get_public_share_host, is_public_share_enabled
+from open_webui.utils.error_handling import get_exception_message
 
 from open_webui.utils.auth import (
     get_license_data,
@@ -1926,10 +1928,15 @@ async def chat_completion(
         form_data["metadata"] = metadata
 
     except Exception as e:
-        log.debug(f"Error processing chat metadata: {e}")
+        error_message = get_exception_message(
+            e, request_timeout_seconds=AIOHTTP_CLIENT_TIMEOUT
+        )
+        log.debug(
+            f"Error processing chat metadata ({e.__class__.__name__}): {error_message}"
+        )
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail=str(e),
+            detail=error_message,
         )
 
     async def process_chat(request, form_data, user, metadata, model):
@@ -1972,7 +1979,12 @@ async def chat_completion(
             finally:
                 raise  # re-raise to ensure proper task cancellation handling
         except Exception as e:
-            log.debug(f"Error processing chat payload: {e}")
+            error_message = get_exception_message(
+                e, request_timeout_seconds=AIOHTTP_CLIENT_TIMEOUT
+            )
+            log.debug(
+                f"Error processing chat payload ({e.__class__.__name__}): {error_message}"
+            )
             if metadata.get("chat_id") and metadata.get("message_id"):
                 # Update the chat message with the error
                 try:
@@ -1982,7 +1994,7 @@ async def chat_completion(
                             metadata["message_id"],
                             {
                                 "parentId": metadata.get("parent_message_id", None),
-                                "error": {"content": str(e)},
+                                "error": {"content": error_message},
                             },
                         )
 
@@ -1990,7 +2002,7 @@ async def chat_completion(
                     await event_emitter(
                         {
                             "type": "chat:message:error",
-                            "data": {"error": {"content": str(e)}},
+                            "data": {"error": {"content": error_message}},
                         }
                     )
                     await event_emitter(

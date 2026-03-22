@@ -133,6 +133,7 @@ from open_webui.env import (
     ENABLE_CHAT_RESPONSE_BASE64_IMAGE_URL_CONVERSION,
     CHAT_RESPONSE_STREAM_DELTA_CHUNK_SIZE,
     CHAT_RESPONSE_MAX_TOOL_CALL_RETRIES,
+    AIOHTTP_CLIENT_TIMEOUT,
     BYPASS_MODEL_ACCESS_CONTROL,
     ENABLE_REALTIME_CHAT_SAVE,
     ENABLE_QUERIES_CACHE,
@@ -142,6 +143,7 @@ from open_webui.env import (
     FORWARD_SESSION_INFO_HEADER_MESSAGE_ID,
 )
 from open_webui.utils.headers import include_user_info_headers
+from open_webui.utils.error_handling import get_exception_message
 from open_webui.constants import TASKS
 
 logging.basicConfig(stream=sys.stdout, level=GLOBAL_LOG_LEVEL)
@@ -2836,6 +2838,30 @@ def build_chat_response_context(
     }
 
 
+async def persist_chat_stream_error(metadata, event_emitter, error_message: str):
+    if not metadata.get("chat_id") or not metadata.get("message_id"):
+        return
+
+    if not metadata["chat_id"].startswith("local:"):
+        Chats.upsert_message_to_chat_by_id_and_message_id(
+            metadata["chat_id"],
+            metadata["message_id"],
+            {
+                "parentId": metadata.get("parent_message_id", None),
+                "error": {"content": error_message},
+            },
+        )
+
+    if event_emitter:
+        await event_emitter(
+            {
+                "type": "chat:message:error",
+                "data": {"error": {"content": error_message}},
+            }
+        )
+        await event_emitter({"type": "chat:tasks:cancel"})
+
+
 def get_response_data(response):
     if isinstance(response, list) and len(response) == 1:
         # If the response is a single-item list, unwrap it #17213
@@ -4838,17 +4864,27 @@ async def streaming_chat_response_handler(response, ctx):
                 if event:
                     yield wrap_item(json.dumps(event))
 
-            async for data in original_generator:
-                data, _ = await process_filter_functions(
-                    request=request,
-                    filter_functions=filter_functions,
-                    filter_type="stream",
-                    form_data=data,
-                    extra_params=extra_params,
-                )
+            try:
+                async for data in original_generator:
+                    data, _ = await process_filter_functions(
+                        request=request,
+                        filter_functions=filter_functions,
+                        filter_type="stream",
+                        form_data=data,
+                        extra_params=extra_params,
+                    )
 
-                if data:
-                    yield data
+                    if data:
+                        yield data
+            except Exception as e:
+                error_message = get_exception_message(
+                    e, request_timeout_seconds=AIOHTTP_CLIENT_TIMEOUT
+                )
+                log.debug(
+                    f"Error streaming chat response ({e.__class__.__name__}): {error_message}"
+                )
+                await persist_chat_stream_error(metadata, event_emitter, error_message)
+                return
 
         return StreamingResponse(
             stream_wrapper(response.body_iterator, events),

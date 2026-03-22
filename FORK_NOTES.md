@@ -10,12 +10,12 @@ This fork is based on Open WebUI `v0.8.10` and carries a small set of deployment
 
 ## Current Operating Assumptions
 
-- Protected host: `https://ai.adgj.at`
-- Anonymous public-share host: `https://s-ai.adgj.at`
+- Protected host: `https://openwebui.localhost`
+- Anonymous public-share host: `https://public-openwebui.localhost`
 - Deployment workspace operator runbook lives in [../README.md](../README.md)
 - Local rebuilds only affect runtime when workspace root [../.env](../.env) sets `OPENWEBUI_IMAGE=open-webui-public-share:0.8.10-publicshare-local`
 - If [../.env](../.env) points to a GHCR tag, compose recreate will continue to run the GHCR image even after a successful local `docker build`
-- Current GHCR baseline remains `0.8.10-publicshare.12`
+- Current GHCR baseline remains `0.8.10-publicshare.13`
 - Current local fork head should be treated as the source of truth for future local image rebuilds
 - Before pushing a release commit or tag, run `python scripts/release_preflight.py` from an environment that has the repo's Python and Node dependencies installed
 - For GHCR pushes from GitHub Actions, either grant the package Actions access for this repository or configure repository secrets `GHCR_USERNAME` and `GHCR_TOKEN`; otherwise `docker/build-push-action` can fail with `403 Forbidden` on blob HEAD requests even when login succeeds with `GITHUB_TOKEN`
@@ -61,6 +61,13 @@ This fork is based on Open WebUI `v0.8.10` and carries a small set of deployment
 
 - Task endpoints now normalize non-streaming Responses API results back into chat-completion-style `choices[0].message.content` payloads before task-specific parsers consume them
 - Responses API streaming output items now receive fallback timing metadata so post-processing does not fail with missing `started_at` on reasoning blocks
+
+### Chat timeout error messaging
+
+- Chat processing now converts blank exception strings into human-readable error content before saving or emitting `chat:message:error`
+- Streamed upstream timeout failures now surface as an explicit timeout or stream-stall message instead of an empty red error banner
+- The generic streamed response wrapper now also persists and emits that timeout text when the failure happens during streamed response iteration, so stored `error.content` remains populated for the affected assistant message
+- OpenAI-compatible and Ollama streaming upstream requests now wait for the first meaningful upstream output chunk without applying the idle timeout, ignoring role-only deltas and Responses API status preludes such as `response.created` / `response.in_progress` before the timeout starts; non-stream requests continue to use the configured total request timeout
 
 ## Public Host Allowlist
 
@@ -112,6 +119,9 @@ If the change affects public-share or public-link UI strings, also update [src/l
 
 ## Maintenance Record
 
+- 2026-03-22: refined streamed upstream idle-timeout start conditions so OpenAI-compatible and Ollama requests ignore role-only deltas plus Responses API status preludes such as `response.created` / `response.in_progress` before starting the configured timeout window, which avoids false stream-stall failures while a model is still warming up or processing the prompt; key files: `backend/open_webui/utils/http_timeouts.py`, `backend/open_webui/utils/misc.py`, `backend/open_webui/routers/openai.py`, `backend/open_webui/routers/ollama.py`, `backend/open_webui/test/util/test_http_timeouts.py`, `README.md`, `docs/openwebui-empty-error-debug-repro.md`, `CHANGELOG.md`; validation: targeted pytest for `backend/open_webui/test/util/test_http_timeouts.py`, local image rebuild, `docker compose up -d --force-recreate open-webui`, and runtime verification against local LM Studio-backed `Local.qwen3-swallow-30b-a3b-rl-v0.2` / `Local.gpt-oss-swallow-20b-sft-v0.1_moe` models showing first stream events after ~19-21s and first content after ~25-45s without a pre-first-output 5-second disconnect
+- 2026-03-22: switched OpenAI-compatible and Ollama streaming upstream requests from wall-clock total timeout handling to first-chunk wait plus post-first-chunk idle timeout handling, preserve explicit stream-stall text through the shared stream wrapper, and persist streamed timeout errors even when they are raised during response iteration; key files: `backend/open_webui/utils/http_timeouts.py`, `backend/open_webui/utils/misc.py`, `backend/open_webui/utils/middleware.py`, `backend/open_webui/routers/openai.py`, `backend/open_webui/routers/ollama.py`, `backend/open_webui/test/util/test_http_timeouts.py`, `backend/open_webui/test/util/test_error_handling.py`; validation: targeted pytest for timeout and error-handling helpers, local image rebuild, `docker compose up -d --force-recreate open-webui`, controlled mock OpenAI-compatible upstream repro, and direct verification that persisted `error.content` stored the explicit stream-stall message
+- 2026-03-22: fixed blank chat error banners when upstream streamed requests exceed the configured timeout by converting empty exception strings into explicit timeout/error messages before persistence and websocket emission; key files: `backend/open_webui/utils/error_handling.py`, `backend/open_webui/main.py`, `backend/open_webui/test/util/test_error_handling.py`; validation: targeted pytest for the new helper
 - 2026-03-20: published `ghcr.io/farefore/open-webui-public-share:0.8.10-publicshare.12` and moved `stable` to the same digest after fixing Responses API task normalization and streaming timing metadata; validation: `python scripts/release_preflight.py`, `pytest open_webui/test/util/test_web_search.py -q`, runtime helper assertions inside the rebuilt `open-webui` container, local image rebuild, `docker compose up -d --force-recreate open-webui`, `docker inspect open-webui --format '{{.Config.Image}} {{.Created}}'`, `curl.exe -I http://localhost:3000`, and GHCR push success
 - 2026-03-20: fixed Responses API compatibility for task-driven query/image prompt generation and hardened streaming reasoning output timing so chats no longer fail with `'choices'` or `'started_at'`; key files: `backend/open_webui/utils/misc.py`, `backend/open_webui/routers/tasks.py`, `backend/open_webui/utils/middleware.py`, `backend/open_webui/routers/channels.py`, `backend/open_webui/test/util/test_response_normalization.py`, `CHANGELOG.md`; validation: `pytest open_webui/test/util/test_web_search.py -q`, runtime helper assertions inside the rebuilt `open-webui` container, local image rebuild, `docker compose up -d --force-recreate open-webui`, `docker inspect open-webui --format '{{.Config.Image}} {{.Created}}'`, and `curl.exe -I http://localhost:3000`
 - 2026-03-19: added a shared Prettier format check to the repo release preflight after the `.10` release push still failed frontend formatting on `ManageOllama.svelte`; key files: `package.json`, `.github/workflows/format-build-frontend.yaml`, `scripts/release_preflight.py`, `src/lib/components/admin/Settings/Models/Manage/ManageOllama.svelte`; validation: `npm run check:format`, `python scripts/release_preflight.py`
@@ -130,6 +140,7 @@ If the change affects public-share or public-link UI strings, also update [src/l
 
 ## Fork Release Summary
 
+- `0.8.10-publicshare.13`: chat timeout error messaging hardening, streamed timeout persistence during response iteration, and meaningful-first-output timeout gating for OpenAI-compatible and Responses-style streams
 - `0.8.10-publicshare.12`: Responses API task normalization and streaming timing metadata hardening
 - `0.8.10-publicshare.11`: shared Prettier frontend formatting checks between release preflight and Frontend Build
 - `0.8.10-publicshare.10`: web search result limiting, Ollama admin model stream parsing fix, and release preflight hardening

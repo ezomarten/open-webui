@@ -50,7 +50,12 @@ from open_webui.models.groups import Groups
 from open_webui.utils.misc import (
     calculate_sha256,
     cleanup_response,
+    stream_chunks_handler,
     stream_wrapper,
+)
+from open_webui.utils.http_timeouts import (
+    build_upstream_request_timeout,
+    chunk_contains_meaningful_stream_output,
 )
 from open_webui.utils.payload import (
     apply_model_params_to_body_ollama,
@@ -119,7 +124,10 @@ async def send_post_request(
     streaming = False
     try:
         session = aiohttp.ClientSession(
-            trust_env=True, timeout=aiohttp.ClientTimeout(total=AIOHTTP_CLIENT_TIMEOUT)
+            trust_env=True,
+            timeout=build_upstream_request_timeout(
+                AIOHTTP_CLIENT_TIMEOUT, stream=stream
+            ),
         )
 
         headers = {
@@ -163,7 +171,13 @@ async def send_post_request(
 
             streaming = True
             return StreamingResponse(
-                stream_wrapper(r, session),
+                stream_wrapper(
+                    r,
+                    session,
+                    stream_chunks_handler,
+                    read_timeout_seconds=AIOHTTP_CLIENT_TIMEOUT,
+                    timeout_starts_after_chunk=chunk_contains_meaningful_stream_output,
+                ),
                 status_code=r.status,
                 headers=response_headers,
             )

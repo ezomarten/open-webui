@@ -54,6 +54,10 @@ from open_webui.utils.misc import (
     stream_chunks_handler,
     stream_wrapper,
 )
+from open_webui.utils.http_timeouts import (
+    build_upstream_request_timeout,
+    chunk_contains_meaningful_stream_output,
+)
 
 from open_webui.utils.auth import get_admin_user, get_verified_user
 from open_webui.utils.headers import include_user_info_headers
@@ -1130,6 +1134,7 @@ async def generate_chat_completion(
         else:
             request_url = f"{url}/chat/completions"
 
+    stream_requested = bool(payload.get("stream"))
     payload = json.dumps(payload)
 
     r = None
@@ -1139,7 +1144,10 @@ async def generate_chat_completion(
 
     try:
         session = aiohttp.ClientSession(
-            trust_env=True, timeout=aiohttp.ClientTimeout(total=AIOHTTP_CLIENT_TIMEOUT)
+            trust_env=True,
+            timeout=build_upstream_request_timeout(
+                AIOHTTP_CLIENT_TIMEOUT, stream=stream_requested
+            ),
         )
 
         r = await session.request(
@@ -1155,7 +1163,13 @@ async def generate_chat_completion(
         if "text/event-stream" in r.headers.get("Content-Type", ""):
             streaming = True
             return StreamingResponse(
-                stream_wrapper(r, session, stream_chunks_handler),
+                stream_wrapper(
+                    r,
+                    session,
+                    stream_chunks_handler,
+                    read_timeout_seconds=AIOHTTP_CLIENT_TIMEOUT,
+                    timeout_starts_after_chunk=chunk_contains_meaningful_stream_output,
+                ),
                 status_code=r.status,
                 headers=dict(r.headers),
             )
@@ -1324,6 +1338,7 @@ async def responses(
     )
 
     payload = apply_openrouter_zdr_preferences(url, api_config, payload)
+    stream_requested = bool(payload.get("stream"))
     body = json.dumps(payload)
 
     r = None
@@ -1353,7 +1368,9 @@ async def responses(
 
         session = aiohttp.ClientSession(
             trust_env=True,
-            timeout=aiohttp.ClientTimeout(total=AIOHTTP_CLIENT_TIMEOUT),
+            timeout=build_upstream_request_timeout(
+                AIOHTTP_CLIENT_TIMEOUT, stream=stream_requested
+            ),
         )
         r = await session.request(
             method="POST",
@@ -1368,7 +1385,13 @@ async def responses(
         if "text/event-stream" in r.headers.get("Content-Type", ""):
             streaming = True
             return StreamingResponse(
-                stream_wrapper(r, session),
+                stream_wrapper(
+                    r,
+                    session,
+                    stream_chunks_handler,
+                    read_timeout_seconds=AIOHTTP_CLIENT_TIMEOUT,
+                    timeout_starts_after_chunk=chunk_contains_meaningful_stream_output,
+                ),
                 status_code=r.status,
                 headers=dict(r.headers),
             )
@@ -1438,6 +1461,10 @@ async def proxy(path: str, request: Request, user=Depends(get_verified_user)):
         payload = apply_openrouter_zdr_preferences(url, api_config, payload)
         body = json.dumps(payload).encode()
 
+    stream_requested = (
+        bool(payload.get("stream")) if isinstance(payload, dict) else False
+    )
+
     r = None
     session = None
     streaming = False
@@ -1467,7 +1494,9 @@ async def proxy(path: str, request: Request, user=Depends(get_verified_user)):
 
         session = aiohttp.ClientSession(
             trust_env=True,
-            timeout=aiohttp.ClientTimeout(total=AIOHTTP_CLIENT_TIMEOUT),
+            timeout=build_upstream_request_timeout(
+                AIOHTTP_CLIENT_TIMEOUT, stream=stream_requested
+            ),
         )
         r = await session.request(
             method=request.method,
@@ -1482,7 +1511,13 @@ async def proxy(path: str, request: Request, user=Depends(get_verified_user)):
         if "text/event-stream" in r.headers.get("Content-Type", ""):
             streaming = True
             return StreamingResponse(
-                stream_wrapper(r, session),
+                stream_wrapper(
+                    r,
+                    session,
+                    stream_chunks_handler,
+                    read_timeout_seconds=AIOHTTP_CLIENT_TIMEOUT,
+                    timeout_starts_after_chunk=chunk_contains_meaningful_stream_output,
+                ),
                 status_code=r.status,
                 headers=dict(r.headers),
             )
