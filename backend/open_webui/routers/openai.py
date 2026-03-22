@@ -963,6 +963,9 @@ def convert_to_responses_payload(payload: dict) -> dict:
     if "max_tokens" in responses_payload:
         responses_payload["max_output_tokens"] = responses_payload.pop("max_tokens")
 
+    if 'max_completion_tokens' in responses_payload:
+        responses_payload['max_output_tokens'] = responses_payload.pop('max_completion_tokens')
+
     # Remove Chat Completions-only parameters not supported by the Responses API
     for unsupported_key in (
         "stream_options",
@@ -1001,8 +1004,10 @@ def convert_to_responses_payload(payload: dict) -> dict:
 
 def convert_responses_result(response: dict) -> dict:
     """
-    Convert non-streaming Responses API result.
-    Just add done flag - pass through raw response, frontend handles output.
+    Convert non-streaming Responses API result to Chat Completions format.
+
+    Extracts text from message output items so all downstream consumers
+    (frontend tasks, get_content_from_response) work without modification.
     """
     response["done"] = True
     return response
