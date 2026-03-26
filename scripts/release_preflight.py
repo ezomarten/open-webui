@@ -40,7 +40,7 @@ def ensure_supported_node_version(node: str) -> None:
     if major < 18 or major > 22:
         raise SystemExit(
             "Release preflight requires Node.js >=18.13.0 <=22.x.x; "
-            f"found {version}. Switch to Node 22 (see .nvmrc) and rerun."
+            f"found {version}. Switch to Node 22 and rerun."
         )
 
 
