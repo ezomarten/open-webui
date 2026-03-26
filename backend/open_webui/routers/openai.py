@@ -124,9 +124,7 @@ async def get_models_request(
         return await get_anthropic_models(url, key, user=user)
 
     api_config = config or {}
-    headers, cookies = await get_headers_and_cookies(
-        request, url, key, api_config, user=user
-    )
+    headers, cookies = await get_headers_and_cookies(request, url, key, api_config, user=user)
 
     response = await send_get_request(
         get_models_list_url(url, api_config),
@@ -429,9 +427,7 @@ async def get_all_models_responses(request: Request, user: UserModel) -> list:
                     ],
                 }
 
-                request_tasks.append(
-                    asyncio.ensure_future(asyncio.sleep(0, model_list))
-                )
+                request_tasks.append(asyncio.ensure_future(asyncio.sleep(0, model_list)))
         else:
             request_tasks.append(asyncio.ensure_future(asyncio.sleep(0, None)))
 
@@ -627,9 +623,7 @@ async def get_models(request: Request, url_idx: Optional[int] = None, user=Depen
                         response_data = await r.json()
 
                         if is_openrouter_zdr_model_list_enabled(url, api_config):
-                            response_data = normalize_models_response(
-                                url, api_config, response_data
-                            )
+                            response_data = normalize_models_response(url, api_config, response_data)
                         elif "api.openai.com" in url:
                             response_data["data"] = [
                                 model
@@ -1204,9 +1198,7 @@ async def generate_chat_completion(
     try:
         session = aiohttp.ClientSession(
             trust_env=True,
-            timeout=build_upstream_request_timeout(
-                AIOHTTP_CLIENT_TIMEOUT, stream=stream_requested
-            ),
+            timeout=build_upstream_request_timeout(AIOHTTP_CLIENT_TIMEOUT, stream=stream_requested),
         )
 
         r = await session.request(
@@ -1419,9 +1411,7 @@ async def responses(
 
         session = aiohttp.ClientSession(
             trust_env=True,
-            timeout=build_upstream_request_timeout(
-                AIOHTTP_CLIENT_TIMEOUT, stream=stream_requested
-            ),
+            timeout=build_upstream_request_timeout(AIOHTTP_CLIENT_TIMEOUT, stream=stream_requested),
         )
         r = await session.request(
             method='POST',
@@ -1510,9 +1500,7 @@ async def proxy(path: str, request: Request, user=Depends(get_verified_user)):
         payload = apply_openrouter_zdr_preferences(url, api_config, payload)
         body = json.dumps(payload).encode()
 
-    stream_requested = (
-        bool(payload.get("stream")) if isinstance(payload, dict) else False
-    )
+    stream_requested = bool(payload.get("stream")) if isinstance(payload, dict) else False
 
     r = None
     session = None
@@ -1541,9 +1529,7 @@ async def proxy(path: str, request: Request, user=Depends(get_verified_user)):
 
         session = aiohttp.ClientSession(
             trust_env=True,
-            timeout=build_upstream_request_timeout(
-                AIOHTTP_CLIENT_TIMEOUT, stream=stream_requested
-            ),
+            timeout=build_upstream_request_timeout(AIOHTTP_CLIENT_TIMEOUT, stream=stream_requested),
         )
         r = await session.request(
             method=request.method,

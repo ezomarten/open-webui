@@ -21,9 +21,7 @@ def _stringify_error_detail(detail) -> str:
     return str(detail).strip()
 
 
-def get_exception_message(
-    exc: BaseException, request_timeout_seconds: int | None = None
-) -> str:
+def get_exception_message(exc: BaseException, request_timeout_seconds: int | None = None) -> str:
     if isinstance(exc, (HTTPException, StarletteHTTPException)):
         message = _stringify_error_detail(exc.detail)
     elif isinstance(exc, asyncio.TimeoutError):

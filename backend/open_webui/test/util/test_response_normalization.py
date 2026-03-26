@@ -32,10 +32,7 @@ def test_normalize_task_response_converts_responses_api_output_to_chat_completio
     assert normalized["object"] == "chat.completion"
     assert normalized["id"] == "resp_123"
     assert normalized["created"] == 1774000000
-    assert (
-        normalized["choices"][0]["message"]["content"]
-        == '{"queries": ["Sapporo weather today"]}'
-    )
+    assert normalized["choices"][0]["message"]["content"] == '{"queries": ["Sapporo weather today"]}'
     assert normalized["output"] == response["output"]
     assert normalized["usage"] == response["usage"]
 

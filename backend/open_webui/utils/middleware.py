@@ -3423,9 +3423,7 @@ async def streaming_chat_response_handler(response, ctx):
                         if block_content:
                             # Update the item with final content
                             if last_type == "reasoning":
-                                item["content"] = [
-                                    {"type": "output_text", "text": block_content}
-                                ]
+                                item["content"] = [{"type": "output_text", "text": block_content}]
                                 mark_output_item_completed(item)
                             elif last_type == "open_webui:code_interpreter":
                                 item["code"] = block_content
@@ -3740,9 +3738,9 @@ async def streaming_chat_response_handler(response, ctx):
                                                         current_response_tool_call['function']['name'] = delta_name
 
                                                     if delta_arguments:
-                                                        current_response_tool_call['function']['arguments'] += (
-                                                            delta_arguments
-                                                        )
+                                                        current_response_tool_call['function'][
+                                                            'arguments'
+                                                        ] += delta_arguments
 
                                         # Emit pending tool calls in real-time
                                         if response_tool_calls:
@@ -4484,8 +4482,7 @@ async def streaming_chat_response_handler(response, ctx):
                                 code = sanitize_code(code)
 
                                 if CODE_INTERPRETER_BLOCKED_MODULES:
-                                    blocking_code = textwrap.dedent(
-                                        f"""
+                                    blocking_code = textwrap.dedent(f"""
                                         import builtins
     
                                         BLOCKED_MODULES = {CODE_INTERPRETER_BLOCKED_MODULES}
@@ -4501,8 +4498,7 @@ async def streaming_chat_response_handler(response, ctx):
                                             return _real_import(name, globals, locals, fromlist, level)
     
                                         builtins.__import__ = restricted_import
-                                    """
-                                    )
+                                    """)
                                     code = blocking_code + '\n' + code
 
                                 if request.app.state.config.CODE_INTERPRETER_ENGINE == 'pyodide':
@@ -4742,12 +4738,8 @@ async def streaming_chat_response_handler(response, ctx):
                     if data:
                         yield data
             except Exception as e:
-                error_message = get_exception_message(
-                    e, request_timeout_seconds=AIOHTTP_CLIENT_TIMEOUT
-                )
-                log.debug(
-                    f"Error streaming chat response ({e.__class__.__name__}): {error_message}"
-                )
+                error_message = get_exception_message(e, request_timeout_seconds=AIOHTTP_CLIENT_TIMEOUT)
+                log.debug(f"Error streaming chat response ({e.__class__.__name__}): {error_message}")
                 await persist_chat_stream_error(metadata, event_emitter, error_message)
                 return
 

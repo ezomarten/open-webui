@@ -7,9 +7,7 @@ def is_openrouter_url(url: str) -> bool:
     return hostname.endswith("openrouter.ai")
 
 
-def is_openrouter_zdr_model_list_enabled(
-    url: str, config: Optional[dict] = None
-) -> bool:
+def is_openrouter_zdr_model_list_enabled(url: str, config: Optional[dict] = None) -> bool:
     return is_openrouter_url(url) and bool((config or {}).get("openrouter_zdr_only"))
 
 
@@ -71,12 +69,8 @@ def normalize_models_response(url: str, config: Optional[dict], response):
     return response
 
 
-def apply_openrouter_zdr_preferences(
-    url: str, config: Optional[dict], payload: Optional[dict]
-):
-    if not isinstance(payload, dict) or not is_openrouter_zdr_model_list_enabled(
-        url, config
-    ):
+def apply_openrouter_zdr_preferences(url: str, config: Optional[dict], payload: Optional[dict]):
+    if not isinstance(payload, dict) or not is_openrouter_zdr_model_list_enabled(url, config):
         return payload
 
     provider = payload.get("provider")

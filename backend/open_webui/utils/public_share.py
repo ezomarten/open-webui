@@ -96,10 +96,7 @@ def sanitize_public_message(message: dict, index: int = 0) -> Optional[dict]:
     message_id = str(message.get("id") or f"psm_{index}")
     model = _normalize_model_name(message.get("model") or message.get("modelName"))
     timestamp = _coerce_timestamp(
-        message.get("timestamp")
-        or message.get("created_at")
-        or message.get("updated_at")
-        or message.get("time")
+        message.get("timestamp") or message.get("created_at") or message.get("updated_at") or message.get("time")
     )
 
     public_message = {
@@ -121,9 +118,7 @@ def sanitize_public_message(message: dict, index: int = 0) -> Optional[dict]:
 
 def build_public_share_snapshot(chat: Any) -> dict:
     chat_body = getattr(chat, "chat", None) or {}
-    title = str(
-        getattr(chat, "title", None) or chat_body.get("title") or "Untitled Chat"
-    )
+    title = str(getattr(chat, "title", None) or chat_body.get("title") or "Untitled Chat")
 
     branch = extract_public_branch(chat_body)
     public_messages = []
@@ -163,9 +158,7 @@ def build_public_share_snapshot(chat: Any) -> dict:
     }
 
 
-def _sanitize_content(
-    message: dict, public_files: list[dict], public_sources: list[dict]
-) -> Optional[str]:
+def _sanitize_content(message: dict, public_files: list[dict], public_sources: list[dict]) -> Optional[str]:
     parts, content_has_attachment = _extract_text_parts(message.get("content"))
 
     if _message_has_omitted_attachment_fields(message, public_files, public_sources):
@@ -322,25 +315,15 @@ def _sanitize_public_source(source: Any) -> Optional[dict]:
         if sanitized_document is None:
             continue
 
-        metadata = (
-            metadata_items[index]
-            if isinstance(metadata_items, list) and index < len(metadata_items)
-            else None
-        )
+        metadata = metadata_items[index] if isinstance(metadata_items, list) and index < len(metadata_items) else None
         public_reference = _get_public_source_reference(metadata, source_info)
         if public_reference is None:
             continue
 
         public_documents.append(sanitized_document)
-        public_metadata.append(
-            _sanitize_public_source_metadata(metadata, public_reference)
-        )
+        public_metadata.append(_sanitize_public_source_metadata(metadata, public_reference))
 
-        distance = (
-            distances[index]
-            if isinstance(distances, list) and index < len(distances)
-            else None
-        )
+        distance = distances[index] if isinstance(distances, list) and index < len(distances) else None
         if isinstance(distance, (int, float)):
             public_distances.append(distance)
         else:
@@ -424,9 +407,7 @@ def _get_public_source_reference(metadata: Any, source: dict) -> Optional[str]:
     return None
 
 
-def _message_has_omitted_attachment_fields(
-    message: dict, public_files: list[dict], public_sources: list[dict]
-) -> bool:
+def _message_has_omitted_attachment_fields(message: dict, public_files: list[dict], public_sources: list[dict]) -> bool:
     attachment_fields = (
         "embeds",
         "statusHistory",
@@ -452,15 +433,11 @@ def _message_has_omitted_attachment_fields(
         if len(raw_sources) != len(public_sources):
             return True
 
-        if _count_source_documents(raw_sources) != _count_source_documents(
-            public_sources
-        ):
+        if _count_source_documents(raw_sources) != _count_source_documents(public_sources):
             return True
 
     public_file_ids = {
-        str(file.get("file_id"))
-        for file in public_files
-        if isinstance(file, dict) and file.get("file_id")
+        str(file.get("file_id")) for file in public_files if isinstance(file, dict) and file.get("file_id")
     }
 
     files = message.get("files") or []

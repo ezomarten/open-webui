@@ -32,9 +32,7 @@ router = APIRouter()
 
 
 def _get_public_share_base_url(request: Request) -> str:
-    public_share_base_url = str(
-        getattr(request.app.state, "PUBLIC_SHARE_BASE_URL", "") or ""
-    )
+    public_share_base_url = str(getattr(request.app.state, "PUBLIC_SHARE_BASE_URL", "") or "")
     if not is_public_share_enabled(
         bool(getattr(request.app.state.config, "ENABLE_PUBLIC_CHAT_SHARING", False)),
         public_share_base_url,
@@ -47,9 +45,7 @@ def _get_public_share_base_url(request: Request) -> str:
 
 
 def _assert_share_permission(request: Request, user) -> None:
-    if user.role != "admin" and not has_permission(
-        user.id, "chat.share", request.app.state.config.USER_PERMISSIONS
-    ):
+    if user.role != "admin" and not has_permission(user.id, "chat.share", request.app.state.config.USER_PERMISSIONS):
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail=ERROR_MESSAGES.ACCESS_PROHIBITED,
@@ -90,9 +86,7 @@ def _resolve_image_content_type(file, snapshot_file: Optional[dict]) -> Optional
             content_type = snapshot_content_type.strip()
 
     if not content_type:
-        guessed_content_type, _ = mimetypes.guess_type(
-            getattr(file, "filename", "") or ""
-        )
+        guessed_content_type, _ = mimetypes.guess_type(getattr(file, "filename", "") or "")
         content_type = guessed_content_type
 
     if not content_type or not content_type.lower().startswith("image/"):
@@ -162,9 +156,7 @@ async def get_public_share_by_chat_id(
             detail=ERROR_MESSAGES.NOT_FOUND,
         )
 
-    public_share = PublicShares.get_public_share_by_chat_id_and_user_id(
-        chat_id, user.id, db=db
-    )
+    public_share = PublicShares.get_public_share_by_chat_id_and_user_id(chat_id, user.id, db=db)
     if public_share is None:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
@@ -235,9 +227,7 @@ async def delete_public_share_by_chat_id(
             detail=ERROR_MESSAGES.NOT_FOUND,
         )
 
-    return PublicShares.delete_public_share_by_chat_id_and_user_id(
-        chat_id, user.id, db=db
-    )
+    return PublicShares.delete_public_share_by_chat_id_and_user_id(chat_id, user.id, db=db)
 
 
 @router.get("/{public_share_id}", response_model=PublicShareSnapshotResponse)

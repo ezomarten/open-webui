@@ -150,7 +150,4 @@ def test_build_public_share_snapshot_preserves_public_sources_and_schema_version
 
     assert snapshot["schema_version"] == PUBLIC_SHARE_SCHEMA_VERSION
     assert snapshot["models"] == ["demo-model"]
-    assert (
-        snapshot["messages"][0]["sources"][0]["metadata"][0]["url"]
-        == "https://example.com/article"
-    )
+    assert snapshot["messages"][0]["sources"][0]["metadata"][0]["url"] == "https://example.com/article"

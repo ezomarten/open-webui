@@ -126,9 +126,7 @@ async def send_post_request(
     try:
         session = aiohttp.ClientSession(
             trust_env=True,
-            timeout=build_upstream_request_timeout(
-                AIOHTTP_CLIENT_TIMEOUT, stream=stream
-            ),
+            timeout=build_upstream_request_timeout(AIOHTTP_CLIENT_TIMEOUT, stream=stream),
         )
 
         headers = {

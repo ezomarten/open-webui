@@ -1023,9 +1023,7 @@ async def stream_wrapper(
     This is more reliable than BackgroundTask which may not run if client disconnects.
     """
     try:
-        stream = (
-            content_handler(response.content) if content_handler else response.content
-        )
+        stream = content_handler(response.content) if content_handler else response.content
         async for chunk in iterate_stream_with_post_first_chunk_timeout(
             stream,
             read_timeout_seconds,

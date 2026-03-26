@@ -40,9 +40,7 @@ def test_get_stream_idle_timeout_message_describes_stall():
 
 
 def test_stream_chunk_detector_ignores_role_only_openai_prelude():
-    assert not chunk_contains_meaningful_stream_output(
-        b'data: {"choices":[{"delta":{"role":"assistant"}}]}\n'
-    )
+    assert not chunk_contains_meaningful_stream_output(b'data: {"choices":[{"delta":{"role":"assistant"}}]}\n')
 
 
 def test_stream_chunk_detector_ignores_responses_api_status_prelude():
@@ -56,21 +54,13 @@ def test_stream_chunk_detector_ignores_responses_api_status_prelude():
 
 
 def test_stream_chunk_detector_detects_responses_api_output_delta():
-    assert chunk_contains_meaningful_stream_output(
-        b'data: {"type":"response.output_text.delta","delta":"hello"}\n'
-    )
+    assert chunk_contains_meaningful_stream_output(b'data: {"type":"response.output_text.delta","delta":"hello"}\n')
 
 
 def test_stream_chunk_detector_detects_openai_and_ollama_output_content():
-    assert chunk_contains_meaningful_stream_output(
-        b'data: {"choices":[{"delta":{"content":"hello"}}]}\n'
-    )
-    assert not chunk_contains_meaningful_stream_output(
-        b'{"message":{"role":"assistant","content":""},"done":false}\n'
-    )
-    assert chunk_contains_meaningful_stream_output(
-        b'{"message":{"role":"assistant","content":"hello"},"done":false}\n'
-    )
+    assert chunk_contains_meaningful_stream_output(b'data: {"choices":[{"delta":{"content":"hello"}}]}\n')
+    assert not chunk_contains_meaningful_stream_output(b'{"message":{"role":"assistant","content":""},"done":false}\n')
+    assert chunk_contains_meaningful_stream_output(b'{"message":{"role":"assistant","content":"hello"},"done":false}\n')
 
 
 def test_stream_iterator_allows_slow_first_chunk_before_idle_timeout_starts():

@@ -3,9 +3,7 @@ from typing import Any
 
 
 def build_task_metadata(request: Any, task: str, form_data: dict) -> dict:
-    inherited_metadata = (
-        dict(request.state.metadata) if hasattr(request.state, 'metadata') else {}
-    )
+    inherited_metadata = dict(request.state.metadata) if hasattr(request.state, 'metadata') else {}
 
     params = dict(inherited_metadata.get('params') or {})
     params['function_calling'] = 'default'

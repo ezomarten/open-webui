@@ -9,9 +9,7 @@ import aiohttp
 DEFAULT_STREAM_CONNECT_TIMEOUT_SECONDS = 30
 
 
-def build_upstream_request_timeout(
-    timeout_seconds: int | None, stream: bool = False
-) -> aiohttp.ClientTimeout:
+def build_upstream_request_timeout(timeout_seconds: int | None, stream: bool = False) -> aiohttp.ClientTimeout:
     if not stream:
         return aiohttp.ClientTimeout(total=timeout_seconds)
 
@@ -28,10 +26,7 @@ def build_upstream_request_timeout(
 
 def get_stream_idle_timeout_message(timeout_seconds: int | None) -> str:
     if timeout_seconds:
-        return (
-            "Upstream streaming response stalled "
-            f"for {timeout_seconds} seconds without receiving data."
-        )
+        return "Upstream streaming response stalled " f"for {timeout_seconds} seconds without receiving data."
 
     return "Upstream streaming response stalled without receiving data."
 
@@ -116,9 +111,7 @@ def _payload_contains_meaningful_stream_output(payload: Any) -> bool:
             return True
 
     tool_calls = payload.get("tool_calls")
-    if isinstance(tool_calls, list) and any(
-        _tool_call_has_meaningful_output(tool_call) for tool_call in tool_calls
-    ):
+    if isinstance(tool_calls, list) and any(_tool_call_has_meaningful_output(tool_call) for tool_call in tool_calls):
         return True
 
     function_call = payload.get("function_call")
@@ -139,9 +132,7 @@ def _payload_contains_meaningful_stream_output(payload: Any) -> bool:
         "parts",
     ):
         value = payload.get(key)
-        if isinstance(
-            value, (dict, list)
-        ) and _payload_contains_meaningful_stream_output(value):
+        if isinstance(value, (dict, list)) and _payload_contains_meaningful_stream_output(value):
             return True
 
     return False
@@ -188,17 +179,13 @@ async def iterate_stream_with_post_first_chunk_timeout(
     while True:
         try:
             if timeout_started and timeout_seconds is not None:
-                chunk = await asyncio.wait_for(
-                    anext(stream_iter), timeout=timeout_seconds
-                )
+                chunk = await asyncio.wait_for(anext(stream_iter), timeout=timeout_seconds)
             else:
                 chunk = await anext(stream_iter)
         except StopAsyncIteration:
             break
         except asyncio.TimeoutError as exc:
-            raise asyncio.TimeoutError(
-                get_stream_idle_timeout_message(timeout_seconds)
-            ) from exc
+            raise asyncio.TimeoutError(get_stream_idle_timeout_message(timeout_seconds)) from exc
 
         if not timeout_started and timeout_starts_after_chunk(chunk):
             timeout_started = True

@@ -1111,14 +1111,12 @@ class ChatTable:
 
                 # Check if there are any tags to filter, it should have all the tags
                 if 'none' in tag_ids:
-                    query = query.filter(
-                        text("""
+                    query = query.filter(text("""
                             NOT EXISTS (
                                 SELECT 1
                                 FROM json_each(Chat.meta, '$.tags') AS tag
                             )
-                            """)
-                    )
+                            """))
                 elif tag_ids:
                     query = query.filter(
                         and_(
@@ -1165,14 +1163,12 @@ class ChatTable:
 
                 # Check if there are any tags to filter, it should have all the tags
                 if 'none' in tag_ids:
-                    query = query.filter(
-                        text("""
+                    query = query.filter(text("""
                             NOT EXISTS (
                                 SELECT 1
                                 FROM json_array_elements_text(Chat.meta->'tags') AS tag
                             )
-                            """)
-                    )
+                            """))
                 elif tag_ids:
                     query = query.filter(
                         and_(
@@ -1420,10 +1416,7 @@ class ChatTable:
             with get_db_context(db) as db:
                 self.delete_shared_chats_by_user_id(user_id, db=db)
 
-                chat_ids = [
-                    chat_id
-                    for (chat_id,) in db.query(Chat.id).filter_by(user_id=user_id).all()
-                ]
+                chat_ids = [chat_id for (chat_id,) in db.query(Chat.id).filter_by(user_id=user_id).all()]
                 PublicShares.delete_public_shares_by_chat_ids(chat_ids, db=db)
 
                 chat_id_subquery = db.query(Chat.id).filter_by(user_id=user_id).subquery()
@@ -1441,10 +1434,7 @@ class ChatTable:
         try:
             with get_db_context(db) as db:
                 chat_ids = [
-                    chat_id
-                    for (chat_id,) in db.query(Chat.id)
-                    .filter_by(user_id=user_id, folder_id=folder_id)
-                    .all()
+                    chat_id for (chat_id,) in db.query(Chat.id).filter_by(user_id=user_id, folder_id=folder_id).all()
                 ]
                 PublicShares.delete_public_shares_by_chat_ids(chat_ids, db=db)
 

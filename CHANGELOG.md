@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.8.11-publicshare.1] - 2026-03-26
+
 ### Changed
 
 - Synced fork mainline to upstream `0.8.11` while preserving anonymous public shares, public-link admin settings, the public-host allowlist, OpenRouter Zero Retention connections, and the existing streamed timeout/error hardening.

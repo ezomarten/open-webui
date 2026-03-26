@@ -295,9 +295,7 @@ async def generate_follow_ups(request: Request, form_data: dict, user=Depends(ge
         template = DEFAULT_FOLLOW_UP_GENERATION_PROMPT_TEMPLATE
 
     content = follow_up_generation_template(template, form_data['messages'], user)
-    task_metadata = build_task_metadata(
-        request, TASKS.FOLLOW_UP_GENERATION, form_data
-    )
+    task_metadata = build_task_metadata(request, TASKS.FOLLOW_UP_GENERATION, form_data)
 
     payload = {
         'model': task_model_id,
@@ -429,9 +427,7 @@ async def generate_image_prompt(request: Request, form_data: dict, user=Depends(
         template = DEFAULT_IMAGE_PROMPT_GENERATION_PROMPT_TEMPLATE
 
     content = image_prompt_generation_template(template, form_data['messages'], user)
-    task_metadata = build_task_metadata(
-        request, TASKS.IMAGE_PROMPT_GENERATION, form_data
-    )
+    task_metadata = build_task_metadata(request, TASKS.IMAGE_PROMPT_GENERATION, form_data)
 
     payload = {
         'model': task_model_id,
@@ -591,9 +587,7 @@ async def generate_autocompletion(request: Request, form_data: dict, user=Depend
         template = DEFAULT_AUTOCOMPLETE_GENERATION_PROMPT_TEMPLATE
 
     content = autocomplete_generation_template(template, prompt, messages, type, user)
-    task_metadata = build_task_metadata(
-        request, TASKS.AUTOCOMPLETE_GENERATION, form_data
-    )
+    task_metadata = build_task_metadata(request, TASKS.AUTOCOMPLETE_GENERATION, form_data)
 
     payload = {
         'model': task_model_id,
@@ -713,9 +707,7 @@ async def generate_moa_response(request: Request, form_data: dict, user=Depends(
         form_data['prompt'],
         form_data['responses'],
     )
-    task_metadata = build_task_metadata(
-        request, TASKS.MOA_RESPONSE_GENERATION, form_data
-    )
+    task_metadata = build_task_metadata(request, TASKS.MOA_RESPONSE_GENERATION, form_data)
 
     payload = {
         'model': model_id,

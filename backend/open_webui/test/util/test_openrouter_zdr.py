@@ -35,9 +35,7 @@ def test_normalize_openrouter_zdr_models_response_groups_endpoints_by_model_id()
     assert normalized["object"] == "list"
     assert len(normalized["data"]) == 2
 
-    gpt4o_mini = next(
-        model for model in normalized["data"] if model["id"] == "openai/gpt-4o-mini"
-    )
+    gpt4o_mini = next(model for model in normalized["data"] if model["id"] == "openai/gpt-4o-mini")
     assert gpt4o_mini["name"] == "GPT-4o mini"
     assert gpt4o_mini["openai"] == {"id": "openai/gpt-4o-mini"}
     assert gpt4o_mini["providers"] == ["OpenAI", "Azure"]

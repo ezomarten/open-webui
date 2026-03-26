@@ -1444,25 +1444,14 @@ async def commit_session_after_request(request: Request, call_next):
 async def check_url(request: Request, call_next):
     start_time = int(time.time())
 
-    request_host = (
-        (request.url.hostname or "")
-        or (request.headers.get("host", "").split(":", 1)[0])
-    ).lower()
+    request_host = ((request.url.hostname or "") or (request.headers.get("host", "").split(":", 1)[0])).lower()
 
     if app.state.PUBLIC_SHARE_HOST and request_host == app.state.PUBLIC_SHARE_HOST:
         request_path = request.url.path
         public_share_api_prefix = "/api/v1/public-shares/"
-        public_share_api_remainder = request_path[len(public_share_api_prefix) :].strip(
-            "/"
-        )
-        public_share_api_segments = [
-            segment for segment in public_share_api_remainder.split("/") if segment
-        ]
-        public_share_page_remainder = (
-            request_path[len("/p/") :].strip("/")
-            if request_path.startswith("/p/")
-            else ""
-        )
+        public_share_api_remainder = request_path[len(public_share_api_prefix) :].strip("/")
+        public_share_api_segments = [segment for segment in public_share_api_remainder.split("/") if segment]
+        public_share_page_remainder = request_path[len("/p/") :].strip("/") if request_path.startswith("/p/") else ""
         public_share_enabled = is_public_share_enabled(
             app.state.config.ENABLE_PUBLIC_CHAT_SHARING,
             app.state.PUBLIC_SHARE_BASE_URL,
@@ -1498,10 +1487,7 @@ async def check_url(request: Request, call_next):
         )
 
         is_allowed_public_host_request = (
-            (
-                request.method == "GET"
-                and request_path in {"/api/config", "/manifest.json", "/opensearch.xml"}
-            )
+            (request.method == "GET" and request_path in {"/api/config", "/manifest.json", "/opensearch.xml"})
             or (request.method == "GET" and request_path.startswith("/_app/"))
             or (request.method == "GET" and request_path.startswith("/static/"))
             or is_allowed_public_pyodide_asset
@@ -1516,9 +1502,7 @@ async def check_url(request: Request, call_next):
                 content={"detail": ERROR_MESSAGES.NOT_FOUND},
             )
 
-    request.state.token = get_http_authorization_cred(
-        request.headers.get("Authorization")
-    )
+    request.state.token = get_http_authorization_cred(request.headers.get("Authorization"))
     # Fallback to cookie token for browser sessions
     if request.state.token is None and request.cookies.get('token'):
         from fastapi.security import HTTPAuthorizationCredentials
@@ -1861,12 +1845,8 @@ async def chat_completion(
         form_data['metadata'] = metadata
 
     except Exception as e:
-        error_message = get_exception_message(
-            e, request_timeout_seconds=AIOHTTP_CLIENT_TIMEOUT
-        )
-        log.debug(
-            f"Error processing chat metadata ({e.__class__.__name__}): {error_message}"
-        )
+        error_message = get_exception_message(e, request_timeout_seconds=AIOHTTP_CLIENT_TIMEOUT)
+        log.debug(f"Error processing chat metadata ({e.__class__.__name__}): {error_message}")
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=error_message,
@@ -1908,12 +1888,8 @@ async def chat_completion(
             finally:
                 raise  # re-raise to ensure proper task cancellation handling
         except Exception as e:
-            error_message = get_exception_message(
-                e, request_timeout_seconds=AIOHTTP_CLIENT_TIMEOUT
-            )
-            log.debug(
-                f"Error processing chat payload ({e.__class__.__name__}): {error_message}"
-            )
+            error_message = get_exception_message(e, request_timeout_seconds=AIOHTTP_CLIENT_TIMEOUT)
+            log.debug(f"Error processing chat payload ({e.__class__.__name__}): {error_message}")
             if metadata.get("chat_id") and metadata.get("message_id"):
                 # Update the chat message with the error
                 try:
@@ -2143,12 +2119,7 @@ async def get_app_config(request: Request):
         "name": app.state.WEBUI_NAME,
         "version": VERSION,
         "default_locale": str(DEFAULT_LOCALE),
-        "oauth": {
-            "providers": {
-                name: config.get("name", name)
-                for name, config in OAUTH_PROVIDERS.items()
-            }
-        },
+        "oauth": {"providers": {name: config.get("name", name) for name, config in OAUTH_PROVIDERS.items()}},
         "features": {
             "auth": WEBUI_AUTH,
             "auth_trusted_header": bool(app.state.AUTH_TRUSTED_EMAIL_HEADER),
