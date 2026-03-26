@@ -55,6 +55,7 @@
 	let showDeleteConfirmDialog = false;
 
 	export let onUpdate = () => {};
+	export let onDelete: (id: string) => void = () => {};
 
 	export let loadHandler: null | Function = null;
 	export let unarchiveHandler: null | Function = null;
@@ -94,6 +95,9 @@
 			toast.error(`${error}`);
 		});
 
+		if (res) {
+			onDelete(chatId);
+		}
 		onUpdate();
 	};
 </script>

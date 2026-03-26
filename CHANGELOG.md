@@ -5,6 +5,17 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Changed
+
+- Synced fork mainline to upstream `0.8.11` while preserving anonymous public shares, public-link admin settings, the public-host allowlist, OpenRouter Zero Retention connections, and the existing streamed timeout/error hardening.
+
+### Fixed
+
+- Internal helper task endpoints no longer inherit native function-calling tool exposure from parent chats; title, follow-up, tags, query, image-prompt, autocomplete, emoji, and MOA helpers now force `params.function_calling="default"` and clear inherited tool metadata before calling task models.
+- Gemini- and LM Studio-style Responses/native-tool flows now ride the upstream `0.8.11` streaming and tool-loop fixes while keeping the fork's defensive response parsing for task helpers and post-processing.
+
 ## [0.8.10-publicshare.13] - 2026-03-22
 
 Fork release based on upstream `0.8.10`.

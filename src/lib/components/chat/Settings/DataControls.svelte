@@ -3,6 +3,7 @@
 	const { saveAs } = fileSaver;
 
 	import {
+		chatId,
 		chats,
 		config,
 		user,
@@ -142,7 +143,16 @@
 	};
 </script>
 
-<ArchivedChatsModal bind:show={showArchivedChatsModal} onUpdate={handleArchivedChatsChange} />
+<ArchivedChatsModal
+	bind:show={showArchivedChatsModal}
+	onUpdate={handleArchivedChatsChange}
+	onDelete={(id) => {
+		if ($chatId === id) {
+			goto('/');
+			chatId.set('');
+		}
+	}}
+/>
 <PublicSharesModal bind:show={showPublicSharesModal} />
 <SharedChatsModal bind:show={showSharedChatsModal} />
 <FilesModal bind:show={showFilesModal} />

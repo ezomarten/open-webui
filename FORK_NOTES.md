@@ -1,6 +1,6 @@
 # Fork Notes
 
-This fork is based on Open WebUI `v0.8.10` and carries a small set of deployment-focused customizations for anonymous public sharing.
+This fork now tracks Open WebUI `v0.8.11` and carries a small set of deployment-focused customizations for anonymous public sharing.
 
 ## Goals
 
@@ -13,7 +13,7 @@ This fork is based on Open WebUI `v0.8.10` and carries a small set of deployment
 - Protected host: `https://openwebui.localhost`
 - Anonymous public-share host: `https://public-openwebui.localhost`
 - Deployment workspace operator runbook lives in [../README.md](../README.md)
-- Local rebuilds only affect runtime when workspace root [../.env](../.env) sets `OPENWEBUI_IMAGE=open-webui-public-share:0.8.10-publicshare-local`
+- Local rebuilds only affect runtime when workspace root [../.env](../.env) sets `OPENWEBUI_IMAGE=open-webui-public-share` or another local `open-webui-public-share[:tag]` reference
 - If [../.env](../.env) points to a GHCR tag, compose recreate will continue to run the GHCR image even after a successful local `docker build`
 - Current GHCR baseline remains `0.8.10-publicshare.13`
 - Current local fork head should be treated as the source of truth for future local image rebuilds
@@ -57,10 +57,15 @@ This fork is based on Open WebUI `v0.8.10` and carries a small set of deployment
 
 - When web search query generation is enabled, automatic web search now enforces `WEB_SEARCH_RESULT_COUNT` across the combined deduplicated result set before loading pages or injecting snippet-only context
 
-### Responses API task compatibility
+### Helper task metadata sanitization
 
-- Task endpoints now normalize non-streaming Responses API results back into chat-completion-style `choices[0].message.content` payloads before task-specific parsers consume them
-- Responses API streaming output items now receive fallback timing metadata so post-processing does not fail with missing `started_at` on reasoning blocks
+- Internal helper task endpoints override inherited request metadata so native function-calling chats do not leak builtin tool exposure into title, follow-up, tags, query, image-prompt, autocomplete, emoji, or MOA helper calls
+- Helper tasks force `params.function_calling="default"` and clear inherited `tool_ids`, `tool_servers`, and `features`
+
+### Responses API compatibility
+
+- Upstream `v0.8.11` now covers the previously forked Responses API task-normalization and native tool-loop fixes that were needed for Gemini and LM Studio-compatible providers
+- This fork keeps the more defensive response-content parsing and timing/error hardening that protects task helpers and streamed post-processing across chat-completions-style and Responses-style payloads
 
 ### Chat timeout error messaging
 
@@ -119,6 +124,8 @@ If the change affects public-share or public-link UI strings, also update [src/l
 
 ## Maintenance Record
 
+- 2026-03-26: normalized the workspace update/publish scripts and runbooks around the canonical local image reference `open-webui-public-share`, while keeping GHCR examples explicit for published releases; key files: `../README.md`, `../update-openwebui.ps1`, `../update-openwebui-local.ps1`, `../publish-openwebui-image.ps1`, `README.md`, `FORK_NOTES.md`; validation: compared workspace [../.env](../.env) and [../docker-compose.yml](../docker-compose.yml) against the already completed local runtime verification where `docker inspect open-webui --format '{{.Config.Image}}'` returned `open-webui-public-share` and localhost returned `200 OK`
+- 2026-03-26: merged upstream `v0.8.11` into the fork mainline, kept the public-share/public-link/OpenRouter ZDR/timeout hardening patches, and re-applied helper-task metadata sanitization so internal task helpers do not inherit native builtin tool exposure; key files: `Dockerfile`, `backend/open_webui/main.py`, `backend/open_webui/routers/auths.py`, `backend/open_webui/routers/channels.py`, `backend/open_webui/routers/ollama.py`, `backend/open_webui/routers/openai.py`, `backend/open_webui/routers/retrieval.py`, `backend/open_webui/routers/tasks.py`, `backend/open_webui/utils/middleware.py`, `backend/open_webui/utils/misc.py`, `backend/open_webui/utils/task_metadata.py`, `backend/open_webui/test/util/test_task_metadata.py`, `src/lib/components/chat/Settings/DataControls.svelte`, `src/lib/i18n/locales/ja-JP/translation.json`, `CHANGELOG.md`; validation: static error scan on all conflict-resolved files plus targeted pytest `open_webui/test/util/test_task_metadata.py open_webui/test/util/test_response_normalization.py open_webui/test/util/test_http_timeouts.py open_webui/test/util/test_error_handling.py open_webui/test/util/test_openrouter_zdr.py open_webui/test/util/test_public_share.py open_webui/test/util/test_web_search.py -q` with `30 passed`
 - 2026-03-22: refined streamed upstream idle-timeout start conditions so OpenAI-compatible and Ollama requests ignore role-only deltas plus Responses API status preludes such as `response.created` / `response.in_progress` before starting the configured timeout window, which avoids false stream-stall failures while a model is still warming up or processing the prompt; key files: `backend/open_webui/utils/http_timeouts.py`, `backend/open_webui/utils/misc.py`, `backend/open_webui/routers/openai.py`, `backend/open_webui/routers/ollama.py`, `backend/open_webui/test/util/test_http_timeouts.py`, `README.md`, `docs/openwebui-empty-error-debug-repro.md`, `CHANGELOG.md`; validation: targeted pytest for `backend/open_webui/test/util/test_http_timeouts.py`, local image rebuild, `docker compose up -d --force-recreate open-webui`, and runtime verification against local LM Studio-backed `Local.qwen3-swallow-30b-a3b-rl-v0.2` / `Local.gpt-oss-swallow-20b-sft-v0.1_moe` models showing first stream events after ~19-21s and first content after ~25-45s without a pre-first-output 5-second disconnect
 - 2026-03-22: switched OpenAI-compatible and Ollama streaming upstream requests from wall-clock total timeout handling to first-chunk wait plus post-first-chunk idle timeout handling, preserve explicit stream-stall text through the shared stream wrapper, and persist streamed timeout errors even when they are raised during response iteration; key files: `backend/open_webui/utils/http_timeouts.py`, `backend/open_webui/utils/misc.py`, `backend/open_webui/utils/middleware.py`, `backend/open_webui/routers/openai.py`, `backend/open_webui/routers/ollama.py`, `backend/open_webui/test/util/test_http_timeouts.py`, `backend/open_webui/test/util/test_error_handling.py`; validation: targeted pytest for timeout and error-handling helpers, local image rebuild, `docker compose up -d --force-recreate open-webui`, controlled mock OpenAI-compatible upstream repro, and direct verification that persisted `error.content` stored the explicit stream-stall message
 - 2026-03-22: fixed blank chat error banners when upstream streamed requests exceed the configured timeout by converting empty exception strings into explicit timeout/error messages before persistence and websocket emission; key files: `backend/open_webui/utils/error_handling.py`, `backend/open_webui/main.py`, `backend/open_webui/test/util/test_error_handling.py`; validation: targeted pytest for the new helper
@@ -140,6 +147,7 @@ If the change affects public-share or public-link UI strings, also update [src/l
 
 ## Fork Release Summary
 
+- `Unreleased`: full upstream `v0.8.11` sync, retained public-share/public-link/OpenRouter ZDR/timeout hardening patches, and helper-task metadata sanitization for native function-calling chats
 - `0.8.10-publicshare.13`: chat timeout error messaging hardening, streamed timeout persistence during response iteration, and meaningful-first-output timeout gating for OpenAI-compatible and Responses-style streams
 - `0.8.10-publicshare.12`: Responses API task normalization and streaming timing metadata hardening
 - `0.8.10-publicshare.11`: shared Prettier frontend formatting checks between release preflight and Frontend Build
@@ -153,13 +161,15 @@ If the change affects public-share or public-link UI strings, also update [src/l
 
 ## Upstream Base
 
-Fork-only commits currently on top of upstream `v0.8.10`:
+Fork mainline now tracks upstream `v0.8.11`.
 
-- `e481066ac` Add anonymous public share support
-- `5cd166462` Fix TTS configuration handling and improve voice selection logic
-- `b46c6c54f` Include images in public shares
-- `90e60366c` Allow Pyodide assets on public shares
-- `d46c3cf3f` Add admin settings for public links
+Retained fork-only areas on top of that base:
+
+- anonymous public-share routes, snapshots, and the public-host allowlist
+- public-link admin settings and related ja-JP strings
+- OpenRouter Zero Retention admin/direct connection behavior
+- streamed timeout and error-message hardening for upstream chat providers
+- helper-task metadata sanitization for native function-calling chats
 
 ## Upstream Sync Checklist
 

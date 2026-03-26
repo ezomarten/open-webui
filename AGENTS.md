@@ -34,7 +34,7 @@ If a change affects deployment steps or which image should be running locally, u
 
 ## Local Apply Rule
 
-- Local runtime testing depends on workspace root [.env](../.env) using `OPENWEBUI_IMAGE=open-webui-public-share:0.8.10-publicshare-local`.
+- Local runtime testing depends on workspace root [.env](../.env) using `OPENWEBUI_IMAGE=open-webui-public-share`.
 - If [.env](../.env) points at GHCR, local `docker build` results will not be visible after compose recreate.
 
 ## Secret Handling Rule

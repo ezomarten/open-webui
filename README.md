@@ -27,7 +27,9 @@ For more information, be sure to check out our [Open WebUI Documentation](https:
 
 ## Fork Overview
 
-This repository is a deployment-focused fork of Open WebUI `v0.8.10`. It keeps the upstream application intact where possible and adds the minimum patch set needed for a dual-host deployment where the main app stays protected while anonymous public shares are exposed from a separate host.
+This repository is a deployment-focused fork of Open WebUI `v0.8.11`. It keeps the upstream application intact where possible and adds the minimum patch set needed for a dual-host deployment where the main app stays protected while anonymous public shares are exposed from a separate host.
+
+Fork mainline now tracks upstream `v0.8.11`. The latest published GHCR release remains `0.8.10-publicshare.13` until the next fork tag is cut.
 
 ### Fork-specific additions
 
@@ -42,13 +44,13 @@ This repository is a deployment-focused fork of Open WebUI `v0.8.10`. It keeps t
 Build locally:
 
 ```bash
-docker build --provenance=false --sbom=false --build-arg USE_SLIM=true -t open-webui-public-share:0.8.10-publicshare-local .
+docker build --provenance=false --sbom=false --build-arg USE_SLIM=true -t open-webui-public-share .
 ```
 
 Or pull the current published fork image:
 
 ```bash
-docker pull ghcr.io/farefore/open-webui-public-share:0.8.10-publicshare.11
+docker pull ghcr.io/farefore/open-webui-public-share:0.8.10-publicshare.13
 ```
 
 Relevant configuration for this fork:
@@ -64,7 +66,7 @@ The example below runs a single Open WebUI container and assumes your reverse pr
 Example `.env`:
 
 ```dotenv
-OPEN_WEBUI_IMAGE=ghcr.io/farefore/open-webui-public-share:0.8.10-publicshare.11
+OPENWEBUI_IMAGE=open-webui-public-share
 WEBUI_SECRET_KEY=replace-with-a-random-secret-of-32-bytes-or-more
 PUBLIC_SHARE_BASE_URL=https://s-ai.example.com
 ENABLE_PUBLIC_CHAT_SHARING=true
@@ -73,12 +75,14 @@ OLLAMA_BASE_URL=http://host.docker.internal:11434
 # OPENAI_API_KEY=sk-...
 ```
 
+To run the latest published fork image instead of a local build, set `OPENWEBUI_IMAGE=ghcr.io/farefore/open-webui-public-share:0.8.10-publicshare.13`.
+
 Example `compose.yaml`:
 
 ```yaml
 services:
   open-webui:
-    image: ${OPEN_WEBUI_IMAGE}
+    image: ${OPENWEBUI_IMAGE}
     container_name: open-webui
     restart: unless-stopped
     ports:
