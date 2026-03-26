@@ -21,9 +21,35 @@ def run(command: list[str]) -> None:
     subprocess.run(command, cwd=REPO_ROOT, check=True)
 
 
+def ensure_supported_node_version(node: str) -> None:
+    result = subprocess.run(
+        [node, "--version"],
+        cwd=REPO_ROOT,
+        check=True,
+        capture_output=True,
+        text=True,
+    )
+    version = result.stdout.strip()
+    major_text = version.removeprefix("v").split(".", 1)[0]
+
+    try:
+        major = int(major_text)
+    except ValueError as exc:
+        raise SystemExit(f"Unable to parse Node.js version: {version}") from exc
+
+    if major < 18 or major > 22:
+        raise SystemExit(
+            "Release preflight requires Node.js >=18.13.0 <=22.x.x; "
+            f"found {version}. Switch to Node 22 (see .nvmrc) and rerun."
+        )
+
+
 def main() -> int:
     python = sys.executable
+    node = resolve_binary("node")
     npm = resolve_binary("npm")
+
+    ensure_supported_node_version(node)
 
     commands = [
         [python, "-m", "black", "--check", "backend"],
