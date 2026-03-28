@@ -87,7 +87,7 @@ class FileModelResponse(BaseModel):
 
     filename: str
     data: Optional[dict] = None
-    meta: FileMeta
+    meta: Optional[FileMeta] = None
 
     created_at: int  # timestamp in epoch
     updated_at: Optional[int] = None  # timestamp in epoch, optional for legacy files

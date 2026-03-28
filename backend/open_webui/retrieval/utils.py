@@ -30,6 +30,7 @@ from open_webui.models.knowledge import Knowledges
 from open_webui.models.chats import Chats
 from open_webui.models.notes import Notes
 from open_webui.models.access_grants import AccessGrants
+from open_webui.utils.access_control.files import has_access_to_file
 
 from open_webui.retrieval.vector.main import GetResult
 from open_webui.utils.headers import include_user_info_headers

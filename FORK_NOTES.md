@@ -1,6 +1,6 @@
 # Fork Notes
 
-This fork now tracks Open WebUI `v0.8.11` and carries a small set of deployment-focused customizations for anonymous public sharing.
+This fork now tracks Open WebUI `v0.8.12` and carries a small set of deployment-focused customizations for anonymous public sharing.
 
 ## Goals
 
@@ -15,7 +15,7 @@ This fork now tracks Open WebUI `v0.8.11` and carries a small set of deployment-
 - Deployment workspace operator runbook lives in [../README.md](../README.md)
 - Local rebuilds only affect runtime when workspace root [../.env](../.env) sets `OPENWEBUI_IMAGE=open-webui-public-share` or another local `open-webui-public-share[:tag]` reference
 - If [../.env](../.env) points to a GHCR tag, compose recreate will continue to run the GHCR image even after a successful local `docker build`
-- Current GHCR baseline is `0.8.11-publicshare.1`
+- Current GHCR baseline is `0.8.12-publicshare.1`
 - Current local fork head should be treated as the source of truth for future local image rebuilds
 - Before pushing a release commit or tag, run `python scripts/release_preflight.py` from an environment that has the repo's Python and Node dependencies installed
 - For GHCR pushes from GitHub Actions, either grant the package Actions access for this repository or configure repository secrets `GHCR_USERNAME` and `GHCR_TOKEN`; otherwise `docker/build-push-action` can fail with `403 Forbidden` on blob HEAD requests even when login succeeds with `GITHUB_TOKEN`
@@ -64,7 +64,7 @@ This fork now tracks Open WebUI `v0.8.11` and carries a small set of deployment-
 
 ### Responses API compatibility
 
-- Upstream `v0.8.11` now covers the previously forked Responses API task-normalization and native tool-loop fixes that were needed for Gemini and LM Studio-compatible providers
+- Upstream `v0.8.12` continues to cover the previously forked Responses API task-normalization and native tool-loop fixes that were needed for Gemini and LM Studio-compatible providers
 - This fork keeps the more defensive response-content parsing and timing/error hardening that protects task helpers and streamed post-processing across chat-completions-style and Responses-style payloads
 
 ### Chat timeout error messaging
@@ -124,6 +124,8 @@ If the change affects public-share or public-link UI strings, also update [src/l
 
 ## Maintenance Record
 
+- 2026-03-28: prepared fork release `0.8.12-publicshare.1` by updating release notes and published-image references, bumping package metadata to `0.8.12`, and fixing merge fallout in the terminal-server admin UI and backend verification route; key files: `CHANGELOG.md`, `FORK_NOTES.md`, `README.md`, `package.json`, `package-lock.json`, `backend/open_webui/routers/configs.py`, `src/lib/components/AddTerminalServerModal.svelte`; validation: `c:/Users/it/openwebui/.venv/Scripts/python.exe -m pytest backend/open_webui/test/util/test_task_metadata.py backend/open_webui/test/util/test_response_normalization.py backend/open_webui/test/util/test_http_timeouts.py backend/open_webui/test/util/test_error_handling.py backend/open_webui/test/util/test_openrouter_zdr.py backend/open_webui/test/util/test_public_share.py backend/open_webui/test/util/test_web_search.py -q` with `30 passed`, then `c:/Users/it/openwebui/.venv/Scripts/python.exe scripts/release_preflight.py` with Node `v22.22.1` forced to the front of `PATH`
+- 2026-03-28: merged upstream `v0.8.12` into the fork mainline, retained the public-share/public-link/OpenRouter ZDR/timeout hardening/helper-task metadata patches, and kept upstream terminal-server verification proxying, file-list compatibility, and tool-embed rendering fixes; key files: `backend/open_webui/env.py`, `backend/open_webui/models/chats.py`, `backend/open_webui/models/files.py`, `backend/open_webui/retrieval/utils.py`, `backend/open_webui/retrieval/vector/dbs/oracle23ai.py`, `backend/open_webui/retrieval/vector/dbs/pgvector.py`, `backend/open_webui/routers/configs.py`, `backend/open_webui/utils/middleware.py`, `backend/open_webui/utils/models.py`, `pyproject.toml`, `src/lib/apis/configs/index.ts`, `src/lib/components/AddTerminalServerModal.svelte`, `src/lib/components/admin/Settings/Integrations.svelte`, `src/lib/components/chat/Settings/Integrations/Terminals.svelte`, `src/lib/components/chat/Settings/Integrations/Terminals/Connection.svelte`, `src/lib/components/common/ToolCallDisplay.svelte`, `src/lib/i18n/locales/*.json`; validation: `c:/Users/it/openwebui/.venv/Scripts/python.exe -m pytest backend/open_webui/test/util/test_task_metadata.py backend/open_webui/test/util/test_response_normalization.py backend/open_webui/test/util/test_http_timeouts.py backend/open_webui/test/util/test_error_handling.py backend/open_webui/test/util/test_openrouter_zdr.py backend/open_webui/test/util/test_public_share.py backend/open_webui/test/util/test_web_search.py -q` with `30 passed`, then `c:/Users/it/openwebui/.venv/Scripts/python.exe scripts/release_preflight.py` with Node `v22.22.1` forced to the front of `PATH`
 - 2026-03-26: prepared fork release `0.8.11-publicshare.1` by converting the changelog entry from `Unreleased`, updating published-image references, regenerating i18n catalogs, and normalizing release-preflight formatting drift; key files: `CHANGELOG.md`, `README.md`, `FORK_NOTES.md`, `backend/open_webui/**`, `src/lib/i18n/locales/*.json`, `src/lib/components/chat/FileNav.svelte`, `src/lib/components/chat/FileNav/FilePreview.svelte`, `src/tailwind.css`, `docs/SECURITY.md`; validation: `python -m black --check backend`, `npm run check:format`, `npm run i18n:parse`, `npm run test:frontend`, and `npm run build`
 - 2026-03-26: normalized the workspace update/publish scripts and runbooks around the canonical local image reference `open-webui-public-share`, while keeping GHCR examples explicit for published releases; key files: `../README.md`, `../update-openwebui.ps1`, `../update-openwebui-local.ps1`, `../publish-openwebui-image.ps1`, `README.md`, `FORK_NOTES.md`; validation: compared workspace [../.env](../.env) and [../docker-compose.yml](../docker-compose.yml) against the already completed local runtime verification where `docker inspect open-webui --format '{{.Config.Image}}'` returned `open-webui-public-share` and localhost returned `200 OK`
 - 2026-03-26: merged upstream `v0.8.11` into the fork mainline, kept the public-share/public-link/OpenRouter ZDR/timeout hardening patches, and re-applied helper-task metadata sanitization so internal task helpers do not inherit native builtin tool exposure; key files: `Dockerfile`, `backend/open_webui/main.py`, `backend/open_webui/routers/auths.py`, `backend/open_webui/routers/channels.py`, `backend/open_webui/routers/ollama.py`, `backend/open_webui/routers/openai.py`, `backend/open_webui/routers/retrieval.py`, `backend/open_webui/routers/tasks.py`, `backend/open_webui/utils/middleware.py`, `backend/open_webui/utils/misc.py`, `backend/open_webui/utils/task_metadata.py`, `backend/open_webui/test/util/test_task_metadata.py`, `src/lib/components/chat/Settings/DataControls.svelte`, `src/lib/i18n/locales/ja-JP/translation.json`, `CHANGELOG.md`; validation: static error scan on all conflict-resolved files plus targeted pytest `open_webui/test/util/test_task_metadata.py open_webui/test/util/test_response_normalization.py open_webui/test/util/test_http_timeouts.py open_webui/test/util/test_error_handling.py open_webui/test/util/test_openrouter_zdr.py open_webui/test/util/test_public_share.py open_webui/test/util/test_web_search.py -q` with `30 passed`
@@ -148,6 +150,7 @@ If the change affects public-share or public-link UI strings, also update [src/l
 
 ## Fork Release Summary
 
+- `0.8.12-publicshare.1`: full upstream `v0.8.12` sync, retained public-share/public-link/OpenRouter ZDR/timeout hardening patches, helper-task metadata sanitization, and upstream terminal-server/file-list/tool-embed fixes
 - `0.8.11-publicshare.1`: full upstream `v0.8.11` sync, retained public-share/public-link/OpenRouter ZDR/timeout hardening patches, and helper-task metadata sanitization for native function-calling chats
 - `0.8.10-publicshare.13`: chat timeout error messaging hardening, streamed timeout persistence during response iteration, and meaningful-first-output timeout gating for OpenAI-compatible and Responses-style streams
 - `0.8.10-publicshare.12`: Responses API task normalization and streaming timing metadata hardening
@@ -162,7 +165,7 @@ If the change affects public-share or public-link UI strings, also update [src/l
 
 ## Upstream Base
 
-Fork mainline now tracks upstream `v0.8.11`.
+Fork mainline now tracks upstream `v0.8.12`.
 
 Retained fork-only areas on top of that base:
 

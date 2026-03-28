@@ -7,6 +7,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.8.12-publicshare.1] - 2026-03-28
+
+### Changed
+
+- Synced fork mainline to upstream `0.8.12` while preserving anonymous public shares, public-link admin settings, the public-host allowlist, OpenRouter Zero Retention connections, helper-task metadata sanitization, and the existing streamed timeout/error hardening.
+
+### Fixed
+
+- Admin terminal-server verification and orchestrator policy saves now proxy through backend config endpoints, keeping API keys out of browser-origin requests and matching upstream `0.8.12`'s CORS-safe terminal-connection flow.
+- File list responses keep working when legacy rows have missing file metadata, aligning the fork with upstream `0.8.12`'s `/api/v1/files/` regression fix.
+- Tool-call embeds remain visible even when consecutive tool and reasoning details are grouped into a collapsed summary, matching upstream `0.8.12`'s markdown rendering fix.
+
 ## [0.8.11-publicshare.1] - 2026-03-26
 
 ### Changed
