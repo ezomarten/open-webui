@@ -27,9 +27,9 @@ For more information, be sure to check out our [Open WebUI Documentation](https:
 
 ## Fork Overview
 
-This repository is a deployment-focused fork of Open WebUI `v0.8.12`. It keeps the upstream application intact where possible and adds the minimum patch set needed for a dual-host deployment where the main app stays protected while anonymous public shares are exposed from a separate host.
+This repository is a deployment-focused fork of Open WebUI `v0.9.0`. It keeps the upstream application intact where possible and adds the minimum patch set needed for a dual-host deployment where the main app stays protected while anonymous public shares are exposed from a separate host.
 
-Fork mainline now tracks upstream `v0.8.12`. The current published GHCR release is `0.8.12-publicshare.1`.
+Fork mainline now tracks upstream `v0.9.0`. The most recently published GHCR release remains `0.8.12-publicshare.1` until `0.9.0-publicshare.1` is published.
 
 ### Fork-specific additions
 
@@ -75,7 +75,7 @@ OLLAMA_BASE_URL=http://host.docker.internal:11434
 # OPENAI_API_KEY=sk-...
 ```
 
-To run the latest published fork image instead of a local build, set `OPENWEBUI_IMAGE=ghcr.io/farefore/open-webui-public-share:0.8.12-publicshare.1`.
+To run the current published fork image instead of a local build, set `OPENWEBUI_IMAGE=ghcr.io/farefore/open-webui-public-share:0.8.12-publicshare.1`.
 
 Example `compose.yaml`:
 

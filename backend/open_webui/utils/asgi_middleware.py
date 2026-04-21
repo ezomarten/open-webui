@@ -123,6 +123,9 @@ class AuthTokenMiddleware:
     `request.state.token`.
 
     Routes that depend on `get_verified_user` etc. read this state.
+    The `x-api-key` fallback remains limited to Anthropic Messages API
+    style routes to avoid broadening alternate-auth behavior across the
+    rest of the app.
     Also exposes `request.state.enable_api_keys` (snapshotted at request
     entry from runtime config) and stamps an `X-Process-Time` response
     header.
@@ -147,7 +150,11 @@ class AuthTokenMiddleware:
                 token = HTTPAuthorizationCredentials(scheme='Bearer', credentials=cookie_token)
         if token is None:
             api_key = request.headers.get('x-api-key')
-            if api_key:
+            request_path = scope.get('path', '')
+            if api_key and (
+                request_path in {'/api/message', '/api/v1/messages'}
+                or request_path.startswith('/ollama/v1/messages')
+            ):
                 token = HTTPAuthorizationCredentials(scheme='Bearer', credentials=api_key)
 
         request.state.token = token

@@ -7,6 +7,7 @@ from open_webui.utils.http_timeouts import (
     build_upstream_request_timeout,
     chunk_contains_meaningful_stream_output,
     get_stream_idle_timeout_message,
+    get_stream_prelude_timeout_message,
     iterate_stream_with_post_first_chunk_timeout,
 )
 
@@ -39,6 +40,13 @@ def test_get_stream_idle_timeout_message_describes_stall():
     )
 
 
+def test_get_stream_prelude_timeout_message_describes_missing_output():
+    assert (
+        get_stream_prelude_timeout_message(300)
+        == "Upstream streaming response did not produce meaningful output within 300 seconds."
+    )
+
+
 def test_stream_chunk_detector_ignores_role_only_openai_prelude():
     assert not chunk_contains_meaningful_stream_output(b'data: {"choices":[{"delta":{"role":"assistant"}}]}\n')
 
@@ -51,6 +59,10 @@ def test_stream_chunk_detector_ignores_responses_api_status_prelude():
     assert not chunk_contains_meaningful_stream_output(
         b'data: {"type":"response.in_progress","response":{"status":"in_progress","output":[],"error":null}}\n'
     )
+
+
+def test_stream_chunk_detector_ignores_openrouter_processing_comments():
+    assert not chunk_contains_meaningful_stream_output(b': OPENROUTER PROCESSING\n\n')
 
 
 def test_stream_chunk_detector_detects_responses_api_output_delta():
@@ -125,6 +137,34 @@ def test_stream_iterator_waits_for_first_meaningful_responses_api_output():
         return chunks
 
     assert asyncio.run(consume()) == [prelude_event, prelude_data, content]
+
+
+def test_stream_iterator_times_out_after_non_meaningful_openrouter_comments():
+    comment = b': OPENROUTER PROCESSING\n'
+    chunks = []
+
+    async def consume():
+        async for chunk in iterate_stream_with_post_first_chunk_timeout(
+            delayed_stream(
+                [
+                    (0, comment),
+                    (0, b'\n'),
+                    (0.006, comment),
+                    (0, b'\n'),
+                    (0.006, comment),
+                ]
+            ),
+            timeout_seconds=0.01,
+            timeout_starts_after_chunk=chunk_contains_meaningful_stream_output,
+            pre_meaningful_timeout_seconds=0.01,
+        ):
+            chunks.append(chunk)
+
+    with pytest.raises(asyncio.TimeoutError, match="did not produce meaningful output within 0.01 seconds"):
+        asyncio.run(consume())
+
+    assert chunks[:2] == [comment, b'\n']
+    assert all(chunk in (comment, b'\n') for chunk in chunks)
 
 
 def test_stream_iterator_times_out_after_first_chunk_idle_gap():

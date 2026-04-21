@@ -12,7 +12,7 @@
 
 	import Messages from '$lib/components/chat/Messages.svelte';
 
-	const i18n = getContext('i18n');
+	const i18n = getContext<any>('i18n');
 	dayjs.extend(localizedFormat);
 
 	let loaded = false;
@@ -43,6 +43,79 @@
 		}
 
 		return new URL(pathname, window.location.origin).toString();
+	};
+
+	const getDeepestLastMessageId = (currentHistory: {
+		messages: Record<string, any>;
+		currentId: string | null;
+	}) => {
+		let currentMessageId = currentHistory.currentId;
+
+		if (!currentMessageId || !(currentMessageId in currentHistory.messages)) {
+			const rootIds = Object.values(currentHistory.messages)
+				.filter((message: any) => message?.parentId == null)
+				.map((message: any) => message.id);
+
+			currentMessageId = rootIds.at(-1) ?? null;
+		}
+
+		while (currentMessageId && currentHistory.messages[currentMessageId]?.childrenIds?.length > 0) {
+			currentMessageId = currentHistory.messages[currentMessageId].childrenIds.at(-1);
+		}
+
+		return currentMessageId ?? null;
+	};
+
+	const normalizeHistory = (
+		publicShareId: string,
+		snapshotHistory: any
+	): { messages: Record<string, any>; currentId: string | null } => {
+		const nextHistory = {
+			messages: {},
+			currentId: null
+		} as { messages: Record<string, any>; currentId: string | null };
+
+		const snapshotMessages = snapshotHistory?.messages;
+		if (!snapshotMessages || typeof snapshotMessages !== 'object') {
+			return nextHistory;
+		}
+
+		for (const [messageId, rawMessage] of Object.entries(snapshotMessages)) {
+			if (!rawMessage || typeof rawMessage !== 'object') {
+				continue;
+			}
+
+			const message = rawMessage as Record<string, any>;
+			const files = (Array.isArray(message.files) ? message.files : [])
+				.map((file: any) => {
+					const url = toPublicShareFileUrl(publicShareId, file);
+					if (!url) {
+						return null;
+					}
+
+					return {
+						...file,
+						type: file?.type ?? 'image',
+						url
+					};
+				})
+				.filter(Boolean);
+
+			nextHistory.messages[messageId] = {
+				...message,
+				id: message.id ?? messageId,
+				content: message.content ?? '',
+				done: true,
+				parentId: message.parentId ?? null,
+				childrenIds: Array.isArray(message.childrenIds) ? message.childrenIds : [],
+				...(files.length > 0 ? { files } : {})
+			};
+		}
+
+		nextHistory.currentId =
+			typeof snapshotHistory?.currentId === 'string' ? snapshotHistory.currentId : null;
+		nextHistory.currentId = getDeepestLastMessageId(nextHistory);
+		return nextHistory;
 	};
 
 	const toHistory = (publicShareId: string, items: any[]) => {
@@ -86,7 +159,7 @@
 			};
 		}
 
-		nextHistory.currentId = items.at(-1)?.id ?? null;
+		nextHistory.currentId = getDeepestLastMessageId(nextHistory);
 		return nextHistory;
 	};
 
@@ -102,7 +175,13 @@
 		settings.set(localStorageSettings);
 		setTextScale(localStorageSettings?.textScale ?? 1);
 
-		const snapshot = await getPublicShareById($page.params.id).catch((error) => {
+		const publicShareId = $page.params.id;
+		if (!publicShareId) {
+			unavailable = true;
+			return;
+		}
+
+		const snapshot = await getPublicShareById(publicShareId).catch((error) => {
 			console.error(error);
 			return null;
 		});
@@ -112,11 +191,13 @@
 			return;
 		}
 
-		await chatId.set($page.params.id);
+		await chatId.set(publicShareId);
 		title = snapshot.title;
 		updatedAt = snapshot.updated_at ?? null;
 		selectedModels = snapshot.models?.length ? snapshot.models : [''];
-		history = toHistory(snapshot.id ?? $page.params.id, snapshot.messages ?? []);
+		history = snapshot.history?.messages
+			? normalizeHistory(snapshot.id ?? publicShareId, snapshot.history)
+			: toHistory(snapshot.id ?? publicShareId, snapshot.messages ?? []);
 
 		await tick();
 		if (messages.length > 0 && messages.at(-1)?.id && messages.at(-1)?.id in history.messages) {
@@ -188,13 +269,11 @@
 						<div class="w-full">
 							<Messages
 								className="h-full flex pt-4 pb-8 "
-								user={null}
+								user={undefined}
 								chatId={$chatId}
 								readOnly={true}
 								{selectedModels}
-								{processing}
 								bind:history
-								bind:messages
 								bind:autoScroll
 								bottomPadding={false}
 								sendMessage={() => {}}

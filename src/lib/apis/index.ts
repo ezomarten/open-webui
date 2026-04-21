@@ -1112,11 +1112,29 @@ export const generateMoACompletion = async (
 			responses: responses,
 			stream: true
 		})
-	}).catch((err) => {
+	})
+		.then(async (res) => {
+			if (!res.ok) {
+				const body = await res.clone().json().catch(() => null);
+
+				if (body) {
+					throw body;
+				}
+
+				const detail = await res.text().catch(() => '');
+				throw {
+					detail: detail || res.statusText,
+					status: res.status
+				};
+			}
+
+			return res;
+		})
+		.catch((err) => {
 		console.error(err);
 		error = err;
 		return null;
-	});
+		});
 
 	if (error) {
 		throw error;

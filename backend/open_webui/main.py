@@ -48,7 +48,7 @@ from starlette_compress import CompressMiddleware
 from starlette.exceptions import HTTPException as StarletteHTTPException
 from starlette.middleware.sessions import SessionMiddleware
 from starlette.responses import Response, StreamingResponse
-from starlette.datastructures import Headers
+from starlette.datastructures import Headers, MutableHeaders
 
 from starsessions import (
     SessionMiddleware as StarSessionsMiddleware,
@@ -486,7 +486,11 @@ from open_webui.config import (
     reset_config,
     async_reset_config,
 )
-from open_webui.utils.public_share import get_public_share_host, is_public_share_enabled
+from open_webui.utils.public_share import (
+    get_public_share_response_headers,
+    get_public_share_host,
+    is_public_share_enabled,
+)
 from open_webui.utils.error_handling import get_exception_message
 from open_webui.env import (
     ENABLE_CUSTOM_MODEL_FALLBACK,
@@ -1407,7 +1411,6 @@ class PublicShareHostMiddleware:
         if not self._fastapi_app.state.PUBLIC_SHARE_HOST or request_host != self._fastapi_app.state.PUBLIC_SHARE_HOST:
             await self.app(scope, receive, send)
             return
-
         request_path = request.url.path
         public_share_api_prefix = '/api/v1/public-shares/'
         public_share_api_remainder = (
@@ -1466,10 +1469,19 @@ class PublicShareHostMiddleware:
                 status_code=status.HTTP_404_NOT_FOUND,
                 content={'detail': ERROR_MESSAGES.NOT_FOUND},
             )
+            for header_name, header_value in get_public_share_response_headers(request_path).items():
+                response.headers[header_name] = header_value
             await response(scope, receive, send)
             return
 
-        await self.app(scope, receive, send)
+        async def send_with_public_share_headers(message) -> None:
+            if message['type'] == 'http.response.start':
+                headers = MutableHeaders(scope=message)
+                for header_name, header_value in get_public_share_response_headers(request_path).items():
+                    headers[header_name] = header_value
+            await send(message)
+
+        await self.app(scope, receive, send_with_public_share_headers)
 
 
 app.add_middleware(RedirectMiddleware)

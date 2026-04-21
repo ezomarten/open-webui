@@ -1042,6 +1042,9 @@ async def stream_wrapper(
             stream,
             read_timeout_seconds,
             timeout_starts_after_chunk,
+            pre_meaningful_timeout_seconds=(
+                read_timeout_seconds if timeout_starts_after_chunk and read_timeout_seconds is not None else None
+            ),
         ):
             yield chunk
     finally:

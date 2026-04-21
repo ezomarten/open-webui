@@ -300,6 +300,28 @@
 		}
 	};
 
+	const clearStaleMergedResponses = (nextHistory: any) => {
+		if (!nextHistory?.messages) {
+			return nextHistory;
+		}
+
+		for (const message of Object.values(nextHistory.messages) as any[]) {
+			if (
+				message?.role === 'assistant' &&
+				message?.merged?.status === true &&
+				(message?.merged?.content ?? '') === ''
+			) {
+				message.merged = {
+					...message.merged,
+					status: false,
+					content: ''
+				};
+			}
+		}
+
+		return nextHistory;
+	};
+
 	const setDefaults = async () => {
 		if (!$tools) {
 			tools.set(await getTools(localStorage.token));
@@ -1346,8 +1368,8 @@
 
 				history =
 					(chatContent?.history ?? undefined) !== undefined
-						? chatContent.history
-						: convertMessagesToHistory(chatContent.messages);
+						? clearStaleMergedResponses(chatContent.history)
+						: clearStaleMergedResponses(convertMessagesToHistory(chatContent.messages));
 
 				chatTitle.set(chatContent.title);
 
@@ -2425,36 +2447,76 @@
 		scrollToBottom();
 	};
 
-	const handleOpenAIError = async (error, responseMessage) => {
-		let errorMessage = '';
-		let innerError;
-
-		if (error) {
-			innerError = error;
+	const extractErrorMessage = (error: unknown) => {
+		if (typeof error === 'string') {
+			return error;
 		}
+
+		if (error instanceof Error) {
+			return error.message;
+		}
+
+		if (!error || typeof error !== 'object') {
+			return '';
+		}
+
+		const errorObject = error as Record<string, unknown>;
+
+		if (typeof errorObject.detail === 'string') {
+			return errorObject.detail;
+		}
+
+		if (Array.isArray(errorObject.detail)) {
+			return errorObject.detail
+				.map((detail) => {
+					if (typeof detail === 'string') {
+						return detail;
+					}
+
+					if (detail && typeof detail === 'object') {
+						const detailObject = detail as Record<string, unknown>;
+
+						if (typeof detailObject.msg === 'string') {
+							return detailObject.msg;
+						}
+					}
+
+					return '';
+				})
+				.filter(Boolean)
+				.join(' ');
+		}
+
+		if (typeof errorObject.error === 'string') {
+			return errorObject.error;
+		}
+
+		if (errorObject.error && typeof errorObject.error === 'object') {
+			const nestedError = errorObject.error as Record<string, unknown>;
+
+			if (typeof nestedError.message === 'string') {
+				return nestedError.message;
+			}
+		}
+
+		if (typeof errorObject.message === 'string') {
+			return errorObject.message;
+		}
+
+		return '';
+	};
+
+	const handleOpenAIError = async (error, responseMessage) => {
+		const innerError = error;
+		const errorMessage = extractErrorMessage(innerError);
 
 		console.error(innerError);
-		if ('detail' in innerError) {
-			// FastAPI error
-			toast.error(innerError.detail);
-			errorMessage = innerError.detail;
-		} else if ('error' in innerError) {
-			// OpenAI error
-			if ('message' in innerError.error) {
-				toast.error(innerError.error.message);
-				errorMessage = innerError.error.message;
-			} else {
-				toast.error(innerError.error);
-				errorMessage = innerError.error;
-			}
-		} else if ('message' in innerError) {
-			// OpenAI error
-			toast.error(innerError.message);
-			errorMessage = innerError.message;
-		}
+		toast.error(errorMessage || $i18n.t(`Uh-oh! There was an issue with the response.`));
 
 		responseMessage.error = {
-			content: $i18n.t(`Uh-oh! There was an issue with the response.`) + '\n' + errorMessage
+			content: errorMessage
+				? $i18n.t(`Uh-oh! There was an issue with the response.`) + '\n' + errorMessage
+				: $i18n.t(`Uh-oh! There was an issue with the response.`)
 		};
 		responseMessage.done = true;
 
@@ -2614,6 +2676,39 @@
 			status: true,
 			content: ''
 		};
+		const clearMergedResponse = () => {
+			generating = false;
+			generationController = null;
+			message.merged = {
+				...mergedResponse,
+				status: false,
+				content: ''
+			};
+			history.messages[messageId] = message;
+		};
+		const failMerge = (error: unknown = '') => {
+			const errorMessage = extractErrorMessage(error);
+
+			clearMergedResponse();
+			toast.error(
+				errorMessage
+					? `${$i18n.t('Failed to merge responses')}: ${errorMessage}`
+					: $i18n.t('Failed to merge responses')
+			);
+		};
+		const isAbortError = (error: unknown) => {
+			if (error instanceof DOMException) {
+				return error.name === 'AbortError';
+			}
+
+			return Boolean(
+				error &&
+					typeof error === 'object' &&
+					'name' in error &&
+					(error as { name?: string }).name === 'AbortError'
+			);
+		};
+
 		message.merged = mergedResponse;
 		history.messages[messageId] = message;
 
@@ -2626,38 +2721,61 @@
 				responses
 			);
 
-			if (res && res.ok && res.body && generating) {
-				generationController = controller as AbortController;
-				const textStream = await createOpenAITextStream(
-					res.body,
-					Boolean($settings?.splitLargeChunks ?? false)
-				);
-				for await (const update of textStream) {
-					const { value, done, sources, error, usage } = update;
-					if (error || done) {
-						generating = false;
-						generationController = null;
-						break;
-					}
+			if (!res?.body || !generating) {
+				clearMergedResponse();
+				return;
+			}
 
-					if (mergedResponse.content == '' && value == '\n') {
-						continue;
-					} else {
-						mergedResponse.content += value;
-						history.messages[messageId] = message;
-					}
-
-					if (autoScroll) {
-						scheduleScrollToBottom();
-					}
+			generationController = controller as AbortController;
+			const textStream = await createOpenAITextStream(
+				res.body,
+				Boolean($settings?.splitLargeChunks ?? false)
+			);
+			for await (const update of textStream) {
+				const { value, done, error } = update;
+				if (error) {
+					failMerge(error);
+					return;
 				}
 
-				await saveChatHandler(_chatId, history);
-			} else {
-				console.error(res);
+				if (done) {
+					if ((mergedResponse.content ?? '') === '') {
+						failMerge();
+						return;
+					}
+
+					generating = false;
+					generationController = null;
+					break;
+				}
+
+				if (mergedResponse.content == '' && value == '\n') {
+					continue;
+				} else {
+					mergedResponse.content += value;
+					history.messages[messageId] = message;
+				}
+
+				if (autoScroll) {
+					scheduleScrollToBottom();
+				}
 			}
+
+			if ((mergedResponse.content ?? '') === '') {
+				failMerge();
+				return;
+			}
+
+			await saveChatHandler(_chatId, history);
 		} catch (e) {
 			console.error(e);
+
+			if (isAbortError(e)) {
+				clearMergedResponse();
+				return;
+			}
+
+			failMerge(e);
 		}
 	};
 

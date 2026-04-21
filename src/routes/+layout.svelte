@@ -1,7 +1,5 @@
 <script>
-	import { io } from 'socket.io-client';
 	import { spring } from 'svelte/motion';
-	import PyodideWorker from '$lib/workers/pyodide.worker?worker';
 	import { Toaster, toast } from 'svelte-sonner';
 
 	let loadingProgress = spring(0, {
@@ -74,6 +72,11 @@
 	import dayjs from 'dayjs';
 	import { getChannels } from '$lib/apis/channels';
 
+	const PUBLIC_SHARE_PATH_PATTERN = /^\/p\/[^/]+$/;
+	const isPublicSharePath = (pathname) => PUBLIC_SHARE_PATH_PATTERN.test(pathname);
+	const isInitialPublicSharePath =
+		typeof window !== 'undefined' && isPublicSharePath(window.location.pathname);
+
 	const unregisterServiceWorkers = async () => {
 		if ('serviceWorker' in navigator) {
 			try {
@@ -89,16 +92,21 @@
 	};
 
 	// handle frontend updates (https://svelte.dev/docs/kit/configuration#version)
-	beforeNavigate(async ({ willUnload, to }) => {
-		if (updated.current && !willUnload && to?.url) {
-			await unregisterServiceWorkers();
-			location.href = to.url.href;
-		}
-	});
+	if (!isInitialPublicSharePath) {
+		beforeNavigate(async ({ willUnload, to }) => {
+			if (updated.current && !willUnload && to?.url) {
+				await unregisterServiceWorkers();
+				location.href = to.url.href;
+			}
+		});
+	}
 
 	setContext('i18n', i18n);
 
-	const bc = new BroadcastChannel('active-tab-channel');
+	const bc =
+		typeof window !== 'undefined' && !isInitialPublicSharePath
+			? new BroadcastChannel('active-tab-channel')
+			: null;
 
 	let loaded = false;
 	let tokenTimer = null;
@@ -111,9 +119,10 @@
 	let heartbeatInterval = null;
 
 	const BREAKPOINT = 768;
-	const isPublicSharePath = (pathname) => /^\/p\/[^/]+$/.test(pathname);
 
 	const setupSocket = async (enableWebsocket) => {
+		const { io } = await import('socket.io-client');
+
 		const _socket = io(`${WEBUI_BASE_URL}` || undefined, {
 			reconnection: true,
 			reconnectionDelay: 1000,
@@ -211,9 +220,10 @@
 	 * Get or create the persistent Pyodide worker.
 	 * The worker persists across executions so the virtual FS (IDBFS) is preserved.
 	 */
-	const getOrCreateWorker = () => {
+	const getOrCreateWorker = async () => {
 		let worker = $pyodideWorker;
 		if (!worker) {
+			const { default: PyodideWorker } = await import('$lib/workers/pyodide.worker?worker');
 			worker = new PyodideWorker();
 			pyodideWorker.set(worker);
 		}
@@ -242,7 +252,7 @@
 			/\bimport\s+pytz\b|\bfrom\s+pytz\b/.test(code) ? 'pytz' : null
 		].filter(Boolean);
 
-		const worker = getOrCreateWorker();
+		const worker = await getOrCreateWorker();
 
 		// Fetch file content from the server and prepare for the worker
 		let filePayloads = [];
@@ -851,7 +861,11 @@
 	};
 
 	onMount(async () => {
-		window.addEventListener('message', windowMessageEventHandler);
+		const initialPublicSharePath = isPublicSharePath(window.location.pathname);
+
+		if (!initialPublicSharePath) {
+			window.addEventListener('message', windowMessageEventHandler);
+		}
 
 		let touchstartY = 0;
 
@@ -883,9 +897,11 @@
 			}
 		};
 
-		document.addEventListener('touchstart', touchstartHandler);
-		document.addEventListener('touchmove', touchmoveHandler, { passive: false });
-		document.addEventListener('touchend', touchendHandler);
+		if (!initialPublicSharePath) {
+			document.addEventListener('touchstart', touchstartHandler);
+			document.addEventListener('touchmove', touchmoveHandler, { passive: false });
+			document.addEventListener('touchend', touchendHandler);
+		}
 
 		if (typeof window !== 'undefined') {
 			if (window.applyTheme) {
@@ -893,7 +909,7 @@
 			}
 		}
 
-		if (window?.electronAPI) {
+		if (!initialPublicSharePath && window?.electronAPI) {
 			const info = await window.electronAPI.send({
 				type: 'app:info'
 			});
@@ -918,14 +934,20 @@
 		}
 
 		// Listen for messages on the BroadcastChannel
-		bc.onmessage = (event) => {
-			if (event.data === 'active') {
-				isLastActiveTab.set(false); // Another tab became active
-			}
-		};
+		if (bc) {
+			bc.onmessage = (event) => {
+				if (event.data === 'active') {
+					isLastActiveTab.set(false); // Another tab became active
+				}
+			};
+		}
 
 		// Set yourself as the last active tab when this tab is focused
 		const handleVisibilityChange = () => {
+			if (!bc) {
+				return;
+			}
+
 			if (document.visibilityState === 'visible') {
 				isLastActiveTab.set(true); // This tab is now the active tab
 				bc.postMessage('active'); // Notify other tabs that this tab is active
@@ -936,10 +958,12 @@
 		};
 
 		// Add event listener for visibility state changes
-		document.addEventListener('visibilitychange', handleVisibilityChange);
+		if (!initialPublicSharePath) {
+			document.addEventListener('visibilitychange', handleVisibilityChange);
 
-		// Call visibility change handler initially to set state on load
-		handleVisibilityChange();
+			// Call visibility change handler initially to set state on load
+			handleVisibilityChange();
+		}
 
 		theme.set(localStorage.theme);
 
@@ -1135,7 +1159,7 @@
 	});
 
 	onDestroy(() => {
-		bc.close();
+		bc?.close();
 	});
 </script>
 
@@ -1150,7 +1174,6 @@
 		type="application/opensearchdescription+xml"
 		title={$WEBUI_NAME}
 		href="/opensearch.xml"
-		crossorigin="use-credentials"
 	/>
 </svelte:head>
 

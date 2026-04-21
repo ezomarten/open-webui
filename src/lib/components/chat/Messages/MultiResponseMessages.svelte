@@ -96,7 +96,9 @@
 
 		// Await UI updates
 		await tick();
-		await updateChat();
+		if (!readOnly) {
+			await updateChat();
+		}
 
 		// Trigger scrolling after navigation
 		triggerScroll();
@@ -118,7 +120,9 @@
 		history.currentId = messageId;
 
 		await tick();
-		await updateChat();
+		if (!readOnly) {
+			await updateChat();
+		}
 		triggerScroll();
 	};
 
@@ -141,7 +145,9 @@
 		history.currentId = messageId;
 
 		await tick();
-		await updateChat();
+		if (!readOnly) {
+			await updateChat();
+		}
 		triggerScroll();
 	};
 

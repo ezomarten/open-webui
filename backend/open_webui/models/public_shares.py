@@ -76,6 +76,7 @@ class PublicShareSnapshotResponse(BaseModel):
     title: str
     models: list[str]
     messages: list[dict]
+    history: Optional[dict[str, Any]] = None
     message_count: int
     created_at: int
     updated_at: int

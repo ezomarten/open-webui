@@ -117,6 +117,7 @@
 										? document.source.url
 										: `#`}
 								target="_blank"
+								rel="noreferrer noopener"
 							>
 								{decodeString(citation?.source?.name)}
 							</a>
@@ -166,6 +167,7 @@
 										<a
 											href={snippetUrl}
 											target="_blank"
+											rel="noreferrer noopener"
 											class="underline hover:text-gray-500 dark:hover:text-gray-100"
 											>{$i18n.t('Content')}</a
 										>

@@ -1274,6 +1274,7 @@
 	"Memory cleared successfully": "メモリをクリアしました。",
 	"Memory deleted successfully": "メモリを削除しました。",
 	"Memory updated successfully": "メモリアップデート成功",
+	"Failed to merge responses": "応答の統合に失敗しました",
 	"Merge Responses": "応答を統合",
 	"Merged Response": "統合された応答",
 	"Message": "メッセージ",

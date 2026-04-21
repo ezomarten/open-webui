@@ -29,7 +29,7 @@
 	export let ollama = false;
 	export let direct = false;
 
-	export let connection = null;
+	export let connection: any = null;
 
 	let url = '';
 	let key = '';

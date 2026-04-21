@@ -13,12 +13,13 @@
 	import ManageOllamaModal from './ManageOllamaModal.svelte';
 	import Download from '$lib/components/icons/Download.svelte';
 
-	export let onDelete = () => {};
-	export let onSubmit = () => {};
+	export let onDelete: () => void = () => {};
+	export let onSubmit: (connection: { url: string; key?: string; config: Record<string, any> }) => void =
+		() => {};
 
 	export let url = '';
 	export let idx = 0;
-	export let config = {};
+	export let config: Record<string, any> = {};
 
 	let showManageModal = false;
 	let showConfigModal = false;
@@ -37,7 +38,7 @@
 	onDelete={() => {
 		showDeleteConfirmDialog = true;
 	}}
-	onSubmit={(connection) => {
+	onSubmit={(connection: { url: string; key?: string; config: Record<string, any> }) => {
 		url = connection.url;
 		config = { ...connection.config, key: connection.key };
 		onSubmit(connection);

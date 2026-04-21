@@ -1,5 +1,6 @@
 import asyncio
 import json
+import time
 
 from collections.abc import Callable
 from typing import Any
@@ -29,6 +30,16 @@ def get_stream_idle_timeout_message(timeout_seconds: int | None) -> str:
         return "Upstream streaming response stalled " f"for {timeout_seconds} seconds without receiving data."
 
     return "Upstream streaming response stalled without receiving data."
+
+
+def get_stream_prelude_timeout_message(timeout_seconds: int | None) -> str:
+    if timeout_seconds:
+        return (
+            "Upstream streaming response did not produce meaningful output "
+            f"within {timeout_seconds} seconds."
+        )
+
+    return "Upstream streaming response did not produce meaningful output."
 
 
 def _is_non_empty_text(value: Any) -> bool:
@@ -169,9 +180,11 @@ async def iterate_stream_with_post_first_chunk_timeout(
     stream,
     timeout_seconds: int | None = None,
     timeout_starts_after_chunk: Callable[[Any], bool] | None = None,
+    pre_meaningful_timeout_seconds: int | None = None,
 ):
     stream_iter = stream.__aiter__()
     timeout_started = False
+    prelude_started_at = time.monotonic() if pre_meaningful_timeout_seconds is not None else None
 
     if timeout_starts_after_chunk is None:
         timeout_starts_after_chunk = lambda _chunk: True
@@ -180,12 +193,26 @@ async def iterate_stream_with_post_first_chunk_timeout(
         try:
             if timeout_started and timeout_seconds is not None:
                 chunk = await asyncio.wait_for(anext(stream_iter), timeout=timeout_seconds)
+            elif not timeout_started and pre_meaningful_timeout_seconds is not None:
+                elapsed = time.monotonic() - prelude_started_at
+                remaining = pre_meaningful_timeout_seconds - elapsed
+                if remaining <= 0:
+                    raise asyncio.TimeoutError(
+                        get_stream_prelude_timeout_message(pre_meaningful_timeout_seconds)
+                    )
+
+                chunk = await asyncio.wait_for(anext(stream_iter), timeout=remaining)
             else:
                 chunk = await anext(stream_iter)
         except StopAsyncIteration:
             break
         except asyncio.TimeoutError as exc:
-            raise asyncio.TimeoutError(get_stream_idle_timeout_message(timeout_seconds)) from exc
+            if timeout_started:
+                raise asyncio.TimeoutError(get_stream_idle_timeout_message(timeout_seconds)) from exc
+
+            raise asyncio.TimeoutError(
+                get_stream_prelude_timeout_message(pre_meaningful_timeout_seconds)
+            ) from exc
 
         if not timeout_started and timeout_starts_after_chunk(chunk):
             timeout_started = True

@@ -3,7 +3,9 @@ from types import SimpleNamespace
 from open_webui.utils.public_share import (
     ATTACHMENT_OMITTED_TEXT,
     PUBLIC_SHARE_SCHEMA_VERSION,
+    PUBLIC_SHARE_PAGE_CONTENT_SECURITY_POLICY,
     build_public_share_snapshot,
+    get_public_share_response_headers,
     sanitize_public_message,
 )
 
@@ -151,3 +153,130 @@ def test_build_public_share_snapshot_preserves_public_sources_and_schema_version
     assert snapshot["schema_version"] == PUBLIC_SHARE_SCHEMA_VERSION
     assert snapshot["models"] == ["demo-model"]
     assert snapshot["messages"][0]["sources"][0]["metadata"][0]["url"] == "https://example.com/article"
+    assert snapshot["history"]["currentId"] == "msg_1"
+
+
+def test_build_public_share_snapshot_preserves_multi_model_history_tree():
+    chat = SimpleNamespace(
+        title="Parallel Share",
+        chat={
+            "title": "Parallel Share",
+            "history": {
+                "currentId": "assistant_b",
+                "messages": {
+                    "user_1": {
+                        "id": "user_1",
+                        "role": "user",
+                        "content": "Compare these models.",
+                        "parentId": None,
+                        "childrenIds": ["assistant_a", "assistant_b"],
+                        "models": ["model-a", "model-b"],
+                    },
+                    "assistant_a": {
+                        "id": "assistant_a",
+                        "role": "assistant",
+                        "content": "Model A response",
+                        "parentId": "user_1",
+                        "childrenIds": [],
+                        "model": "model-a",
+                        "modelIdx": 0,
+                    },
+                    "assistant_b": {
+                        "id": "assistant_b",
+                        "role": "assistant",
+                        "content": "Model B response",
+                        "parentId": "user_1",
+                        "childrenIds": [],
+                        "model": "model-b",
+                        "modelIdx": 1,
+                    },
+                },
+            },
+            "models": ["model-a", "model-b"],
+        },
+    )
+
+    snapshot = build_public_share_snapshot(chat)
+    history = snapshot["history"]
+
+    assert snapshot["schema_version"] == PUBLIC_SHARE_SCHEMA_VERSION
+    assert snapshot["models"] == ["model-a", "model-b"]
+    assert {message["id"] for message in snapshot["messages"]} == {
+        "user_1",
+        "assistant_a",
+        "assistant_b",
+    }
+    assert history["currentId"] == "assistant_b"
+    assert history["messages"]["user_1"]["childrenIds"] == ["assistant_a", "assistant_b"]
+    assert history["messages"]["user_1"]["models"] == ["model-a", "model-b"]
+    assert history["messages"]["assistant_a"]["modelIdx"] == 0
+    assert history["messages"]["assistant_b"]["modelIdx"] == 1
+
+
+def test_build_public_share_snapshot_skips_private_intermediate_nodes():
+    chat = SimpleNamespace(
+        title="Tool Share",
+        chat={
+            "title": "Tool Share",
+            "history": {
+                "currentId": "assistant_1",
+                "messages": {
+                    "user_1": {
+                        "id": "user_1",
+                        "role": "user",
+                        "content": "Use a tool.",
+                        "parentId": None,
+                        "childrenIds": ["tool_1"],
+                        "models": ["tool-model"],
+                    },
+                    "tool_1": {
+                        "id": "tool_1",
+                        "role": "tool",
+                        "content": "hidden tool output",
+                        "parentId": "user_1",
+                        "childrenIds": ["assistant_1"],
+                    },
+                    "assistant_1": {
+                        "id": "assistant_1",
+                        "role": "assistant",
+                        "content": "Visible answer",
+                        "parentId": "tool_1",
+                        "childrenIds": [],
+                        "model": "tool-model",
+                        "modelIdx": 0,
+                    },
+                },
+            },
+            "models": ["tool-model"],
+        },
+    )
+
+    snapshot = build_public_share_snapshot(chat)
+    history = snapshot["history"]
+
+    assert set(history["messages"].keys()) == {"user_1", "assistant_1"}
+    assert history["messages"]["user_1"]["childrenIds"] == ["assistant_1"]
+    assert history["messages"]["assistant_1"]["parentId"] == "user_1"
+    assert history["currentId"] == "assistant_1"
+
+
+def test_public_share_page_headers_include_public_host_hardening():
+    headers = get_public_share_response_headers("/p/public-share-id")
+
+    assert headers["Cache-Control"] == "no-store"
+    assert headers["Content-Security-Policy"] == PUBLIC_SHARE_PAGE_CONTENT_SECURITY_POLICY
+    assert headers["Permissions-Policy"] == (
+        "camera=(), geolocation=(), microphone=(), payment=(), usb=(), xr-spatial-tracking=()"
+    )
+    assert headers["Referrer-Policy"] == "no-referrer"
+    assert headers["X-Content-Type-Options"] == "nosniff"
+    assert headers["X-Frame-Options"] == "DENY"
+    assert headers["X-Robots-Tag"] == "noindex, nofollow, noarchive"
+
+
+def test_public_share_static_assets_keep_cache_policy_untouched():
+    headers = get_public_share_response_headers("/_app/immutable/app.js")
+
+    assert "Cache-Control" not in headers
+    assert "Content-Security-Policy" not in headers
+    assert headers["X-Robots-Tag"] == "noindex, nofollow, noarchive"
