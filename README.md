@@ -27,9 +27,9 @@ For more information, be sure to check out our [Open WebUI Documentation](https:
 
 ## Fork Overview
 
-This repository is a deployment-focused fork of Open WebUI `v0.8.12`. It keeps the upstream application intact where possible and adds the minimum patch set needed for a dual-host deployment where the main app stays protected while anonymous public shares are exposed from a separate host.
+This repository is a deployment-focused fork of Open WebUI `v0.9.1`. It keeps the upstream application intact where possible and adds the minimum patch set needed for a dual-host deployment where the main app stays protected while anonymous public shares are exposed from a separate host.
 
-Fork mainline now tracks upstream `v0.8.12`. The current published GHCR release is `0.8.12-publicshare.1`.
+Fork mainline now tracks upstream `v0.9.1`. The current published GHCR release is `0.9.1-publicshare.1`.
 
 ### Fork-specific additions
 
@@ -50,7 +50,7 @@ docker build --provenance=false --sbom=false --build-arg USE_SLIM=true -t open-w
 Or pull the current published fork image:
 
 ```bash
-docker pull ghcr.io/farefore/open-webui-public-share:0.8.12-publicshare.1
+docker pull ghcr.io/farefore/open-webui-public-share:0.9.1-publicshare.1
 ```
 
 Relevant configuration for this fork:
@@ -75,7 +75,7 @@ OLLAMA_BASE_URL=http://host.docker.internal:11434
 # OPENAI_API_KEY=sk-...
 ```
 
-To run the latest published fork image instead of a local build, set `OPENWEBUI_IMAGE=ghcr.io/farefore/open-webui-public-share:0.8.12-publicshare.1`.
+To run the current published fork image instead of a local build, set `OPENWEBUI_IMAGE=ghcr.io/farefore/open-webui-public-share:0.9.1-publicshare.1`.
 
 Example `compose.yaml`:
 
@@ -261,8 +261,6 @@ After installation, you can access Open WebUI at [http://localhost:3000](http://
 ### Other Installation Methods
 
 We offer various installation alternatives, including non-Docker native installation methods, Docker Compose, Kustomize, and Helm. Visit our [Open WebUI Documentation](https://docs.openwebui.com/getting-started/) or join our [Discord community](https://discord.gg/5rJgQTnV4s) for comprehensive guidance.
-
-Look at the [Local Development Guide](https://docs.openwebui.com/getting-started/development) for instructions on setting up a local development environment.
 
 ### Troubleshooting
 

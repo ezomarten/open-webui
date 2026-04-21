@@ -23,6 +23,7 @@ from open_webui.utils.access_control import has_permission
 from open_webui.utils.auth import get_verified_user
 from open_webui.utils.public_share import (
     PUBLIC_SHARE_SCHEMA_VERSION,
+    apply_public_share_response_headers,
     is_public_share_enabled,
 )
 
@@ -53,12 +54,19 @@ def _assert_share_permission(request: Request, user) -> None:
 
 
 def _set_public_share_headers(response: Response) -> None:
-    response.headers["X-Robots-Tag"] = "noindex, nofollow, noarchive"
-    response.headers["Cache-Control"] = "no-store"
+    apply_public_share_response_headers(response)
 
 
 def _find_snapshot_file(snapshot: dict, file_id: str) -> Optional[dict]:
-    for message in snapshot.get("messages") or []:
+    history = snapshot.get("history") or {}
+    history_messages = history.get("messages") or {}
+
+    if isinstance(history_messages, dict):
+        message_iterable = history_messages.values()
+    else:
+        message_iterable = snapshot.get("messages") or []
+
+    for message in message_iterable:
         if not isinstance(message, dict):
             continue
 
@@ -253,6 +261,7 @@ async def get_public_share_snapshot(
         title=str(snapshot.get("title") or public_share.title),
         models=list(snapshot.get("models") or []),
         messages=list(snapshot.get("messages") or []),
+        history=snapshot.get("history") if isinstance(snapshot.get("history"), dict) else None,
         message_count=public_share.message_count,
         created_at=public_share.created_at,
         updated_at=public_share.updated_at,

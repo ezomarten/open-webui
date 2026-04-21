@@ -19,6 +19,7 @@
 	import localizedFormat from 'dayjs/plugin/localizedFormat';
 	import ProfileImage from './ProfileImage.svelte';
 	import { WEBUI_BASE_URL } from '$lib/constants';
+	import equal from 'fast-deep-equal';
 	const i18n = getContext('i18n');
 	dayjs.extend(localizedFormat);
 
@@ -66,7 +67,7 @@
 		if (source) {
 			if (message.content !== source.content || message.done !== source.done) {
 				message = structuredClone(source);
-			} else if (JSON.stringify(message) !== JSON.stringify(source)) {
+			} else if (!equal(message, source)) {
 				message = structuredClone(source);
 			}
 		}
@@ -95,7 +96,9 @@
 
 		// Await UI updates
 		await tick();
-		await updateChat();
+		if (!readOnly) {
+			await updateChat();
+		}
 
 		// Trigger scrolling after navigation
 		triggerScroll();
@@ -117,7 +120,9 @@
 		history.currentId = messageId;
 
 		await tick();
-		await updateChat();
+		if (!readOnly) {
+			await updateChat();
+		}
 		triggerScroll();
 	};
 
@@ -140,7 +145,9 @@
 		history.currentId = messageId;
 
 		await tick();
-		await updateChat();
+		if (!readOnly) {
+			await updateChat();
+		}
 		triggerScroll();
 	};
 

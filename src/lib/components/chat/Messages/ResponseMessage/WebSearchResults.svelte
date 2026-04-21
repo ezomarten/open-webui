@@ -5,6 +5,16 @@
 	import Collapsible from '$lib/components/common/Collapsible.svelte';
 
 	export let status = { urls: [], query: '' };
+	export let readOnly = false;
+
+	const getFaviconSrc = (value: string) => {
+		if (readOnly) {
+			return '/static/favicon.png';
+		}
+
+		return `https://www.google.com/s2/favicons?sz=32&domain=${encodeURIComponent(value)}`;
+	};
+
 	let state = false;
 </script>
 
@@ -26,6 +36,7 @@
 			<a
 				href="https://www.google.com/search?q={status.query}"
 				target="_blank"
+				rel="noreferrer noopener"
 				class="flex w-full items-center p-1 px-3 group/item justify-between text-gray-800 dark:text-gray-300 font-normal! no-underline!"
 			>
 				<div class="flex gap-2 items-center">
@@ -61,14 +72,18 @@
 				<a
 					href={item.link}
 					target="_blank"
+					rel="noreferrer noopener"
 					class="flex w-full items-center p-1 px-3 group/item justify-between text-gray-800 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-850 rounded-lg font-normal! no-underline! mb-1"
 				>
 					<div class=" flex justify-center items-center gap-3">
 						<div class="w-fit">
 							<img
-								src="https://www.google.com/s2/favicons?sz=32&domain={item.link}"
+								src={getFaviconSrc(item.link)}
 								alt="{item?.title ?? item.link} favicon"
 								class="size-3.5"
+								on:error={(e) => {
+									e.target.src = '/static/favicon.png';
+								}}
 							/>
 						</div>
 
@@ -101,14 +116,18 @@
 				<a
 					href={url}
 					target="_blank"
+					rel="noreferrer noopener"
 					class="flex w-full items-center p-1 px-3 group/item justify-between text-gray-800 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-850 rounded-lg no-underline mb-1"
 				>
 					<div class=" flex justify-center items-center gap-3">
 						<div class="w-fit">
 							<img
-								src="https://www.google.com/s2/favicons?sz=32&domain={url}"
+								src={getFaviconSrc(url)}
 								alt="{url} favicon"
 								class="size-3.5"
+								on:error={(e) => {
+									e.target.src = '/static/favicon.png';
+								}}
 							/>
 						</div>
 

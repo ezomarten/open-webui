@@ -11,14 +11,18 @@
 
 	import { connect } from 'socket.io-client';
 
-	export let onDelete = () => {};
-	export let onSubmit = () => {};
+	export let onDelete: () => void = () => {};
+	export let onSubmit: (connection: {
+		url: string;
+		key: string;
+		config: Record<string, any>;
+	}) => void = () => {};
 
 	export let pipeline = false;
 
 	export let url = '';
 	export let key = '';
-	export let config = {};
+	export let config: Record<string, any> = {};
 
 	let showConfigModal = false;
 	let showDeleteConfirmDialog = false;
@@ -42,7 +46,7 @@
 	onDelete={() => {
 		showDeleteConfirmDialog = true;
 	}}
-	onSubmit={(connection) => {
+	onSubmit={(connection: { url: string; key: string; config: Record<string, any> }) => {
 		url = connection.url;
 		key = connection.key;
 		config = connection.config;

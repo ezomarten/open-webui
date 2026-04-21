@@ -22,30 +22,56 @@
 
 	const i18n = getContext('i18n');
 
+	type ConnectionConfig = Record<string, any>;
+	type OpenAIConnectionForm = {
+		url: string;
+		key: string;
+		config: ConnectionConfig;
+	};
+	type OllamaConnectionForm = {
+		url: string;
+		key?: string;
+		config: ConnectionConfig;
+	};
+	type ConnectionsConfig = {
+		ENABLE_DIRECT_CONNECTIONS: boolean;
+		ENABLE_BASE_MODELS_CACHE: boolean;
+	};
+	type OpenAIAdminConfig = {
+		ENABLE_OPENAI_API: boolean;
+		OPENAI_API_BASE_URLS: string[];
+		OPENAI_API_KEYS: string[];
+		OPENAI_API_CONFIGS: Record<string, ConnectionConfig>;
+	};
+	type OllamaAdminConfig = {
+		ENABLE_OLLAMA_API: boolean;
+		OLLAMA_BASE_URLS: string[];
+		OLLAMA_API_CONFIGS: Record<string, ConnectionConfig>;
+	};
+
 	const getModels = async () => {
-		const models = await _getModels(
-			localStorage.token,
-			$config?.features?.enable_direct_connections && ($settings?.directConnections ?? null),
-			false,
-			true
-		);
+		const directConnections = $config?.features?.enable_direct_connections
+			? ($settings?.directConnections ?? null)
+			: null;
+
+		const models = await _getModels(localStorage.token, directConnections, false, true);
 		return models;
 	};
 
 	// External
 	let OLLAMA_BASE_URLS = [''];
-	let OLLAMA_API_CONFIGS = {};
+	let OLLAMA_API_CONFIGS: Record<string, ConnectionConfig> = {};
 
 	let OPENAI_API_KEYS = [''];
 	let OPENAI_API_BASE_URLS = [''];
-	let OPENAI_API_CONFIGS = {};
+	let OPENAI_API_CONFIGS: Record<string, ConnectionConfig> = {};
 
 	let ENABLE_OPENAI_API: null | boolean = null;
 	let ENABLE_OLLAMA_API: null | boolean = null;
 
-	let connectionsConfig = null;
+	let connectionsConfig: ConnectionsConfig | null = null;
 
-	let pipelineUrls = {};
+	let pipelineUrls: Record<string, boolean> = {};
 	let showAddOpenAIConnectionModal = false;
 	let showAddOllamaConnectionModal = false;
 
@@ -107,6 +133,10 @@
 	};
 
 	const updateConnectionsHandler = async () => {
+		if (!connectionsConfig) {
+			return;
+		}
+
 		const res = await setConnectionsConfig(localStorage.token, connectionsConfig).catch((error) => {
 			toast.error(`${error}`);
 		});
@@ -118,7 +148,7 @@
 		}
 	};
 
-	const addOpenAIConnectionHandler = async (connection) => {
+	const addOpenAIConnectionHandler = async (connection: OpenAIConnectionForm) => {
 		OPENAI_API_BASE_URLS = [...OPENAI_API_BASE_URLS, connection.url];
 		OPENAI_API_KEYS = [...OPENAI_API_KEYS, connection.key];
 		OPENAI_API_CONFIGS[OPENAI_API_BASE_URLS.length - 1] = connection.config;
@@ -126,7 +156,22 @@
 		await updateOpenAIHandler();
 	};
 
-	const addOllamaConnectionHandler = async (connection) => {
+	const updateOpenAIConnectionAt = (idx: number, connection: OpenAIConnectionForm) => {
+		const nextBaseUrls = [...OPENAI_API_BASE_URLS];
+		nextBaseUrls[idx] = connection.url;
+		OPENAI_API_BASE_URLS = nextBaseUrls;
+
+		const nextKeys = [...OPENAI_API_KEYS];
+		nextKeys[idx] = connection.key;
+		OPENAI_API_KEYS = nextKeys;
+
+		OPENAI_API_CONFIGS = {
+			...OPENAI_API_CONFIGS,
+			[idx]: connection.config
+		};
+	};
+
+	const addOllamaConnectionHandler = async (connection: OllamaConnectionForm) => {
 		OLLAMA_BASE_URLS = [...OLLAMA_BASE_URLS, connection.url];
 		OLLAMA_API_CONFIGS[OLLAMA_BASE_URLS.length - 1] = {
 			...connection.config,
@@ -136,10 +181,33 @@
 		await updateOllamaHandler();
 	};
 
+	const updateOllamaConnectionAt = (idx: number, connection: OllamaConnectionForm) => {
+		const nextBaseUrls = [...OLLAMA_BASE_URLS];
+		nextBaseUrls[idx] = connection.url;
+		OLLAMA_BASE_URLS = nextBaseUrls;
+
+		OLLAMA_API_CONFIGS = {
+			...OLLAMA_API_CONFIGS,
+			[idx]: {
+				...connection.config,
+				key: connection.key ?? OLLAMA_API_CONFIGS[idx]?.key ?? ''
+			}
+		};
+	};
+
 	onMount(async () => {
 		if ($user?.role === 'admin') {
-			let ollamaConfig = {};
-			let openaiConfig = {};
+			let ollamaConfig: OllamaAdminConfig = {
+				ENABLE_OLLAMA_API: true,
+				OLLAMA_BASE_URLS: [],
+				OLLAMA_API_CONFIGS: {}
+			};
+			let openaiConfig: OpenAIAdminConfig = {
+				ENABLE_OPENAI_API: true,
+				OPENAI_API_BASE_URLS: [],
+				OPENAI_API_KEYS: [],
+				OPENAI_API_CONFIGS: {}
+			};
 
 			await Promise.all([
 				(async () => {
@@ -265,7 +333,8 @@
 											bind:key={OPENAI_API_KEYS[idx]}
 											bind:config={OPENAI_API_CONFIGS[idx]}
 											pipeline={pipelineUrls[url] ? true : false}
-											onSubmit={() => {
+											onSubmit={(connection) => {
+												updateOpenAIConnectionAt(idx, connection);
 												updateOpenAIHandler();
 											}}
 											onDelete={() => {
@@ -274,7 +343,7 @@
 												);
 												OPENAI_API_KEYS = OPENAI_API_KEYS.filter((key, keyIdx) => idx !== keyIdx);
 
-												let newConfig = {};
+												let newConfig: Record<string, ConnectionConfig> = {};
 												OPENAI_API_BASE_URLS.forEach((url, newIdx) => {
 													newConfig[newIdx] =
 														OPENAI_API_CONFIGS[newIdx < idx ? newIdx : newIdx + 1];
@@ -329,18 +398,20 @@
 											bind:url={OLLAMA_BASE_URLS[idx]}
 											bind:config={OLLAMA_API_CONFIGS[idx]}
 											{idx}
-											onSubmit={() => {
+											onSubmit={(connection) => {
+												updateOllamaConnectionAt(idx, connection);
 												updateOllamaHandler();
 											}}
 											onDelete={() => {
 												OLLAMA_BASE_URLS = OLLAMA_BASE_URLS.filter((url, urlIdx) => idx !== urlIdx);
 
-												let newConfig = {};
+												let newConfig: Record<string, ConnectionConfig> = {};
 												OLLAMA_BASE_URLS.forEach((url, newIdx) => {
 													newConfig[newIdx] =
 														OLLAMA_API_CONFIGS[newIdx < idx ? newIdx : newIdx + 1];
 												});
 												OLLAMA_API_CONFIGS = newConfig;
+												updateOllamaHandler();
 											}}
 										/>
 									{/each}

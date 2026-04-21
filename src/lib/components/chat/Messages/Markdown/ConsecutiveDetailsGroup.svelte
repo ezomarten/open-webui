@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { settings } from '$lib/stores';
 	import { getContext } from 'svelte';
 	import { slide } from 'svelte/transition';
 	import { quintOut } from 'svelte/easing';
@@ -25,7 +26,7 @@
 
 	export let messageDone = true;
 
-	let open = false;
+	let open = $settings?.expandDetails ?? false;
 
 	$: toolCallCount = tokens.filter((t) => t?.attributes?.type === 'tool_calls').length;
 	$: reasoningCount = tokens.filter((t) => t?.attributes?.type === 'reasoning').length;

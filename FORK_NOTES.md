@@ -1,6 +1,6 @@
 # Fork Notes
 
-This fork now tracks Open WebUI `v0.8.12` and carries a small set of deployment-focused customizations for anonymous public sharing.
+This fork now tracks Open WebUI `v0.9.1` and carries a small set of deployment-focused customizations for anonymous public sharing.
 
 ## Goals
 
@@ -15,8 +15,9 @@ This fork now tracks Open WebUI `v0.8.12` and carries a small set of deployment-
 - Deployment workspace operator runbook lives in [../README.md](../README.md)
 - Local rebuilds only affect runtime when workspace root [../.env](../.env) sets `OPENWEBUI_IMAGE=open-webui-public-share` or another local `open-webui-public-share[:tag]` reference
 - If [../.env](../.env) points to a GHCR tag, compose recreate will continue to run the GHCR image even after a successful local `docker build`
-- Current GHCR baseline is `0.8.12-publicshare.1`
+- Current published GHCR baseline is `0.9.1-publicshare.1`
 - Current local fork head should be treated as the source of truth for future local image rebuilds
+- Multi-worker deployments must set `REDIS_URL` as well as `WEBSOCKET_REDIS_URL`; the latter only covers Socket.IO, while the former is required for AppConfig persistent-config sync so admin connection settings do not revert across workers
 - Before pushing a release commit or tag, run `python scripts/release_preflight.py` from an environment that has the repo's Python and Node dependencies installed
 - For GHCR pushes from GitHub Actions, either grant the package Actions access for this repository or configure repository secrets `GHCR_USERNAME` and `GHCR_TOKEN`; otherwise `docker/build-push-action` can fail with `403 Forbidden` on blob HEAD requests even when login succeeds with `GITHUB_TOKEN`
 
@@ -27,6 +28,7 @@ This fork now tracks Open WebUI `v0.8.12` and carries a small set of deployment-
 - Adds `/p/{public_share_id}` pages and `/api/v1/public-shares/*` APIs for anonymous access
 - Uses snapshot-based public shares so the public page does not require the owner session
 - Keeps one active public share per chat
+- Public-share snapshots now preserve the public user/assistant history tree so parallel multi-model responses render on anonymous pages instead of collapsing to only the current branch
 
 ### Public page compatibility
 
@@ -34,6 +36,7 @@ This fork now tracks Open WebUI `v0.8.12` and carries a small set of deployment-
 - Public-share snapshots also preserve public web citations so anonymous pages can show source links and preview snippets
 - Public pages fall back to browser speech synthesis when authenticated TTS settings are unavailable
 - Public pages can load `/pyodide/*` assets so browser-side Python execution continues to work
+- Public-share responses and public-host `/p/*` pages add explicit noindex, nosniff, no-referrer, frame-deny, and public-page CSP headers, while the public page avoids credentialed static-asset fetches and third-party favicon lookups in read-only citation/search UI
 
 ### Admin-configurable public links
 
@@ -64,7 +67,7 @@ This fork now tracks Open WebUI `v0.8.12` and carries a small set of deployment-
 
 ### Responses API compatibility
 
-- Upstream `v0.8.12` continues to cover the previously forked Responses API task-normalization and native tool-loop fixes that were needed for Gemini and LM Studio-compatible providers
+- Upstream `v0.9.1` continues to cover the previously forked Responses API task-normalization and native tool-loop fixes that were needed for Gemini and LM Studio-compatible providers
 - This fork keeps the more defensive response-content parsing and timing/error hardening that protects task helpers and streamed post-processing across chat-completions-style and Responses-style payloads
 
 ### Chat timeout error messaging
@@ -92,7 +95,7 @@ Other routes on the public host return `404`.
 
 ## Current Limitations
 
-- Public shares expose the current branch transcript only
+- Public shares only expose sanitized user/assistant history; non-public roles are collapsed out of the visible tree and older pre-v4 links need `Update and Copy Public Link` to regenerate the snapshot
 - Image attachments and public web citations are included, but other file types and private citations remain excluded
 - Public-link generation requires both a valid absolute `PUBLIC_SHARE_BASE_URL` and `Enable Public Links` turned on
 - OpenRouter Zero Retention model discovery collapses endpoint variants by `model_id`, keeping provider names and tags as metadata on the merged entry
@@ -124,6 +127,14 @@ If the change affects public-share or public-link UI strings, also update [src/l
 
 ## Maintenance Record
 
+- 2026-04-21: prepared fork release `0.9.1-publicshare.1` by updating published-image references to the new release baseline and passing `scripts/release_preflight.py` from the workspace venv with Node `v22.22.1` forced to the front of `PATH`; key files: `README.md`, `FORK_NOTES.md`, `../README.md`, generated `src/lib/i18n/locales/*.json`, and frontend/backend formatting outputs; validation: `c:/Users/it/openwebui/.venv/Scripts/python.exe scripts/release_preflight.py`
+- 2026-04-21: advanced the in-progress upstream sync from `v0.9.0` to `v0.9.1` on the temporary integration worktree, carrying forward the fork's public-share/public-link/timeout patches while absorbing upstream package-metadata fixes that add `aiosqlite` and `asyncpg` to `pyproject.toml`, then fixed merge fallout by removing duplicate closing parentheses in `backend/open_webui/models/chats.py` and adding no-op Alembic merge revisions so the fork no longer starts with multiple migration heads; key files: `CHANGELOG.md`, `FORK_NOTES.md`, `README.md`, `package.json`, `package-lock.json`, `pyproject.toml`, `backend/open_webui/main.py`, `backend/open_webui/models/chats.py`, `backend/open_webui/migrations/versions/f2b8c4d6e9a1_merge_shared_chat_and_indexes_heads.py`, `backend/open_webui/migrations/versions/d7a1b2c3e4f5_merge_all_heads_for_startup.py`, `backend/open_webui/utils/asgi_middleware.py`, `backend/open_webui/utils/session_pool.py`, and `src/lib/components/chat/ShareChatModal.svelte`; validation: local `docker build --provenance=false --sbom=false --build-arg USE_SLIM=true -t open-webui-public-share .`, `docker compose up -d --force-recreate open-webui`, `docker inspect open-webui --format '{{.Image}} {{.State.Health.Status}} {{.RestartCount}}'` showing the rebuilt local image with `healthy 0`, `docker compose ps open-webui`, `curl.exe -sS -D - http://localhost:3000/api/config -o NUL` returning `HTTP/1.1 200 OK`, and startup logs showing the merged Alembic upgrades completing before Uvicorn startup
+- 2026-04-21: merged upstream `v0.9.0` into the fork mainline on a temporary worktree, re-applied the current uncommitted fork changes, and adapted public-share/timeout behavior to upstream's async database and shared `aiohttp` session-pool architecture while keeping public-link/public-share behavior intact; key files: `CHANGELOG.md`, `FORK_NOTES.md`, `README.md`, `backend/open_webui/internal/db.py`, `backend/open_webui/main.py`, `backend/open_webui/models/chats.py`, `backend/open_webui/models/public_shares.py`, `backend/open_webui/routers/ollama.py`, `backend/open_webui/routers/openai.py`, `backend/open_webui/routers/public_shares.py`, `backend/open_webui/utils/asgi_middleware.py`, `backend/open_webui/utils/http_timeouts.py`, `backend/open_webui/utils/public_share.py`, `backend/open_webui/utils/session_pool.py`, `src/lib/components/chat/ShareChatModal.svelte`, and `src/routes/p/[id]/+page.svelte`; validation: `git diff --cached --check`, `PYTHONPATH=backend c:/Users/it/openwebui/.venv/Scripts/python.exe -m pytest backend/open_webui/test/util/test_http_timeouts.py backend/open_webui/test/util/test_public_share.py backend/open_webui/test/util/test_error_handling.py -q` with `27 passed`, plus VS Code static diagnostics showing no errors in `backend/open_webui/main.py` and `backend/open_webui/utils/asgi_middleware.py`
+- 2026-04-10: fixed OpenRouter-backed Merge Responses hangs where upstream kept an SSE connection alive with repeated `: OPENROUTER PROCESSING` comments but never produced a meaningful output chunk; the backend now enforces the configured timeout across the pre-content phase as wall-clock time instead of waiting forever for the first meaningful chunk, and the chat UI clears stale empty merged placeholders both after abandoned attempts and when an empty stream terminates without content. Key files: `backend/open_webui/utils/http_timeouts.py`, `backend/open_webui/utils/misc.py`, `backend/open_webui/test/util/test_http_timeouts.py`, `src/lib/components/chat/Chat.svelte`, `CHANGELOG.md`; validation: reproduced hanging MOA stream against chat `ff33c5a4-fa9c-435d-8ae5-ede80ee63cd0`, ran targeted pytest `backend/open_webui/test/util/test_http_timeouts.py`, and static error scan on the edited Chat.svelte file
+- 2026-04-10: changed public-share snapshots from current-branch-only export to full sanitized public history trees so anonymous `/p/{id}` pages can render parallel multi-model responses with the existing MultiResponse UI; key files: `backend/open_webui/utils/public_share.py`, `backend/open_webui/models/public_shares.py`, `backend/open_webui/routers/public_shares.py`, `backend/open_webui/test/util/test_public_share.py`, `src/routes/p/[id]/+page.svelte`, `CHANGELOG.md`, `FORK_NOTES.md`; validation: targeted pytest for `backend/open_webui/test/util/test_public_share.py`
+- 2026-04-09: fixed chat Merge Responses so `/api/v1/tasks/moa/completions` failures are normalized at the frontend API layer, surfaced via a visible toast that includes provider detail when available, and clear the transient merged-response loading state instead of silently leaving users guessing; key files: `src/lib/apis/index.ts`, `src/lib/components/chat/Chat.svelte`, `src/lib/i18n/locales/ja-JP/translation.json`, `CHANGELOG.md`; validation: attempted frontend `npm run check` but the repo still has pre-existing global type errors (`9059 errors`, `249 warnings`, `364 files`), while the check output did not reference the edited files and VS Code static diagnostics reported no new errors in `src/lib/apis/index.ts` or `src/lib/i18n/locales/ja-JP/translation.json`
+- 2026-04-09: hardened anonymous public-share pages to look less suspicious to web-security scanners by adding explicit public-host/public-share response headers, removing credentialed static-asset fetches from the SPA shell, lazy-loading Socket.IO and Pyodide only when needed, and avoiding third-party favicon requests in read-only citation/search UI; key files: `backend/open_webui/utils/public_share_security.py`, `backend/open_webui/main.py`, `backend/open_webui/routers/public_shares.py`, `backend/open_webui/test/util/test_public_share.py`, `src/app.html`, `src/routes/+layout.svelte`, `src/lib/components/chat/Messages/Citations.svelte`, `src/lib/components/chat/Messages/ResponseMessage.svelte`, `src/lib/components/chat/Messages/ResponseMessage/StatusHistory.svelte`, `src/lib/components/chat/Messages/ResponseMessage/StatusHistory/StatusItem.svelte`, `src/lib/components/chat/Messages/ResponseMessage/WebSearchResults.svelte`, `src/lib/components/chat/Messages/Citations/CitationModal.svelte`, `CHANGELOG.md`; validation: targeted pytest for `backend/open_webui/test/util/test_public_share.py` plus frontend `npm run check`
+- 2026-04-05: fixed admin Settings > Connections so edited connection payloads are written back into parent state before save, and aligned the deployment compose/runbook with multi-worker persistent-config requirements by wiring `REDIS_URL` alongside `WEBSOCKET_REDIS_URL`; key files: `src/lib/components/admin/Settings/Connections.svelte`, `../docker-compose.yml`, `../README.md`, `CHANGELOG.md`, `FORK_NOTES.md`; validation: `docker compose config` and static error scan on the edited Svelte file
 - 2026-03-28: prepared fork release `0.8.12-publicshare.1` by updating release notes and published-image references, bumping package metadata to `0.8.12`, and fixing merge fallout in the terminal-server admin UI and backend verification route; key files: `CHANGELOG.md`, `FORK_NOTES.md`, `README.md`, `package.json`, `package-lock.json`, `backend/open_webui/routers/configs.py`, `src/lib/components/AddTerminalServerModal.svelte`; validation: `c:/Users/it/openwebui/.venv/Scripts/python.exe -m pytest backend/open_webui/test/util/test_task_metadata.py backend/open_webui/test/util/test_response_normalization.py backend/open_webui/test/util/test_http_timeouts.py backend/open_webui/test/util/test_error_handling.py backend/open_webui/test/util/test_openrouter_zdr.py backend/open_webui/test/util/test_public_share.py backend/open_webui/test/util/test_web_search.py -q` with `30 passed`, then `c:/Users/it/openwebui/.venv/Scripts/python.exe scripts/release_preflight.py` with Node `v22.22.1` forced to the front of `PATH`
 - 2026-03-28: merged upstream `v0.8.12` into the fork mainline, retained the public-share/public-link/OpenRouter ZDR/timeout hardening/helper-task metadata patches, and kept upstream terminal-server verification proxying, file-list compatibility, and tool-embed rendering fixes; key files: `backend/open_webui/env.py`, `backend/open_webui/models/chats.py`, `backend/open_webui/models/files.py`, `backend/open_webui/retrieval/utils.py`, `backend/open_webui/retrieval/vector/dbs/oracle23ai.py`, `backend/open_webui/retrieval/vector/dbs/pgvector.py`, `backend/open_webui/routers/configs.py`, `backend/open_webui/utils/middleware.py`, `backend/open_webui/utils/models.py`, `pyproject.toml`, `src/lib/apis/configs/index.ts`, `src/lib/components/AddTerminalServerModal.svelte`, `src/lib/components/admin/Settings/Integrations.svelte`, `src/lib/components/chat/Settings/Integrations/Terminals.svelte`, `src/lib/components/chat/Settings/Integrations/Terminals/Connection.svelte`, `src/lib/components/common/ToolCallDisplay.svelte`, `src/lib/i18n/locales/*.json`; validation: `c:/Users/it/openwebui/.venv/Scripts/python.exe -m pytest backend/open_webui/test/util/test_task_metadata.py backend/open_webui/test/util/test_response_normalization.py backend/open_webui/test/util/test_http_timeouts.py backend/open_webui/test/util/test_error_handling.py backend/open_webui/test/util/test_openrouter_zdr.py backend/open_webui/test/util/test_public_share.py backend/open_webui/test/util/test_web_search.py -q` with `30 passed`, then `c:/Users/it/openwebui/.venv/Scripts/python.exe scripts/release_preflight.py` with Node `v22.22.1` forced to the front of `PATH`
 - 2026-03-26: prepared fork release `0.8.11-publicshare.1` by converting the changelog entry from `Unreleased`, updating published-image references, regenerating i18n catalogs, and normalizing release-preflight formatting drift; key files: `CHANGELOG.md`, `README.md`, `FORK_NOTES.md`, `backend/open_webui/**`, `src/lib/i18n/locales/*.json`, `src/lib/components/chat/FileNav.svelte`, `src/lib/components/chat/FileNav/FilePreview.svelte`, `src/tailwind.css`, `docs/SECURITY.md`; validation: `python -m black --check backend`, `npm run check:format`, `npm run i18n:parse`, `npm run test:frontend`, and `npm run build`
@@ -150,6 +161,7 @@ If the change affects public-share or public-link UI strings, also update [src/l
 
 ## Fork Release Summary
 
+- `0.9.1-publicshare.1`: upstream `v0.9.1` sync, retained public-share/public-link/OpenRouter ZDR/timeout hardening patches, public-share snapshot files/citations/history, merged upstream shared-chat access grants with the fork's snapshot-based public links, and picked up upstream package-metadata fixes for `aiosqlite` / `asyncpg`
 - `0.8.12-publicshare.1`: full upstream `v0.8.12` sync, retained public-share/public-link/OpenRouter ZDR/timeout hardening patches, helper-task metadata sanitization, and upstream terminal-server/file-list/tool-embed fixes
 - `0.8.11-publicshare.1`: full upstream `v0.8.11` sync, retained public-share/public-link/OpenRouter ZDR/timeout hardening patches, and helper-task metadata sanitization for native function-calling chats
 - `0.8.10-publicshare.13`: chat timeout error messaging hardening, streamed timeout persistence during response iteration, and meaningful-first-output timeout gating for OpenAI-compatible and Responses-style streams
@@ -165,7 +177,7 @@ If the change affects public-share or public-link UI strings, also update [src/l
 
 ## Upstream Base
 
-Fork mainline now tracks upstream `v0.8.12`.
+Fork mainline now tracks upstream `v0.9.1`.
 
 Retained fork-only areas on top of that base:
 

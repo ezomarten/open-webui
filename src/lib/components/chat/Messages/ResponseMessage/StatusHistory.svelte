@@ -3,8 +3,10 @@
 	const i18n = getContext('i18n');
 
 	import StatusItem from './StatusHistory/StatusItem.svelte';
+	import equal from 'fast-deep-equal';
 	export let statusHistory = [];
 	export let expand = false;
+	export let readOnly = false;
 
 	let showHistory = true;
 
@@ -21,10 +23,7 @@
 		status = history.at(-1);
 	}
 
-	$: if (
-		statusHistory.length !== history.length ||
-		JSON.stringify(statusHistory) !== JSON.stringify(history)
-	) {
+	$: if (!equal(statusHistory, history)) {
 		history = statusHistory;
 	}
 </script>
@@ -41,7 +40,7 @@
 				}}
 			>
 				<div class="flex items-start gap-2">
-					<StatusItem {status} />
+					<StatusItem {status} {readOnly} />
 				</div>
 			</button>
 
@@ -66,7 +65,7 @@
 										{/if}
 									</div>
 
-									<StatusItem {status} done={true} />
+									<StatusItem {status} done={true} {readOnly} />
 								</div>
 							{/each}
 						</div>
