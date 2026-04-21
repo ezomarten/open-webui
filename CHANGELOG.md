@@ -15,16 +15,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - OpenRouter-backed Merge Responses streams now stop after the configured pre-content timeout if upstream only emits `: OPENROUTER PROCESSING` keepalive comments and never sends a meaningful output chunk, while the chat UI clears stale empty merged placeholders both after abandoned attempts and when an empty stream terminates without content.
 - Public-link snapshots now preserve the full sanitized user/assistant history tree, so anonymous `/p/{id}` pages can display parallel multi-model responses instead of only the first visible branch.
 
-## [0.9.0-publicshare.1] - 2026-04-21
+## [0.9.1-publicshare.1] - 2026-04-21
 
 ### Changed
 
-- Synced fork mainline to upstream `0.9.0` while preserving anonymous public shares, public-link admin settings, the public-host allowlist, OpenRouter Zero Retention connections, public-share snapshot files and citations, helper-task metadata sanitization, and the existing streamed timeout/error hardening.
-- Share Chat now keeps upstream shared-chat access grants alongside the fork's snapshot-based public links so both sharing modes remain available on `0.9.0`.
+- Synced fork mainline to upstream `0.9.1` while preserving anonymous public shares, public-link admin settings, the public-host allowlist, OpenRouter Zero Retention connections, public-share snapshot files and citations, helper-task metadata sanitization, and the existing streamed timeout/error hardening.
+- Share Chat now keeps upstream shared-chat access grants alongside the fork's snapshot-based public links so both sharing modes remain available on `0.9.1`.
 
 ### Fixed
 
-- The upstream `0.9.0` async database and shared `aiohttp` session-pool refactors now retain the fork's public-share cleanup on chat deletion plus the first-meaningful-chunk timeout behavior and explicit stalled-stream errors for OpenAI-compatible and Ollama upstreams.
+- The upstream `0.9.1` published package metadata now includes `aiosqlite` and `asyncpg` in `pyproject.toml`, avoiding pip/uv installs that would otherwise miss async database drivers and fail at startup.
+- The upstream `0.9.0` async database and shared `aiohttp` session-pool refactors still retain the fork's public-share cleanup on chat deletion plus the first-meaningful-chunk timeout behavior and explicit stalled-stream errors for OpenAI-compatible and Ollama upstreams.
 
 ## [0.8.12-publicshare.1] - 2026-03-28
 
