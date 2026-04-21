@@ -25,6 +25,15 @@ def build_upstream_request_timeout(timeout_seconds: int | None, stream: bool = F
     )
 
 
+def build_upstream_request_timeout_for_payload(
+    timeout_seconds: int | None, payload: dict[str, Any] | None
+) -> aiohttp.ClientTimeout:
+    return build_upstream_request_timeout(
+        timeout_seconds,
+        stream=bool(payload.get("stream")) if isinstance(payload, dict) else False,
+    )
+
+
 def get_stream_idle_timeout_message(timeout_seconds: int | None) -> str:
     if timeout_seconds:
         return "Upstream streaming response stalled " f"for {timeout_seconds} seconds without receiving data."

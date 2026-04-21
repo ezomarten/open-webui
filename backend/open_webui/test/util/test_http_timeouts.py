@@ -5,6 +5,7 @@ import pytest
 from open_webui.utils.http_timeouts import (
     DEFAULT_STREAM_CONNECT_TIMEOUT_SECONDS,
     build_upstream_request_timeout,
+    build_upstream_request_timeout_for_payload,
     chunk_contains_meaningful_stream_output,
     get_stream_idle_timeout_message,
     get_stream_prelude_timeout_message,
@@ -27,6 +28,21 @@ def test_build_upstream_request_timeout_uses_total_timeout_for_non_stream_reques
 
 def test_build_upstream_request_timeout_uses_idle_timeout_for_stream_requests():
     timeout = build_upstream_request_timeout(300, stream=True)
+
+    assert timeout.total is None
+    assert timeout.sock_read is None
+    assert timeout.sock_connect == DEFAULT_STREAM_CONNECT_TIMEOUT_SECONDS
+
+
+def test_build_upstream_request_timeout_for_payload_defaults_to_non_stream_requests():
+    timeout = build_upstream_request_timeout_for_payload(300, None)
+
+    assert timeout.total == 300
+    assert timeout.sock_read is None
+
+
+def test_build_upstream_request_timeout_for_payload_uses_stream_timeout_when_requested():
+    timeout = build_upstream_request_timeout_for_payload(300, {"stream": True})
 
     assert timeout.total is None
     assert timeout.sock_read is None

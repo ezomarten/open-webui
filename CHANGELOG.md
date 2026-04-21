@@ -7,8 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.9.1-publicshare.2] - 2026-04-21
+
 ### Fixed
 
+- OpenAI-compatible chat, responses, and legacy proxy requests no longer crash with `NameError` after the `0.9.1` sync when timeout selection consults the request payload stream flag; the chat pipeline also restores the shared `AIOHTTP_CLIENT_TIMEOUT` import so provider failures surface as normal user-visible errors instead of a second exception masking the original issue.
 - Admin Settings > Connections now applies edited connection payloads to parent state before saving, and the deployment runbook now wires `REDIS_URL` alongside `WEBSOCKET_REDIS_URL` so persistent admin connection settings stay synchronized across multi-worker processes.
 - Anonymous public-share pages now ship with stricter public-host response headers, avoid credentialed static-asset fetches, lazy-load Socket.IO and Pyodide only when needed, and stop third-party favicon lookups in read-only citation/search UI to reduce web-security false positives.
 - Chat Merge Responses now surfaces upstream MOA/provider failures to the user and clears the transient merged-loading state instead of failing silently.

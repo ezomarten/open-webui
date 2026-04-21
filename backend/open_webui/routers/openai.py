@@ -61,7 +61,7 @@ from open_webui.utils.session_pool import (
     stream_wrapper,
 )
 from open_webui.utils.http_timeouts import (
-    build_upstream_request_timeout,
+    build_upstream_request_timeout_for_payload,
     chunk_contains_meaningful_stream_output,
 )
 
@@ -1134,6 +1134,8 @@ async def generate_chat_completion(
         if logit_bias:
             payload['logit_bias'] = json.loads(logit_bias)
 
+    request_timeout = build_upstream_request_timeout_for_payload(AIOHTTP_CLIENT_TIMEOUT, payload)
+
     headers, cookies = await get_headers_and_cookies(request, url, key, api_config, metadata, user=user)
 
     is_responses = api_config.get('api_type') == 'responses'
@@ -1195,7 +1197,7 @@ async def generate_chat_completion(
             headers=headers,
             cookies=cookies,
             ssl=AIOHTTP_CLIENT_SESSION_SSL,
-            timeout=build_upstream_request_timeout(AIOHTTP_CLIENT_TIMEOUT, stream=stream_requested),
+            timeout=request_timeout,
         )
 
         # Check if response is SSE
@@ -1370,6 +1372,7 @@ async def responses(
     Routes to the correct upstream backend based on the model field.
     """
     payload = form_data.model_dump(exclude_none=True)
+    request_timeout = build_upstream_request_timeout_for_payload(AIOHTTP_CLIENT_TIMEOUT, payload)
 
     idx = 0
     model_id = form_data.model
@@ -1425,7 +1428,7 @@ async def responses(
             headers=headers,
             cookies=cookies,
             ssl=AIOHTTP_CLIENT_SESSION_SSL,
-            timeout=build_upstream_request_timeout(AIOHTTP_CLIENT_TIMEOUT, stream=stream_requested),
+            timeout=request_timeout,
         )
 
         # Check if response is SSE
@@ -1491,6 +1494,8 @@ async def proxy(path: str, request: Request, user=Depends(get_verified_user)):
         except (json.JSONDecodeError, ValueError):
             payload = None
 
+    request_timeout = build_upstream_request_timeout_for_payload(AIOHTTP_CLIENT_TIMEOUT, payload)
+
     idx = 0
     model_id = payload.get('model') if isinstance(payload, dict) else None
     if model_id:
@@ -1547,7 +1552,7 @@ async def proxy(path: str, request: Request, user=Depends(get_verified_user)):
             headers=headers,
             cookies=cookies,
             ssl=AIOHTTP_CLIENT_SESSION_SSL,
-            timeout=build_upstream_request_timeout(AIOHTTP_CLIENT_TIMEOUT, stream=stream_requested),
+            timeout=request_timeout,
         )
 
         # Check if response is SSE
