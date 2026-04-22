@@ -157,7 +157,7 @@ async def get_public_share_by_chat_id(
     public_share_base_url = _get_public_share_base_url(request)
     _assert_share_permission(request, user)
 
-    chat = Chats.get_chat_by_id_and_user_id(chat_id, user.id, db=db)
+    chat = await Chats.get_chat_by_id_and_user_id(chat_id, user.id)
     if chat is None:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
@@ -197,7 +197,7 @@ async def upsert_public_share_by_chat_id(
     public_share_base_url = _get_public_share_base_url(request)
     _assert_share_permission(request, user)
 
-    chat = Chats.get_chat_by_id_and_user_id(chat_id, user.id, db=db)
+    chat = await Chats.get_chat_by_id_and_user_id(chat_id, user.id)
     if chat is None:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
@@ -228,7 +228,7 @@ async def delete_public_share_by_chat_id(
     _get_public_share_base_url(request)
     _assert_share_permission(request, user)
 
-    chat = Chats.get_chat_by_id_and_user_id(chat_id, user.id, db=db)
+    chat = await Chats.get_chat_by_id_and_user_id(chat_id, user.id)
     if chat is None:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,

@@ -118,15 +118,19 @@ def extract_public_history(chat_body: dict) -> dict:
     history_messages = history.get("messages") or {}
 
     if isinstance(history_messages, dict) and history_messages:
-        return _build_public_history_from_raw_history(
+        public_history = _build_public_history_from_raw_history(
             history_messages,
             history.get("currentId"),
             chat_body.get("models"),
         )
+        if public_history.get("messages"):
+            return public_history
 
     messages = chat_body.get("messages") or []
     if isinstance(messages, list):
-        return _build_public_history_from_message_list(messages, chat_body.get("models"))
+        public_history = _build_public_history_from_message_list(messages, chat_body.get("models"))
+        if public_history.get("messages"):
+            return public_history
 
     return {
         "messages": {},

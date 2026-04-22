@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.9.1-publicshare.3] - 2026-04-23
+
+### Fixed
+
+- Public Link routes now await async chat lookups before checking ownership or generating snapshots, fixing `Create Public Link` requests that failed with `No public messages found.` because a coroutine object was being passed into snapshot generation.
+- Public Link snapshot generation now falls back to the chat's flattened `messages` list when a saved `history.messages` tree contains only non-public roles, preventing `Create Public Link` from failing with `No public messages found.` on chats that still have visible user and assistant turns.
+- Restored the fork's ja-JP Public Link and Public Shares UI strings after the `0.9.1` sync regenerated empty catalog entries for those keys.
+
 ## [0.9.1-publicshare.2] - 2026-04-21
 
 ### Fixed

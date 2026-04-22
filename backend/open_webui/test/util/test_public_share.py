@@ -260,6 +260,57 @@ def test_build_public_share_snapshot_skips_private_intermediate_nodes():
     assert history["currentId"] == "assistant_1"
 
 
+def test_build_public_share_snapshot_falls_back_to_message_list_when_history_has_no_public_roles():
+    chat = SimpleNamespace(
+        title="Fallback Share",
+        chat={
+            "title": "Fallback Share",
+            "history": {
+                "currentId": "tool_1",
+                "messages": {
+                    "system_1": {
+                        "id": "system_1",
+                        "role": "system",
+                        "content": "hidden system prompt",
+                        "parentId": None,
+                        "childrenIds": ["tool_1"],
+                    },
+                    "tool_1": {
+                        "id": "tool_1",
+                        "role": "tool",
+                        "content": "hidden tool output",
+                        "parentId": "system_1",
+                        "childrenIds": [],
+                    },
+                },
+            },
+            "messages": [
+                {
+                    "id": "user_1",
+                    "role": "user",
+                    "content": "Visible prompt",
+                },
+                {
+                    "id": "assistant_1",
+                    "role": "assistant",
+                    "content": "Visible answer",
+                    "model": "fallback-model",
+                },
+            ],
+            "models": ["fallback-model"],
+        },
+    )
+
+    snapshot = build_public_share_snapshot(chat)
+    history = snapshot["history"]
+
+    assert snapshot["schema_version"] == PUBLIC_SHARE_SCHEMA_VERSION
+    assert [message["id"] for message in snapshot["messages"]] == ["user_1", "assistant_1"]
+    assert snapshot["models"] == ["fallback-model"]
+    assert set(history["messages"].keys()) == {"user_1", "assistant_1"}
+    assert history["currentId"] == "assistant_1"
+
+
 def test_public_share_page_headers_include_public_host_hardening():
     headers = get_public_share_response_headers("/p/public-share-id")
 
