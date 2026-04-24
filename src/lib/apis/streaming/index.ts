@@ -43,6 +43,8 @@ export async function createOpenAITextStream(
 async function* openAIStreamToIterator(
 	reader: ReadableStreamDefaultReader<ParsedEvent>
 ): AsyncGenerator<TextStreamUpdate> {
+	const responsesOutputWithDelta = new Set<string>();
+
 	while (true) {
 		const { value, done } = await reader.read();
 		if (done) {
@@ -62,6 +64,14 @@ async function* openAIStreamToIterator(
 			const parsedData = JSON.parse(data);
 			console.log(parsedData);
 
+			const responsesType = parsedData.type;
+			const responsesOutputKey =
+				parsedData.item_id !== undefined ||
+				parsedData.output_index !== undefined ||
+				parsedData.content_index !== undefined
+					? `${parsedData.item_id ?? ''}:${parsedData.output_index ?? ''}:${parsedData.content_index ?? ''}`
+					: null;
+
 			if (parsedData.error) {
 				yield { done: true, value: '', error: parsedData.error };
 				break;
@@ -80,6 +90,52 @@ async function* openAIStreamToIterator(
 			if (parsedData.usage) {
 				yield { done: false, value: '', usage: parsedData.usage };
 				continue;
+			}
+
+			if (responsesType === 'response.output_text.delta') {
+				if (responsesOutputKey) {
+					responsesOutputWithDelta.add(responsesOutputKey);
+				}
+
+				yield {
+					done: false,
+					value: parsedData.delta ?? ''
+				};
+				continue;
+			}
+
+			if (responsesType === 'response.output_text.done') {
+				if (!responsesOutputKey || !responsesOutputWithDelta.has(responsesOutputKey)) {
+					yield {
+						done: false,
+						value: parsedData.text ?? ''
+					};
+				}
+				continue;
+			}
+
+			if (responsesType === 'response.completed') {
+				const responseError = parsedData.response?.error;
+				if (responseError) {
+					yield { done: true, value: '', error: responseError };
+					break;
+				}
+
+				if (parsedData.response?.usage) {
+					yield { done: false, value: '', usage: parsedData.response.usage };
+				}
+
+				yield { done: true, value: '' };
+				break;
+			}
+
+			if (responsesType === 'response.failed' || responsesType === 'response.incomplete') {
+				yield {
+					done: true,
+					value: '',
+					error: parsedData.response?.error ?? parsedData.response?.incomplete_details ?? parsedData
+				};
+				break;
 			}
 
 			yield {

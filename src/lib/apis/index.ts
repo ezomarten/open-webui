@@ -1110,7 +1110,7 @@ export const generateMoACompletion = async (
 			model: model,
 			prompt: prompt,
 			responses: responses,
-			stream: true
+			stream: false
 		})
 	})
 		.then(async (res) => {

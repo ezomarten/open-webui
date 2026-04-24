@@ -2708,6 +2708,53 @@
 				(error as { name?: string }).name === 'AbortError'
 			);
 		};
+		const extractMergedContentFromResponse = (data) => {
+			const messageContent = data?.choices?.[0]?.message?.content;
+
+			if (typeof messageContent === 'string') {
+				return messageContent;
+			}
+
+			if (Array.isArray(messageContent)) {
+				return messageContent
+					.map((part) => {
+						if (typeof part === 'string') {
+							return part;
+						}
+
+						if (part?.type === 'text' || part?.type === 'output_text') {
+							return part?.text ?? '';
+						}
+
+						return part?.text ?? '';
+					})
+					.join('');
+			}
+
+			if (typeof data?.content === 'string') {
+				return data.content;
+			}
+
+			if (Array.isArray(data?.output)) {
+				return data.output
+					.filter((item) => item?.type === 'message')
+					.flatMap((item) => (Array.isArray(item?.content) ? item.content : []))
+					.map((part) => {
+						if (typeof part === 'string') {
+							return part;
+						}
+
+						if (part?.type === 'text' || part?.type === 'output_text') {
+							return part?.text ?? '';
+						}
+
+						return '';
+					})
+					.join('');
+			}
+
+			return '';
+		};
 
 		message.merged = mergedResponse;
 		history.messages[messageId] = message;
@@ -2721,50 +2768,41 @@
 				responses
 			);
 
-			if (!res?.body || !generating) {
+			if (!generating) {
 				clearMergedResponse();
 				return;
 			}
 
 			generationController = controller as AbortController;
-			const textStream = await createOpenAITextStream(
-				res.body,
-				Boolean($settings?.splitLargeChunks ?? false)
-			);
-			for await (const update of textStream) {
-				const { value, done, error } = update;
-				if (error) {
-					failMerge(error);
-					return;
-				}
+			const data = await res
+				.clone()
+				.json()
+				.catch(async () => {
+					const detail = await res.text().catch(() => '');
+					throw {
+						detail: detail || 'Failed to parse merge response'
+					};
+				});
 
-				if (done) {
-					if ((mergedResponse.content ?? '') === '') {
-						failMerge();
-						return;
-					}
-
-					generating = false;
-					generationController = null;
-					break;
-				}
-
-				if (mergedResponse.content == '' && value == '\n') {
-					continue;
-				} else {
-					mergedResponse.content += value;
-					history.messages[messageId] = message;
-				}
-
-				if (autoScroll) {
-					scheduleScrollToBottom();
-				}
-			}
-
-			if ((mergedResponse.content ?? '') === '') {
-				failMerge();
+			if (data?.error) {
+				failMerge(data.error);
 				return;
 			}
+
+			mergedResponse.content = extractMergedContentFromResponse(data);
+			history.messages[messageId] = message;
+
+			if ((mergedResponse.content ?? '') === '') {
+				failMerge(data);
+				return;
+			}
+
+			if (autoScroll) {
+				scheduleScrollToBottom();
+			}
+
+			generating = false;
+			generationController = null;
 
 			await saveChatHandler(_chatId, history);
 		} catch (e) {

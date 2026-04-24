@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.9.1-publicshare.4] - 2026-04-24
+
+### Fixed
+
+- Merge Responses now parses OpenAI Responses API SSE events such as `response.output_text.delta` and `response.completed`, fixing Local / LM Studio-backed MOA merges that previously failed even though the backend request itself succeeded.
+- Merge Responses now requests MOA completions as non-stream JSON and renders the final merged content from the normalized completion payload, avoiding remote reasoning-model failures where providers streamed `reasoning_content` tokens first but never emitted usable `delta.content` tokens for the merge UI.
+
 ## [0.9.1-publicshare.3] - 2026-04-23
 
 ### Fixed
