@@ -72,6 +72,15 @@ from open_webui.utils.anthropic import is_anthropic_url, get_anthropic_models
 log = logging.getLogger(__name__)
 
 
+# Headers that become stale after aiohttp auto-decompresses the upstream
+# response body. Forwarding them verbatim can trigger a second decode pass.
+_STRIP_PROXY_HEADERS = frozenset({'Content-Encoding', 'Content-Length', 'Transfer-Encoding'})
+
+
+def _clean_proxy_headers(raw_headers) -> dict:
+    return {k: v for k, v in raw_headers.items() if k not in _STRIP_PROXY_HEADERS}
+
+
 ##########################################
 #
 # Utility functions
@@ -1230,7 +1239,7 @@ async def generate_chat_completion(
                     timeout_starts_after_chunk=chunk_contains_meaningful_stream_output,
                 ),
                 status_code=r.status,
-                headers=dict(r.headers),
+                headers=_clean_proxy_headers(r.headers),
             )
         else:
             try:
@@ -1315,7 +1324,7 @@ async def embeddings(request: Request, form_data: dict, user):
             return StreamingResponse(
                 stream_wrapper(r),
                 status_code=r.status,
-                headers=dict(r.headers),
+                headers=_clean_proxy_headers(r.headers),
             )
         else:
             try:
@@ -1442,7 +1451,7 @@ async def responses(
                     timeout_starts_after_chunk=chunk_contains_meaningful_stream_output,
                 ),
                 status_code=r.status,
-                headers=dict(r.headers),
+                headers=_clean_proxy_headers(r.headers),
             )
         else:
             try:
@@ -1566,7 +1575,7 @@ async def proxy(path: str, request: Request, user=Depends(get_verified_user)):
                     timeout_starts_after_chunk=chunk_contains_meaningful_stream_output,
                 ),
                 status_code=r.status,
-                headers=dict(r.headers),
+                headers=_clean_proxy_headers(r.headers),
             )
         else:
             try:

@@ -27,9 +27,9 @@ For more information, be sure to check out our [Open WebUI Documentation](https:
 
 ## Fork Overview
 
-This repository is a deployment-focused fork of Open WebUI `v0.9.1`. It keeps the upstream application intact where possible and adds the minimum patch set needed for a dual-host deployment where the main app stays protected while anonymous public shares are exposed from a separate host.
+This repository is a deployment-focused fork of Open WebUI `v0.9.2`. It keeps the upstream application intact where possible and adds the minimum patch set needed for a dual-host deployment where the main app stays protected while anonymous public shares are exposed from a separate host.
 
-Fork mainline now tracks upstream `v0.9.1`. The current published GHCR release is `0.9.1-publicshare.4`.
+Fork mainline now tracks upstream `v0.9.2`. The current published fork release is `0.9.2-publicshare.1`.
 
 ### Fork-specific additions
 
@@ -47,10 +47,10 @@ Build locally:
 docker build --provenance=false --sbom=false --build-arg USE_SLIM=true -t open-webui-public-share .
 ```
 
-Or pull the current published fork image:
+Pull the current release image:
 
 ```bash
-docker pull ghcr.io/farefore/open-webui-public-share:0.9.1-publicshare.4
+docker pull ghcr.io/farefore/open-webui-public-share:0.9.2-publicshare.1
 ```
 
 Relevant configuration for this fork:
@@ -75,7 +75,7 @@ OLLAMA_BASE_URL=http://host.docker.internal:11434
 # OPENAI_API_KEY=sk-...
 ```
 
-To run the current published fork image instead of a local build, set `OPENWEBUI_IMAGE=ghcr.io/farefore/open-webui-public-share:0.9.1-publicshare.4`.
+To run the current published release image instead of a local build, set `OPENWEBUI_IMAGE=ghcr.io/farefore/open-webui-public-share:0.9.2-publicshare.1`.
 
 Example `compose.yaml`:
 
@@ -137,7 +137,7 @@ See [FORK_NOTES.md](./FORK_NOTES.md) for the fork scope, limitations, and releas
 
 - 💾 **Persistent Artifact Storage**: Built-in key-value storage API for artifacts, enabling features like journals, trackers, leaderboards, and collaborative tools with both personal and shared data scopes across sessions.
 
-- 📚 **Local RAG Integration**: Dive into the future of chat interactions with groundbreaking Retrieval Augmented Generation (RAG) support using your choice of 9 vector databases and multiple content extraction engines (Tika, Docling, Document Intelligence, Mistral OCR, External loaders). Load documents directly into chat or add files to your document library, effortlessly accessing them using the `#` command before a query.
+- 📚 **Local RAG Integration**: Dive into the future of chat interactions with groundbreaking Retrieval Augmented Generation (RAG) support using your choice of 9 vector databases and multiple content extraction engines (Tika, Docling, Document Intelligence, Mistral OCR, PaddleOCR-vl, External loaders). Load documents directly into chat or add files to your document library, effortlessly accessing them using the `#` command before a query.
 
 - 🔍 **Web Search for RAG**: Perform web searches using 15+ providers including `SearXNG`, `Google PSE`, `Brave Search`, `Kagi`, `Mojeek`, `Tavily`, `Perplexity`, `serpstack`, `serper`, `Serply`, `DuckDuckGo`, `SearchApi`, `SerpApi`, `Bing`, `Jina`, `Exa`, `Sougou`, `Azure AI Search`, and `Ollama Cloud`, injecting results directly into your chat experience.
 

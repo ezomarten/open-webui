@@ -91,6 +91,14 @@ log = logging.getLogger(__name__)
 #
 ##########################################
 
+# Headers that become stale after aiohttp auto-decompresses the upstream
+# response body. Forwarding them verbatim can trigger a second decode pass.
+_STRIP_PROXY_HEADERS = frozenset({'Content-Encoding', 'Content-Length', 'Transfer-Encoding'})
+
+
+def _clean_proxy_headers(raw_headers) -> dict:
+    return {k: v for k, v in raw_headers.items() if k not in _STRIP_PROXY_HEADERS}
+
 
 async def send_get_request(url, key=None, user: UserModel = None):
     timeout = aiohttp.ClientTimeout(total=AIOHTTP_CLIENT_TIMEOUT_MODEL_LIST)
@@ -168,7 +176,7 @@ async def send_request(
         r.raise_for_status()
 
         if stream:
-            response_headers = dict(r.headers)
+            response_headers = _clean_proxy_headers(r.headers)
             if content_type:
                 response_headers['Content-Type'] = content_type
 

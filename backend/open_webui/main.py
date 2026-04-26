@@ -1979,14 +1979,14 @@ async def chat_completion(
         except asyncio.CancelledError:
             log.info('Chat processing was cancelled')
             try:
-                event_emitter = await get_event_emitter(metadata)
-                if event_emitter:
-                    await asyncio.shield(
-                        event_emitter(
-                            {'type': 'chat:tasks:cancel'},
-                        )
-                    )
-            except Exception as e:
+
+                async def emit_cancel_event():
+                    event_emitter = await get_event_emitter(metadata)
+                    if event_emitter:
+                        await event_emitter({'type': 'chat:tasks:cancel'})
+
+                await asyncio.shield(emit_cancel_event())
+            except Exception:
                 pass
             finally:
                 raise  # re-raise to ensure proper task cancellation handling
@@ -2020,37 +2020,46 @@ async def chat_completion(
 
                 except Exception:
                     pass
+            else:
+                # Legacy/direct API paths do not have a chat-bound websocket
+                # error channel, so they must receive a normal HTTP failure.
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail=error_detail,
+                )
         finally:
-            # Clean up MCP clients.  Shield the entire block from
-            # CancelledError so disconnect() can finish even when the
-            # task is being stopped.  Each client is isolated so one
-            # failure doesn't skip the rest.
+            # MCP cleanup must stay on the same asyncio task as connect().
             try:
                 if mcp_clients := metadata.get('mcp_clients'):
-
-                    async def _cleanup_mcp():
-                        for client in reversed(list(mcp_clients.values())):
-                            try:
-                                await client.disconnect()
-                            except Exception as e:
-                                log.debug(f'Error disconnecting MCP client: {e}')
-
-                    await asyncio.wait_for(
-                        asyncio.shield(_cleanup_mcp()),
-                        timeout=10.0,
-                    )
-            except asyncio.TimeoutError:
-                log.warning('MCP client cleanup timed out after 10 s')
+                    for client in reversed(list(mcp_clients.values())):
+                        try:
+                            await client.disconnect()
+                        except Exception as e:
+                            log.debug(f'Error disconnecting MCP client: {e}')
+                        except asyncio.CancelledError:
+                            pass
             except Exception as e:
                 log.debug(f'Error cleaning up MCP clients: {e}')
-            # Emit chat:active=false when task completes
+            except asyncio.CancelledError:
+                pass
+
             try:
                 if metadata.get('chat_id'):
-                    event_emitter = await get_event_emitter(metadata, update_db=False)
-                    if event_emitter:
-                        await event_emitter({'type': 'chat:active', 'data': {'active': False}})
-            except Exception as e:
-                log.debug(f'Error emitting chat:active: {e}')
+
+                    async def emit_inactive_event():
+                        try:
+                            event_emitter = await get_event_emitter(metadata, update_db=False)
+                            if event_emitter:
+                                await event_emitter({'type': 'chat:active', 'data': {'active': False}})
+                        except Exception:
+                            pass
+
+                    try:
+                        await asyncio.shield(emit_inactive_event())
+                    except asyncio.CancelledError:
+                        pass
+            except Exception:
+                pass
 
     # Fan out: one task per model
     if metadata.get('session_id') and metadata.get('chat_id'):

@@ -3,6 +3,7 @@ from __future__ import annotations
 import shutil
 import subprocess
 import sys
+import os
 from pathlib import Path
 
 
@@ -58,6 +59,9 @@ def main() -> int:
         [npm, "run", "test:frontend"],
         [npm, "run", "build"],
     ]
+
+    if os.environ.get("OPENWEBUI_SKIP_CHAT_SMOKE") != "1":
+        commands.append([python, "scripts/chat_smoke.py"])
 
     for command in commands:
         run(command)

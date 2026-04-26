@@ -128,7 +128,7 @@
 	};
 
 	const loadAccessGrants = async () => {
-		if (!chatId || !chat?.share_id) {
+		if (!chatId) {
 			accessGrants = [];
 			return;
 		}

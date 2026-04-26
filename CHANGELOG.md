@@ -7,6 +7,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.9.2-publicshare.1] - 2026-04-26
+
+### Changed
+
+- Synced fork mainline to upstream `0.9.2` while preserving anonymous public shares, public-link admin settings, the public-host allowlist, OpenRouter Zero Retention connections, helper-task metadata sanitization, Merge Responses hardening, and the existing streamed timeout/error handling.
+- Release preflight now runs an authenticated real-model chat smoke against `/api/models` and `/api/chat/completions`, covering both JSON and SSE stream paths before release pushes unless `OPENWEBUI_SKIP_CHAT_SMOKE=1` is set.
+
+### Fixed
+
+- OpenAI-compatible and Ollama streaming proxy responses now keep the fork's first-meaningful-chunk timeout behavior while also stripping stale upstream proxy headers added by the upstream `0.9.2` refactor.
+- Post-sync OpenAI-compatible streamed chats no longer fail with `Open WebUI: Server Connection Error` because the fork's streamed proxy path now restores the missing `_clean_proxy_headers` helper used after upstream response decompression.
+- Chat cancellation and error cleanup now combine the upstream streamed-response close path with the fork's persisted cancel/error behavior so cancelled chats stop cleanly without losing saved state.
+- PostgreSQL deployments that use `postgresql+psycopg://` URLs now still map the async runtime path onto `asyncpg`, preserving the fork's async database runtime after the upstream `0.9.2` database changes.
+- The fork runtime metadata now explicitly keeps `asyncpg`, `sqlalchemy[asyncio]`, and `brotlicffi` in the published Python dependency sets so local and container installs match the merged `0.9.2` runtime assumptions.
+- Share Chat access grants now load whenever a chat id is present, keeping upstream shared-chat access management available alongside the fork's public-link controls on `0.9.2`.
+
 ## [0.9.1-publicshare.4] - 2026-04-24
 
 ### Fixed

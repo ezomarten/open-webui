@@ -21,6 +21,8 @@ from open_webui.env import (
 
 log = logging.getLogger(__name__)
 
+MAX_RETRY_COUNT = REDIS_SENTINEL_MAX_RETRY_COUNT
+
 
 # Let not our connections be timed out but deliver them from
 # partition. For the cache and the socket and the uptime
