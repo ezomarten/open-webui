@@ -23,11 +23,31 @@
 	/** Side offset in px */
 	export let sideOffset = 4;
 
-	let triggerEl;
-	let contentEl;
+	let triggerEl: HTMLElement;
+	let contentEl: HTMLDivElement;
+
+	function isTargetWithinNestedSubmenuTree(target: EventTarget | null) {
+		const element = target instanceof Element ? target : null;
+
+		if (!element || !contentEl) {
+			return false;
+		}
+
+		const targetChain = element
+			.closest('[data-dropdown-sub-chain]')
+			?.getAttribute('data-dropdown-sub-chain');
+
+		if (!targetChain) {
+			return false;
+		}
+
+		return targetChain.split(',').some((submenuId) => {
+			return !!contentEl.querySelector(`[data-dropdown-sub-trigger-id="${submenuId}"]`);
+		});
+	}
 
 	/** Svelte action: moves the node to document.body */
-	function portal(node) {
+	function portal(node: HTMLElement) {
 		document.body.appendChild(node);
 		return {
 			destroy() {
@@ -39,9 +59,9 @@
 	}
 
 	/** Svelte action: captures the first child element as the trigger reference */
-	function trigger(node) {
-		triggerEl = node.firstElementChild || node;
-		function handleClick(e) {
+	function trigger(node: HTMLElement) {
+		triggerEl = (node.firstElementChild as HTMLElement | null) || node;
+		function handleClick(e: MouseEvent) {
 			e.preventDefault();
 			toggleOpen();
 		}
@@ -120,15 +140,18 @@
 		});
 	}
 
-	function handleWindowPointerDown(event) {
+	function handleWindowPointerDown(event: PointerEvent) {
+		const targetNode = event.target instanceof Node ? event.target : null;
+
 		if (!show || !closeOnOutsideClick) return;
-		if (triggerEl?.contains(event.target)) return;
-		if (contentEl?.contains(event.target)) return;
+		if (triggerEl?.contains(targetNode)) return;
+		if (contentEl?.contains(targetNode)) return;
+		if (isTargetWithinNestedSubmenuTree(event.target)) return;
 		show = false;
 		onOpenChange(false);
 	}
 
-	function handleKeydown(event) {
+	function handleKeydown(event: KeyboardEvent) {
 		if (event.key === 'Escape' && show) {
 			show = false;
 			onOpenChange(false);
@@ -143,9 +166,9 @@
 
 	import { onMount, onDestroy } from 'svelte';
 
-	let onPointerDown;
+	let onPointerDown: ((event: PointerEvent) => void) | null = null;
 	onMount(() => {
-		onPointerDown = (e) => handleWindowPointerDown(e);
+		onPointerDown = (e: PointerEvent) => handleWindowPointerDown(e);
 		document.addEventListener('pointerdown', onPointerDown, true);
 	});
 	onDestroy(() => {

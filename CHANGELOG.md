@@ -7,6 +7,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.9.2-publicshare.2] - 2026-04-29
+
+### Changed
+
+- Notes now support dedicated Markdown and plain-text import actions from the note menu, clipboard-based Markdown paste/copy helpers, and a tighter mobile note header layout with `Access` moved into the overflow menu.
+
+### Fixed
+
+- Nested note-menu submenus now stay open while crossing portal boundaries, accept clicks on portaled actions, and clamp within the viewport so phone-width `Import`, `Download`, and `Clipboard` menus stay usable.
+- Notes list rows now switch to a two-line mobile layout so long titles keep most of the row width on narrow screens, while updated time stays visible and creator text truncates when needed.
+- Admin Settings > Documents and Admin Settings > Web Search no longer render blank after the recent upstream sync because the retrieval config route now receives the fork's PaddleOCR-VL persistent settings during app startup instead of crashing on a missing `PADDLEOCR_VL_BASE_URL` app-state key.
+
 ## [0.9.2-publicshare.1] - 2026-04-26
 
 ### Changed

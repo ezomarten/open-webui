@@ -1,7 +1,159 @@
+import { marked } from 'marked';
 import DOMPurify from 'dompurify';
 import { toast } from 'svelte-sonner';
 
 import { createNewNote } from '$lib/apis/notes';
+
+const MARKDOWN_FILE_EXTENSION_REGEX = /\.(md|markdown|mdown|mkd|mkdn)$/i;
+const MARKDOWN_MIME_TYPES = new Set(['text/markdown', 'text/x-markdown']);
+const PLAIN_TEXT_FILE_EXTENSION_REGEX = /\.txt$/i;
+const PLAIN_TEXT_MIME_TYPES = new Set(['text/plain']);
+
+const noteMarkdownRenderer = new marked.Renderer() as any;
+
+noteMarkdownRenderer.list = (body, ordered, start) => {
+	const isTaskList = body.includes('data-checked=');
+
+	if (isTaskList) {
+		return `<ul data-type="taskList">${body}</ul>`;
+	}
+
+	const type = ordered ? 'ol' : 'ul';
+	const startatt = ordered && start !== 1 ? ` start="${start}"` : '';
+	return `<${type}${startatt}>${body}</${type}>`;
+};
+
+noteMarkdownRenderer.listitem = (text, task, checked) => {
+	if (task) {
+		const checkedAttr = checked ? 'true' : 'false';
+		return `<li data-type="taskItem" data-checked="${checkedAttr}">${text}</li>`;
+	}
+
+	return `<li>${text}</li>`;
+};
+
+export const isMarkdownFile = (file: File) => {
+	const mimeType = (file.type ?? '').toLowerCase();
+	return MARKDOWN_MIME_TYPES.has(mimeType) || MARKDOWN_FILE_EXTENSION_REGEX.test(file.name);
+};
+
+export const isPlainTextFile = (file: File) => {
+	const mimeType = (file.type ?? '').toLowerCase();
+	return PLAIN_TEXT_MIME_TYPES.has(mimeType) || PLAIN_TEXT_FILE_EXTENSION_REGEX.test(file.name);
+};
+
+export const getMarkdownTitleFromFileName = (fileName: string) => {
+	if (!fileName) {
+		return '';
+	}
+
+	return fileName.replace(MARKDOWN_FILE_EXTENSION_REGEX, '');
+};
+
+export const getPlainTextTitleFromFileName = (fileName: string) => {
+	if (!fileName) {
+		return '';
+	}
+
+	return fileName.replace(PLAIN_TEXT_FILE_EXTENSION_REGEX, '');
+};
+
+export const readTextFile = (file: File) =>
+	new Promise<string>((resolve, reject) => {
+		const reader = new FileReader();
+
+		reader.onload = (event) => {
+			const content = event.target?.result;
+
+			if (typeof content !== 'string') {
+				reject(new Error('Invalid file content'));
+				return;
+			}
+
+			resolve(content);
+		};
+
+		reader.onerror = () => {
+			reject(new Error('Failed to read file'));
+		};
+
+		reader.readAsText(file);
+	});
+
+export const parseMarkdownToNoteHtml = (markdown: string) => {
+	return marked.parse(markdown ?? '', {
+		async: false,
+		breaks: true,
+		gfm: true,
+		renderer: noteMarkdownRenderer
+	}) as string;
+};
+
+const escapeHtml = (text: string) =>
+	text
+		.replace(/&/g, '&amp;')
+		.replace(/</g, '&lt;')
+		.replace(/>/g, '&gt;')
+		.replace(/"/g, '&quot;')
+		.replace(/'/g, '&#39;');
+
+const preservePlainTextSpacing = (text: string) =>
+	escapeHtml(text)
+		.replace(/\t/g, '&nbsp;&nbsp;&nbsp;&nbsp;')
+		.replace(/ {2,}/g, (match) => '&nbsp;'.repeat(match.length - 1) + ' ');
+
+export const parsePlainTextToNoteHtml = (text: string) => {
+	const normalizedText = (text ?? '').replace(/\r\n/g, '\n');
+
+	if (!normalizedText) {
+		return '';
+	}
+
+	return normalizedText
+		.split('\n')
+		.map((line) => (line === '' ? '<p></p>' : `<p>${preservePlainTextSpacing(line)}</p>`))
+		.join('');
+};
+
+export const createNoteContentFromMarkdown = (markdown: string) => ({
+	json: null,
+	html: parseMarkdownToNoteHtml(markdown),
+	md: markdown
+});
+
+export const createNoteContentFromPlainText = (text: string) => ({
+	json: null,
+	html: parsePlainTextToNoteHtml(text),
+	md: text
+});
+
+export const readMarkdownFile = async (file: File) => {
+	if (!isMarkdownFile(file)) {
+		throw new Error('Only markdown files are allowed');
+	}
+
+	const markdown = await readTextFile(file);
+
+	return {
+		title: getMarkdownTitleFromFileName(file.name),
+		markdown,
+		content: createNoteContentFromMarkdown(markdown)
+	};
+};
+
+export const readPlainTextFile = async (file: File) => {
+	if (!isPlainTextFile(file)) {
+		throw new Error('Only plain text files are allowed');
+	}
+
+	const text = await readTextFile(file);
+
+	return {
+		title: getPlainTextTitleFromFileName(file.name),
+		text,
+		content: createNoteContentFromPlainText(text)
+	};
+};
 
 export const downloadPdf = async (note) => {
 	const [{ default: jsPDF }, { default: html2canvas }] = await Promise.all([
@@ -109,14 +261,17 @@ export const downloadPdf = async (note) => {
 
 export const createNoteHandler = async (title: string, md?: string, html?: string) => {
 	//  $i18n.t('New Note'),
+	const markdownContent = md ?? '';
+	const htmlContent = html ?? (markdownContent ? parseMarkdownToNoteHtml(markdownContent) : '');
+
 	const res = await createNewNote(localStorage.token, {
 		// YYYY-MM-DD
 		title: title,
 		data: {
 			content: {
 				json: null,
-				html: html || md || '',
-				md: md || ''
+				html: htmlContent,
+				md: markdownContent
 			}
 		},
 		meta: null,
