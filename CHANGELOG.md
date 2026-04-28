@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- The GHCR publish workflow now opts GitHub JavaScript actions into Node 24 ahead of the hosted-runner Node 20 retirement, and the published Docker image no longer bakes empty `OPENAI_API_KEY` / `WEBUI_SECRET_KEY` placeholders into the image config, clearing the current release workflow warnings.
+
 ## [0.9.2-publicshare.2] - 2026-04-29
 
 ### Changed

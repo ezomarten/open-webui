@@ -83,9 +83,8 @@ ENV OLLAMA_BASE_URL="/ollama" \
     OPENAI_API_BASE_URL=""
 
 ## API Key and Security Config ##
-ENV OPENAI_API_KEY="" \
-    WEBUI_SECRET_KEY="" \
-    SCARF_NO_ANALYTICS=true \
+# Inject runtime secrets through compose/env or *_FILE settings instead of baking placeholders into the image.
+ENV SCARF_NO_ANALYTICS=true \
     DO_NOT_TRACK=true \
     ANONYMIZED_TELEMETRY=false
 
