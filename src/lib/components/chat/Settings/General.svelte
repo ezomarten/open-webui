@@ -199,7 +199,7 @@
 		<div class="">
 			<div class=" mb-1 text-sm font-medium">{$i18n.t('WebUI Settings')}</div>
 
-			<div class="flex w-full justify-between">
+			<div class="ow-settings-row flex w-full justify-between">
 				<div class=" self-center text-xs font-medium">{$i18n.t('Theme')}</div>
 				<div class="flex items-center relative">
 					<select
@@ -221,7 +221,7 @@
 				</div>
 			</div>
 
-			<div class=" flex w-full justify-between">
+			<div class="ow-settings-row flex w-full justify-between">
 				<div class=" self-center text-xs font-medium">{$i18n.t('Language')}</div>
 				<div class="flex items-center relative">
 					<select
@@ -260,7 +260,7 @@
 			{/if}
 
 			<div>
-				<div class=" py-0.5 flex w-full justify-between">
+				<div class="ow-settings-row py-0.5 flex w-full justify-between">
 					<div class=" self-center text-xs font-medium">{$i18n.t('Notifications')}</div>
 
 					<button
@@ -301,7 +301,7 @@
 
 		{#if $user?.role === 'admin' || (($user?.permissions.chat?.controls ?? true) && ($user?.permissions.chat?.params ?? true))}
 			<div class="mt-2 space-y-3 pr-1.5">
-				<div class="flex justify-between items-center text-sm">
+				<div class="ow-settings-row flex justify-between items-center text-sm">
 					<div class="  font-medium">{$i18n.t('Advanced Parameters')}</div>
 					<button
 						class=" text-xs font-medium {($settings?.highContrastMode ?? false)

@@ -62,11 +62,11 @@
 
 <div {id} class={className}>
 	{#if title !== null}
-		<!-- svelte-ignore a11y-no-static-element-interactions -->
-		<!-- svelte-ignore a11y-click-events-have-key-events -->
-		<div
+		<button
+			type="button"
 			class="{buttonClassName} {disabled ? '' : 'cursor-pointer'}"
-			on:pointerup={() => {
+			{disabled}
+			on:click={() => {
 				if (!disabled) {
 					open = !open;
 				}
@@ -126,7 +126,7 @@
 					</div>
 				{/if}
 			</div>
-		</div>
+		</button>
 	{:else}
 		<!-- svelte-ignore a11y-no-static-element-interactions -->
 		<!-- svelte-ignore a11y-click-events-have-key-events -->

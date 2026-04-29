@@ -53,7 +53,7 @@
 	}
 </script>
 
-<div class=" space-y-1 text-xs pb-safe-bottom">
+<div class="ow-settings-surface ow-settings-surface-compact space-y-1 text-xs pb-safe-bottom">
 	<div>
 		<Tooltip
 			content={$i18n.t(

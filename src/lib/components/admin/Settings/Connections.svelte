@@ -293,7 +293,7 @@
 
 				<div class="my-2">
 					<div class="mt-2 space-y-2">
-						<div class="flex justify-between items-center text-sm">
+						<div class="ow-settings-row flex justify-between items-center text-sm">
 							<div class="  font-medium">{$i18n.t('OpenAI API')}</div>
 
 							<div class="flex items-center">
@@ -310,7 +310,7 @@
 
 						{#if ENABLE_OPENAI_API}
 							<div class="">
-								<div class="flex justify-between items-center">
+								<div class="ow-settings-row flex justify-between items-center">
 									<div class="font-medium text-xs">{$i18n.t('Manage OpenAI API Connections')}</div>
 
 									<Tooltip content={$i18n.t(`Add Connection`)}>
@@ -360,7 +360,7 @@
 				</div>
 
 				<div class=" my-2">
-					<div class="flex justify-between items-center text-sm mb-2">
+					<div class="ow-settings-row flex justify-between items-center text-sm mb-2">
 						<div class="  font-medium">{$i18n.t('Ollama API')}</div>
 
 						<div class="mt-1">
@@ -375,7 +375,7 @@
 
 					{#if ENABLE_OLLAMA_API}
 						<div class="">
-							<div class="flex justify-between items-center">
+							<div class="ow-settings-row flex justify-between items-center">
 								<div class="font-medium text-xs">{$i18n.t('Manage Ollama API Connections')}</div>
 
 								<Tooltip content={$i18n.t(`Add Connection`)}>
@@ -433,7 +433,7 @@
 				</div>
 
 				<div class="my-2">
-					<div class="flex justify-between items-center text-sm">
+					<div class="ow-settings-row flex justify-between items-center text-sm">
 						<div class="  font-medium">{$i18n.t('Direct Connections')}</div>
 
 						<div class="flex items-center">
@@ -458,7 +458,7 @@
 				<hr class=" border-gray-100/30 dark:border-gray-850/30 my-2" />
 
 				<div class="my-2">
-					<div class="flex justify-between items-center text-sm">
+					<div class="ow-settings-row flex justify-between items-center text-sm">
 						<div class=" text-xs font-medium">{$i18n.t('Cache Base Model List')}</div>
 
 						<div class="flex items-center">

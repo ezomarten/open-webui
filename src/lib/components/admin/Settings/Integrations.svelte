@@ -166,7 +166,7 @@
 
 					<hr class=" border-gray-100/30 dark:border-gray-850/30 my-2" />
 
-					<div class="mb-2.5 flex flex-col w-full justify-between">
+					<div class="ow-settings-block mb-2.5 flex flex-col w-full justify-between">
 						<div class="flex justify-between items-center mb-0.5">
 							<div class="font-medium">{$i18n.t('Manage Tool Servers')}</div>
 
@@ -213,7 +213,7 @@
 
 					<hr class=" border-gray-100/30 dark:border-gray-850/30 my-4" />
 
-					<div class="mb-2.5 flex flex-col w-full">
+					<div class="ow-settings-block mb-2.5 flex flex-col w-full">
 						<div class="flex justify-between items-center mb-1">
 							<div class="flex items-center gap-2">
 								<div class="font-medium">{$i18n.t('Open Terminal')}</div>

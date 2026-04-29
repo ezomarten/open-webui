@@ -146,7 +146,7 @@
 						</div>
 
 						<Tooltip
-							className="w-full self-center items-center flex"
+							className="w-full self-start"
 							content={$i18n.t('e.g. Tell me a fun fact about the Roman Empire')}
 							placement="top-start"
 						>

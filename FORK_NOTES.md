@@ -15,7 +15,7 @@ This fork now tracks Open WebUI `v0.9.2` and carries a small set of deployment-f
 - Deployment workspace operator runbook lives in [../README.md](../README.md)
 - Local rebuilds only affect runtime when workspace root [../.env](../.env) sets `OPENWEBUI_IMAGE=open-webui-public-share` or another local `open-webui-public-share[:tag]` reference
 - If [../.env](../.env) points to a GHCR tag, compose recreate will continue to run the GHCR image even after a successful local `docker build`
-- Current published fork release is `0.9.2-publicshare.2`
+- Current published fork release is `0.9.2-publicshare.3`
 - Current local fork head should be treated as the source of truth for future local image rebuilds
 - Multi-worker deployments must set `REDIS_URL` as well as `WEBSOCKET_REDIS_URL`; the latter only covers Socket.IO, while the former is required for AppConfig persistent-config sync so admin connection settings do not revert across workers
 - Before pushing a release commit or tag, run `python scripts/release_preflight.py` from an environment that has the repo's Python and Node dependencies installed; by default it now also runs `scripts/chat_smoke.py`, so set one of `OPENWEBUI_SMOKE_TRUSTED_EMAIL`, `OPENWEBUI_SMOKE_EMAIL` + `OPENWEBUI_SMOKE_PASSWORD`, `OPENWEBUI_SMOKE_API_KEY`, or `OPENWEBUI_SMOKE_BEARER_TOKEN` for the target runtime unless you are intentionally skipping the smoke with `OPENWEBUI_SKIP_CHAT_SMOKE=1`
@@ -57,6 +57,11 @@ This fork now tracks Open WebUI `v0.9.2` and carries a small set of deployment-f
 ### About disclosure
 
 - Settings > About includes a fork disclosure that states this deployment is a customized fork of Open WebUI and is not affiliated with or maintained by the official Open WebUI team
+
+### Settings modal usability
+
+- Chat settings, chat Controls section headers, advanced parameter panels, and admin settings now use a shared but surface-aware hover/focus system plus narrower desktop content columns so widely spaced label/control pairs stay grouped while editing in both light and dark themes; modal light-theme rows intentionally use stronger emphasis than admin rows, and explicit opt-in wrappers avoid flex-column layout regressions on admin forms
+- Admin Settings > Connections now opts saved OpenAI/Ollama connection rows into that same emphasis treatment, and workspace model prompt-suggestion editors keep the prompt field top-aligned instead of centering it beside the title inputs
 
 ### Notes markdown import
 
@@ -141,6 +146,14 @@ If the change affects public-share or public-link UI strings, also update [src/l
 
 ## Maintenance Record
 
+- 2026-04-29: prepared fork release `0.9.2-publicshare.3` by converting the GHCR warning cleanup plus settings/admin/prompt-alignment fixes from `Unreleased`, updating published-image references to the new baseline, and refreshing the workspace publish helper default tag; key files: `CHANGELOG.md`, `README.md`, `FORK_NOTES.md`, workspace `../README.md`, and workspace `../publish-openwebui-image.ps1`; validation: `npm run build` plus the earlier runtime/Cypress validation already recorded in the 2026-04-29 maintenance entries for trusted-header sign-in, system/OLED dark/light theme coverage, and the follow-up saved-connections/prompt-alignment fix.
+
+- 2026-04-29: extended the settings emphasis pass to the saved OpenAI/Ollama connection rows in Admin Settings > Connections and fixed the workspace model prompt-suggestion layout so the prompt textarea stays top-aligned next to the title/subtitle column instead of centering; key files: `src/lib/components/admin/Settings/Connections/OpenAIConnection.svelte`, `src/lib/components/admin/Settings/Connections/OllamaConnection.svelte`, `src/lib/components/workspace/Models/PromptSuggestions.svelte`, `CHANGELOG.md`, `FORK_NOTES.md`; validation: `npm run build`.
+
+- 2026-04-29: finalized the settings/theme consistency pass by switching from a single analytics-matched hover color to a surface-aware modal/admin emphasis system, keeping titled collapsible headers as real buttons for accessible focus styling, and stabilizing the Cypress regression so it signs in through `/api/v1/auths/signin` with trusted headers instead of relying on a localhost proxy; key files: `src/app.css`, `src/lib/components/chat/SettingsModal.svelte`, `src/lib/components/admin/Settings.svelte`, `src/lib/components/chat/Controls/Controls.svelte`, `src/lib/components/common/Collapsible.svelte`, `cypress/e2e/theme-hover.cy.ts`, `CHANGELOG.md`, `FORK_NOTES.md`; validation: `npm run build`, local image rebuild + redeploy via `../update-openwebui-local.ps1`, `curl.exe -I http://localhost:3000`, and `npx cypress run --browser chrome --config baseUrl=http://127.0.0.1:3000,video=false --env trustedHeaderEmail=<admin-email> --spec cypress/e2e/theme-hover.cy.ts` with system, OLED dark, and light all passing.
+
+- 2026-04-29: narrowed the shared settings hover selector to avoid flex-column centering regressions, aligned the hover colors with existing admin list/menu rows, and added explicit coverage for LDAP, admin connection toggles, Integrations/Web blocks, and Admin Users overview rows; key files: `src/app.css`, `src/lib/components/admin/Settings/General.svelte`, `src/lib/components/admin/Settings/Connections.svelte`, `src/lib/components/admin/Settings/Integrations.svelte`, `src/lib/components/admin/Settings/WebSearch.svelte`, `src/lib/components/admin/Users/UserList.svelte`, `CHANGELOG.md`, `FORK_NOTES.md`; validation: `npm run build`.
+
 - 2026-04-29: hardened the next release path against current GitHub Actions warnings by opting the GHCR publish workflow into Node 24 for JavaScript actions before GitHub's Node 20 cutoff and by removing empty `OPENAI_API_KEY` / `WEBUI_SECRET_KEY` placeholder envs from the image build so Docker's secret lint no longer flags the published image; key files: `.github/workflows/docker-build.yaml`, `Dockerfile`, `CHANGELOG.md`, `FORK_NOTES.md`, and workspace `../README.md`; validation: inspected the successful `Build and publish fork image` workflow warning output to isolate the causes, confirmed the publish workflow only uses the affected Docker actions in `.github/workflows/docker-build.yaml`, and updated the image/runtime config so secrets remain runtime-injected through compose/env or `WEBUI_SECRET_KEY_FILE` rather than image-baked.
 
 - 2026-04-29: prepared fork release `0.9.2-publicshare.2` by converting the notes import/mobile/admin-settings fixes from `Unreleased`, updating published-image references to the new baseline, refreshing the workspace publish helper default tag, and staging regenerated locale catalogs for the new notes UI strings; key files: `CHANGELOG.md`, `README.md`, `FORK_NOTES.md`, generated `src/lib/i18n/locales/*.json`, workspace `../README.md`, and workspace `../publish-openwebui-image.ps1`; validation: Node `v22.22.1` `c:/Users/it/openwebui/.venv/Scripts/python.exe scripts/release_preflight.py` with `OPENWEBUI_SKIP_CHAT_SMOKE=1`, plus the earlier local runtime validation already recorded in the 2026-04-28 and 2026-04-29 maintenance entries for `npm run build`, local image rebuild, `docker compose up -d --force-recreate open-webui`, `curl.exe -sS -D - http://localhost:3000 -o NUL` returning `HTTP/1.1 200 OK`, and authenticated/Playwright checks covering notes mobile layout plus Admin Settings > Documents / Web Search rendering.
@@ -195,6 +208,8 @@ If the change affects public-share or public-link UI strings, also update [src/l
 - 2026-03-15: added public-share support for public web citations while continuing to exclude private/file-backed citations; validation: backend sanitizer checks, local image rebuild, local `/p/{id}` verification, and operator-confirmed public-host verification
 
 ## Fork Release Summary
+
+- `0.9.2-publicshare.3`: clears the current GHCR publish warnings by moving the Docker workflow's JavaScript actions to Node 24 and keeping empty secret placeholders out of the published image, while also shipping the surface-aware settings emphasis pass across chat/admin surfaces plus the follow-up saved-connections highlighting and prompt-editor top alignment fixes
 
 - `0.9.2-publicshare.2`: notes now support markdown/plain-text imports plus clipboard markdown helpers with hardened nested menus and tighter mobile note layouts, and the retrieval config startup path now restores the PaddleOCR-VL app-state keys needed for Admin Settings > Documents and > Web Search
 - `0.9.2-publicshare.1`: upstream `v0.9.2` sync, retained anonymous public shares/public-link settings/public-host allowlist/OpenRouter ZDR/timeout hardening/Merge Responses fixes, restored the post-sync OpenAI-compatible streamed proxy header cleanup helper, added authenticated real-chat smoke coverage to release preflight, and kept the async runtime dependency set aligned for local and container PostgreSQL deployments

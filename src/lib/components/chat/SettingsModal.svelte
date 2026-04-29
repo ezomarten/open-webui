@@ -589,7 +589,7 @@
 	});
 </script>
 
-<Modal size="2xl" bind:show>
+<Modal size="xl" bind:show>
 	<div class="text-gray-700 dark:text-gray-100 mx-1">
 		<div class=" flex justify-between dark:text-gray-300 px-4 md:px-4.5 pt-4.5 pb-0.5 md:pb-2.5">
 			<div class=" text-lg font-medium self-center">{$i18n.t('Settings')}</div>
@@ -880,7 +880,7 @@
 				{/if}
 			</div>
 			<div
-				class="flex-1 px-3.5 md:pl-0 md:pr-4.5 md:min-h-[min(42rem,calc(100dvh-10rem))] max-h-[min(42rem,calc(100dvh-10rem))] overflow-y-auto"
+				class="ow-settings-surface ow-settings-surface-modal flex-1 px-3.5 md:pl-0 md:pr-4.5 md:min-h-[min(42rem,calc(100dvh-10rem))] max-h-[min(42rem,calc(100dvh-10rem))] overflow-y-auto"
 			>
 				{#if selectedTab === 'general'}
 					<General
@@ -957,10 +957,5 @@
 	.tabs {
 		-ms-overflow-style: none; /* IE and Edge */
 		scrollbar-width: none; /* Firefox */
-	}
-
-	input[type='number'] {
-		appearance: textfield;
-		-moz-appearance: textfield; /* Firefox */
 	}
 </style>

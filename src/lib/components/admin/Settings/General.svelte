@@ -476,7 +476,7 @@
 
 					<div class=" space-y-3">
 						<div class="mt-2 space-y-2 pr-1.5">
-							<div class="flex justify-between items-center text-sm">
+							<div class="ow-settings-row flex justify-between items-center text-sm">
 								<div class="  font-medium">{$i18n.t('LDAP')}</div>
 
 								<div class="mt-1">
@@ -485,7 +485,7 @@
 							</div>
 
 							{#if ENABLE_LDAP}
-								<div class="flex flex-col gap-1">
+								<div class="ow-settings-grid flex flex-col gap-1">
 									<div class="flex w-full gap-2">
 										<div class="w-full">
 											<div class=" self-center text-xs font-medium min-w-fit mb-1">
@@ -639,7 +639,7 @@
 										</a>
 									</div>
 									<div>
-										<div class="flex justify-between items-center text-sm">
+										<div class="ow-settings-row flex justify-between items-center text-sm">
 											<div class="  font-medium">{$i18n.t('TLS')}</div>
 
 											<div class="mt-1">
@@ -659,7 +659,7 @@
 													/>
 												</div>
 											</div>
-											<div class="flex justify-between items-center text-xs">
+											<div class="ow-settings-row flex justify-between items-center text-xs">
 												<div class=" font-medium">{$i18n.t('Validate certificate')}</div>
 
 												<div class="mt-1">

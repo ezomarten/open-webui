@@ -28,6 +28,8 @@
 	let showValves = getOpen('valves', false);
 	let showSystemPrompt = getOpen('systemPrompt');
 	let showAdvancedParams = getOpen('advancedParams');
+
+	const controlSectionButtonClassName = 'ow-settings-trigger w-full rounded-xl px-3 py-2';
 </script>
 
 <div class=" dark:text-white">
@@ -53,7 +55,7 @@
 					title={$i18n.t('Files')}
 					bind:open={showFiles}
 					onChange={setOpen('files')}
-					buttonClassName="w-full"
+					buttonClassName={controlSectionButtonClassName}
 				>
 					<div class="flex flex-col gap-1 mt-1.5" slot="content">
 						{#each chatFiles as file, fileIdx}
@@ -89,7 +91,7 @@
 					bind:open={showValves}
 					onChange={setOpen('valves')}
 					title={$i18n.t('Valves')}
-					buttonClassName="w-full"
+					buttonClassName={controlSectionButtonClassName}
 				>
 					<div class="text-sm" slot="content">
 						<Valves show={showValves} />
@@ -104,7 +106,7 @@
 					title={$i18n.t('System Prompt')}
 					bind:open={showSystemPrompt}
 					onChange={setOpen('systemPrompt')}
-					buttonClassName="w-full"
+					buttonClassName={controlSectionButtonClassName}
 				>
 					<div class="" slot="content">
 						<textarea
@@ -126,7 +128,7 @@
 					title={$i18n.t('Advanced Params')}
 					bind:open={showAdvancedParams}
 					onChange={setOpen('advancedParams')}
-					buttonClassName="w-full"
+					buttonClassName={controlSectionButtonClassName}
 				>
 					<div class="text-sm mt-1.5" slot="content">
 						<div>

@@ -7,9 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.9.2-publicshare.3] - 2026-04-29
+
 ### Fixed
 
 - The GHCR publish workflow now opts GitHub JavaScript actions into Node 24 ahead of the hosted-runner Node 20 retirement, and the published Docker image no longer bakes empty `OPENAI_API_KEY` / `WEBUI_SECRET_KEY` placeholders into the image config, clearing the current release workflow warnings.
+- Settings now keep chat/admin content columns narrower on desktop and use surface-aware hover/focus emphasis across chat settings, chat Controls, advanced parameter panels, LDAP/admin connection toggles, Integrations/Web blocks, and Admin Users overview rows; modal light-theme rows intentionally get stronger emphasis than admin rows so contrast stays readable on both surfaces, explicit opt-in wrappers avoid the recent flex-column alignment regression, and the Cypress regression now verifies Settings > General, chat Controls, and admin LDAP across system, OLED dark, and light themes with direct trusted-header sign-in via `trustedHeaderEmail` when local auth headers are enabled.
+- Admin Settings > Connections now gives each saved OpenAI/Ollama connection row the same opt-in emphasis as the surrounding settings rows, and model prompt-suggestion editors keep the prompt field top-aligned instead of vertically centering it beside the title/subtitle inputs.
 
 ## [0.9.2-publicshare.2] - 2026-04-29
 

@@ -308,6 +308,155 @@ input[type='number'] {
 	-moz-appearance: textfield; /* Firefox */
 }
 
+:root {
+	--ow-settings-hover-bg-light: #f8f8f8;
+	--ow-settings-hover-bg-dark: var(--color-gray-800, #333333);
+	--ow-settings-hover-shadow-light: inset 0 0 0 1px rgba(15, 23, 42, 0.035);
+	--ow-settings-hover-shadow-dark: inset 0 0 0 1px rgba(255, 255, 255, 0.06);
+	--ow-settings-focus-bg-light: #f8f8f8;
+	--ow-settings-focus-bg-dark: var(--color-gray-800, #333333);
+	--ow-settings-focus-shadow-light:
+		inset 0 0 0 1px rgba(15, 23, 42, 0.045), 0 0 0 1px rgba(148, 163, 184, 0.22);
+	--ow-settings-focus-shadow-dark:
+		inset 0 0 0 1px rgba(255, 255, 255, 0.08), 0 0 0 1px rgba(255, 255, 255, 0.12);
+}
+
+.ow-settings-surface-admin {
+	--ow-settings-hover-bg-light: #f8f8f8;
+	--ow-settings-focus-bg-light: #f8f8f8;
+}
+
+.ow-settings-surface-modal {
+	--ow-settings-hover-bg-light: #f3f4f6;
+	--ow-settings-hover-shadow-light: inset 0 0 0 1px rgba(15, 23, 42, 0.05);
+	--ow-settings-focus-bg-light: #f3f4f6;
+	--ow-settings-focus-shadow-light:
+		inset 0 0 0 1px rgba(15, 23, 42, 0.055), 0 0 0 1px rgba(148, 163, 184, 0.28);
+	--ow-settings-hover-shadow-dark: inset 0 0 0 1px rgba(255, 255, 255, 0.08);
+	--ow-settings-focus-shadow-dark:
+		inset 0 0 0 1px rgba(255, 255, 255, 0.1), 0 0 0 1px rgba(255, 255, 255, 0.16);
+}
+
+.ow-settings-surface-compact {
+	width: 100%;
+}
+
+@media (min-width: 768px) {
+	.ow-settings-surface [id^='tab-'],
+	.ow-settings-surface-compact {
+		max-width: 46rem;
+		margin-right: auto;
+	}
+}
+
+@media (min-width: 1024px) {
+	.ow-settings-surface-wide > form,
+	.ow-settings-surface-wide > div {
+		max-width: 58rem;
+		margin-right: auto;
+	}
+}
+
+.ow-settings-row,
+.ow-settings-block,
+.ow-settings-trigger,
+.ow-settings-grid > div[class~='flex'][class~='w-full'][class~='gap-2'],
+.ow-settings-surface
+	div[class~='flex'][class~='w-full'][class~='justify-between']:not([class~='flex-col']) {
+	border-radius: 0.875rem;
+	transition:
+		background-color 150ms ease,
+		box-shadow 150ms ease;
+}
+
+.ow-settings-row,
+.ow-settings-block,
+.ow-settings-grid > div[class~='flex'][class~='w-full'][class~='gap-2'],
+.ow-settings-surface
+	div[class~='flex'][class~='w-full'][class~='justify-between']:not([class~='flex-col']) {
+	margin-inline: -0.5rem;
+}
+
+.ow-settings-row,
+.ow-settings-surface
+	div[class~='flex'][class~='w-full'][class~='justify-between']:not([class~='flex-col']) {
+	align-items: center;
+	gap: 0.875rem;
+	padding: 0.625rem 0.75rem;
+}
+
+.ow-settings-block,
+.ow-settings-grid > div[class~='flex'][class~='w-full'][class~='gap-2'] {
+	padding: 0.625rem 0.75rem;
+}
+
+.ow-settings-row > :first-child,
+.ow-settings-surface
+	div[class~='flex'][class~='w-full'][class~='justify-between']:not([class~='flex-col'])
+	> :first-child {
+	flex: 1 1 auto;
+	min-width: 0;
+}
+
+.ow-settings-row > :last-child,
+.ow-settings-surface
+	div[class~='flex'][class~='w-full'][class~='justify-between']:not([class~='flex-col'])
+	> :last-child {
+	flex: 0 0 auto;
+	margin-left: clamp(0.75rem, 2vw, 1.5rem);
+	max-width: min(100%, 24rem);
+	min-width: 0;
+	text-align: right;
+}
+
+.ow-settings-trigger:hover,
+.ow-settings-row:hover,
+.ow-settings-block:hover,
+.ow-settings-grid > div[class~='flex'][class~='w-full'][class~='gap-2']:hover,
+.ow-settings-surface
+	div[class~='flex'][class~='w-full'][class~='justify-between']:not([class~='flex-col']):hover {
+	background-color: var(--ow-settings-hover-bg-light);
+	box-shadow: var(--ow-settings-hover-shadow-light);
+}
+
+.dark .ow-settings-trigger:hover,
+.dark .ow-settings-row:hover,
+.dark .ow-settings-block:hover,
+.dark .ow-settings-grid > div[class~='flex'][class~='w-full'][class~='gap-2']:hover,
+.dark
+	.ow-settings-surface
+	div[class~='flex'][class~='w-full'][class~='justify-between']:not([class~='flex-col']):hover {
+	background-color: var(--ow-settings-hover-bg-dark);
+	box-shadow: var(--ow-settings-hover-shadow-dark);
+}
+
+.ow-settings-trigger:focus-visible,
+.ow-settings-row:focus-within,
+.ow-settings-block:focus-within,
+.ow-settings-grid > div[class~='flex'][class~='w-full'][class~='gap-2']:focus-within,
+.ow-settings-surface
+	div[class~='flex'][class~='w-full'][class~='justify-between']:not(
+		[class~='flex-col']
+	):focus-within {
+	outline: none;
+	background-color: var(--ow-settings-focus-bg-light);
+	box-shadow: var(--ow-settings-focus-shadow-light);
+}
+
+.dark .ow-settings-trigger:focus-visible,
+.dark .ow-settings-row:focus-within,
+.dark .ow-settings-block:focus-within,
+.dark .ow-settings-grid > div[class~='flex'][class~='w-full'][class~='gap-2']:focus-within,
+.dark
+	.ow-settings-surface
+	div[class~='flex'][class~='w-full'][class~='justify-between']:not(
+		[class~='flex-col']
+	):focus-within {
+	outline: none;
+	background-color: var(--ow-settings-focus-bg-dark);
+	box-shadow: var(--ow-settings-focus-shadow-dark);
+}
+
 .katex-display {
 	@apply overflow-y-hidden overflow-x-auto max-w-full;
 }

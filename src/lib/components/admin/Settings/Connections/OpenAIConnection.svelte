@@ -54,7 +54,7 @@
 	}}
 />
 
-<div class="flex w-full gap-2 items-center">
+<div class="ow-settings-row flex w-full gap-2 items-center">
 	<Tooltip
 		className="w-full relative"
 		content={$i18n.t(`WebUI will make requests to "{{url}}/chat/completions"`, {

@@ -1139,7 +1139,7 @@
 						</div>
 					{/if}
 
-					<div class="mb-2.5 w-full">
+					<div class="ow-settings-block mb-2.5 w-full">
 						<div class=" self-center text-xs font-medium mb-1">
 							{$i18n.t('Concurrent Requests')}
 						</div>
@@ -1167,7 +1167,7 @@
 						</div>
 					</div>
 
-					<div class="  mb-2.5 flex flex-col w-full justify-between">
+					<div class="ow-settings-block mb-2.5 flex flex-col w-full justify-between">
 						<div class=" mb-1 text-xs font-medium">
 							{$i18n.t('Youtube Proxy URL')}
 						</div>
