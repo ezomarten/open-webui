@@ -47,7 +47,8 @@ jobs:
 
       - name: Build Frontend
         env:
-          NODE_OPTIONS: --max-old-space-size=4096
+          # The hosted runner recently exhausted the 4 GiB V8 heap during vite build.
+          NODE_OPTIONS: --max-old-space-size=6144
         run: npm run build
 
   test-frontend:
