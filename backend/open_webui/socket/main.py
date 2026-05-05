@@ -41,6 +41,7 @@ from open_webui.env import (
 )
 from open_webui.utils.auth import decode_token
 from open_webui.socket.utils import RedisDict, RedisLock, YdocManager
+from open_webui.socket.utils import get_cleanup_poll_interval
 from open_webui.tasks import create_task, stop_item_tasks
 from open_webui.utils.redis import get_redis_connection
 from open_webui.utils.access_control import has_permission
@@ -188,7 +189,7 @@ async def periodic_session_pool_cleanup():
                 if entry and now - entry.get('last_seen_at', 0) > SESSION_POOL_TIMEOUT:
                     log.warning(f'Reaping orphaned session {sid} (user {entry.get("id")})')
                     del SESSION_POOL[sid]
-            await asyncio.sleep(SESSION_POOL_TIMEOUT)
+            await asyncio.sleep(get_cleanup_poll_interval(WEBSOCKET_REDIS_LOCK_TIMEOUT, SESSION_POOL_TIMEOUT))
     finally:
         session_release_func()
 

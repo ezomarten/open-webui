@@ -55,6 +55,8 @@ from open_webui.config import (
 
 log = logging.getLogger(__name__)
 
+DEFAULT_WEB_LOADER_TIMEOUT_SECONDS = 30.0
+
 
 from typing import Any
 
@@ -67,7 +69,21 @@ def is_youtube_url(url: str) -> bool:
     return re.match(youtube_regex, url) is not None
 
 
-def get_loader(request, url: str):
+def get_web_loader_timeout_seconds(request) -> float:
+    configured_timeout = getattr(getattr(request.app.state, 'config', None), 'WEB_LOADER_TIMEOUT', None)
+
+    if configured_timeout not in (None, ''):
+        try:
+            timeout_seconds = float(configured_timeout)
+            if timeout_seconds > 0:
+                return timeout_seconds
+        except (TypeError, ValueError):
+            pass
+
+    return DEFAULT_WEB_LOADER_TIMEOUT_SECONDS
+
+
+def get_loader(request, url: str, timeout: Optional[float] = None):
     if is_youtube_url(url):
         return YoutubeLoader(
             url,
@@ -79,6 +95,7 @@ def get_loader(request, url: str):
             url,
             verify_ssl=request.app.state.config.ENABLE_WEB_LOADER_SSL_VERIFICATION,
             requests_per_second=request.app.state.config.WEB_LOADER_CONCURRENT_REQUESTS,
+            timeout=timeout,
             trust_env=request.app.state.config.WEB_SEARCH_TRUST_ENV,
         )
 
@@ -179,9 +196,11 @@ def get_content_from_url(request, url: str) -> str:
     # Validate URL before making any request (blocks private IPs, non-HTTP, filter list)
     validate_url(url)
 
+    loader_timeout = get_web_loader_timeout_seconds(request)
+
     # Streamed GET to check Content-Type without downloading the body.
     try:
-        response = requests.get(url, stream=True, timeout=30)
+        response = requests.get(url, stream=True, timeout=loader_timeout)
         response.raise_for_status()
         content_type = response.headers.get('Content-Type', '')
     except Exception:
@@ -192,7 +211,7 @@ def get_content_from_url(request, url: str) -> str:
     if response is None or _is_text_content_type(content_type):
         if response is not None:
             response.close()
-        loader = get_loader(request, url)
+        loader = get_loader(request, url, timeout=loader_timeout)
         docs = loader.load()
         content = ' '.join([doc.page_content for doc in docs])
         return content, docs

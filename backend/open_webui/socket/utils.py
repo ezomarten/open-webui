@@ -41,6 +41,13 @@ class RedisLock:
             self.redis.delete(self.lock_name)
 
 
+def get_cleanup_poll_interval(lock_timeout_secs: int, cleanup_timeout_secs: int) -> int:
+    if lock_timeout_secs <= 0:
+        return max(1, cleanup_timeout_secs)
+
+    return max(1, min(cleanup_timeout_secs, lock_timeout_secs // 2))
+
+
 class RedisDict:
     def __init__(self, name, redis_url, redis_sentinels=[], redis_cluster=False):
         self.name = name

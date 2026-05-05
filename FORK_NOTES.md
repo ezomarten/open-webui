@@ -15,7 +15,7 @@ This fork now tracks Open WebUI `v0.9.2` and carries a small set of deployment-f
 - Deployment workspace operator runbook lives in [../README.md](../README.md)
 - Local rebuilds only affect runtime when workspace root [../.env](../.env) sets `OPENWEBUI_IMAGE=open-webui-public-share` or another local `open-webui-public-share[:tag]` reference
 - If [../.env](../.env) points to a GHCR tag, compose recreate will continue to run the GHCR image even after a successful local `docker build`
-- Current published fork release is `0.9.2-publicshare.3`
+- Current published fork release is `0.9.2-publicshare.4`
 - Current local fork head should be treated as the source of truth for future local image rebuilds
 - Multi-worker deployments must set `REDIS_URL` as well as `WEBSOCKET_REDIS_URL`; the latter only covers Socket.IO, while the former is required for AppConfig persistent-config sync so admin connection settings do not revert across workers
 - Before pushing a release commit or tag, run `python scripts/release_preflight.py` from an environment that has the repo's Python and Node dependencies installed; by default it now also runs `scripts/chat_smoke.py`, so set one of `OPENWEBUI_SMOKE_TRUSTED_EMAIL`, `OPENWEBUI_SMOKE_EMAIL` + `OPENWEBUI_SMOKE_PASSWORD`, `OPENWEBUI_SMOKE_API_KEY`, or `OPENWEBUI_SMOKE_BEARER_TOKEN` for the target runtime unless you are intentionally skipping the smoke with `OPENWEBUI_SKIP_CHAT_SMOKE=1`
@@ -95,6 +95,11 @@ This fork now tracks Open WebUI `v0.9.2` and carries a small set of deployment-f
 - The generic streamed response wrapper now also persists and emits that timeout text when the failure happens during streamed response iteration, so stored `error.content` remains populated for the affected assistant message
 - OpenAI-compatible and Ollama streaming upstream requests now wait for the first meaningful upstream output chunk without applying the idle timeout, ignoring role-only deltas and Responses API status preludes such as `response.created` / `response.in_progress` before the timeout starts; non-stream requests continue to use the configured total request timeout
 - OpenAI-compatible streamed proxy responses also strip stale `Content-Encoding`, `Content-Length`, and `Transfer-Encoding` headers after aiohttp auto-decompression so downstream chat responses do not fail on the post-`v0.9.2` proxy cleanup path
+- Native `fetch_url` tool calls now cap page loading with the configured Web Loader timeout when available and otherwise fall back to a 30-second budget, so slow pages fail with a visible tool error instead of leaving chats stuck in `fetch_url`
+
+### Multi-worker session cleanup stability
+
+- Session cleanup now renews its Redis lock on a cadence shorter than the lock TTL, preventing avoidable worker churn from lock-renew failures during long-lived chats on multi-worker deployments
 
 ## Public Host Allowlist
 
@@ -145,6 +150,8 @@ If the change is release-worthy, also update [CHANGELOG.md](CHANGELOG.md).
 If the change affects public-share or public-link UI strings, also update [src/lib/i18n/locales/ja-JP/translation.json](src/lib/i18n/locales/ja-JP/translation.json).
 
 ## Maintenance Record
+
+- 2026-05-05: bounded native `fetch_url` tool calls with the effective Web Loader timeout fallback and fixed the multi-worker session-cleanup lock cadence so workers stop churning during long-lived chats; key files: `backend/open_webui/retrieval/utils.py`, `backend/open_webui/retrieval/web/utils.py`, `backend/open_webui/tools/builtin.py`, `backend/open_webui/socket/main.py`, `backend/open_webui/socket/utils.py`, `backend/open_webui/test/util/test_web_fetch_timeouts.py`, `backend/open_webui/test/util/test_socket_utils.py`, `CHANGELOG.md`, `FORK_NOTES.md`; validation: targeted pytest for the new timeout and socket cleanup tests plus edited-file diagnostics.
 
 - 2026-04-29: prepared fork release `0.9.2-publicshare.3` by converting the GHCR warning cleanup plus settings/admin/prompt-alignment fixes from `Unreleased`, updating published-image references to the new baseline, and refreshing the workspace publish helper default tag; key files: `CHANGELOG.md`, `README.md`, `FORK_NOTES.md`, workspace `../README.md`, and workspace `../publish-openwebui-image.ps1`; validation: `npm run build` plus the earlier runtime/Cypress validation already recorded in the 2026-04-29 maintenance entries for trusted-header sign-in, system/OLED dark/light theme coverage, and the follow-up saved-connections/prompt-alignment fix.
 
@@ -209,6 +216,7 @@ If the change affects public-share or public-link UI strings, also update [src/l
 
 ## Fork Release Summary
 
+- `0.9.2-publicshare.4`: hardens native `fetch_url` so it inherits the effective Web Loader timeout and fails closed after 30 seconds when no admin override is set, while also keeping multi-worker session cleanup lock renewals safely inside the Redis lock TTL to stop avoidable worker churn during long-lived chats
 - `0.9.2-publicshare.3`: clears the current GHCR publish warnings by moving the Docker workflow's JavaScript actions to Node 24 and keeping empty secret placeholders out of the published image, while also shipping the surface-aware settings emphasis pass across chat/admin surfaces plus the follow-up saved-connections highlighting and prompt-editor top alignment fixes
 
 - `0.9.2-publicshare.2`: notes now support markdown/plain-text imports plus clipboard markdown helpers with hardened nested menus and tighter mobile note layouts, and the retrieval config startup path now restores the PaddleOCR-VL app-state keys needed for Admin Settings > Documents and > Web Search

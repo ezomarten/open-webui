@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.9.2-publicshare.4] - 2026-05-05
+
+### Fixed
+
+- Native `fetch_url` tool calls now inherit the admin-configured Web Loader timeout when present and otherwise fail closed after 30 seconds instead of appearing to hang indefinitely on slow or non-responsive pages.
+- Multi-worker runtimes no longer let the session-cleanup Redis lock expire between cleanup passes, avoiding the repeated cleanup-lock renewal failures that were churning worker processes during long-lived chats.
+
 ## [0.9.2-publicshare.3] - 2026-04-29
 
 ### Fixed

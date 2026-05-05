@@ -16,7 +16,7 @@ from fastapi import Request
 
 from open_webui.models.users import UserModel
 from open_webui.routers.retrieval import search_web as _search_web
-from open_webui.retrieval.utils import get_content_from_url
+from open_webui.retrieval.utils import get_content_from_url, get_web_loader_timeout_seconds
 from open_webui.routers.images import (
     image_generations,
     image_edits,
@@ -234,8 +234,13 @@ async def fetch_url(
     if __request__ is None:
         return json.dumps({'error': 'Request context not available'})
 
+    timeout_seconds = get_web_loader_timeout_seconds(__request__)
+
     try:
-        content, _ = await asyncio.to_thread(get_content_from_url, __request__, url)
+        content, _ = await asyncio.wait_for(
+            asyncio.to_thread(get_content_from_url, __request__, url),
+            timeout=timeout_seconds,
+        )
 
         # Truncate if configured (WEB_FETCH_MAX_CONTENT_LENGTH)
         # Guard: content may be None if the web loader silently failed
@@ -247,6 +252,10 @@ async def fetch_url(
             content = ''
 
         return content
+    except asyncio.TimeoutError:
+        timeout_display = f'{timeout_seconds:g}'
+        log.warning(f'fetch_url timeout after {timeout_display}s for {url}')
+        return json.dumps({'error': f'URL fetch timed out after {timeout_display} seconds'})
     except Exception as e:
         log.exception(f'fetch_url error: {e}')
         return json.dumps({'error': str(e)})
