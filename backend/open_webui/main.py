@@ -2191,9 +2191,7 @@ async def chat_completion(
                         try:
                             event_emitter = await get_event_emitter(metadata, update_db=False)
                             if event_emitter:
-                                await asyncio.shield(
-                                    event_emitter({'type': 'chat:active', 'data': {'active': False}})
-                                )
+                                await asyncio.shield(event_emitter({'type': 'chat:active', 'data': {'active': False}}))
                         except asyncio.CancelledError:
                             pass
                         except Exception:
