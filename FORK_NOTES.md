@@ -1,6 +1,6 @@
 # Fork Notes
 
-This fork now tracks Open WebUI `v0.9.2` and carries a small set of deployment-focused customizations for anonymous public sharing.
+This fork now tracks Open WebUI `v0.9.4` and carries a small set of deployment-focused customizations for anonymous public sharing.
 
 ## Goals
 
@@ -15,7 +15,7 @@ This fork now tracks Open WebUI `v0.9.2` and carries a small set of deployment-f
 - Deployment workspace operator runbook lives in [../README.md](../README.md)
 - Local rebuilds only affect runtime when workspace root [../.env](../.env) sets `OPENWEBUI_IMAGE=open-webui-public-share` or another local `open-webui-public-share[:tag]` reference
 - If [../.env](../.env) points to a GHCR tag, compose recreate will continue to run the GHCR image even after a successful local `docker build`
-- Current published fork release is `0.9.2-publicshare.4`
+- Current published fork release is `0.9.4-publicshare.1`
 - Current local fork head should be treated as the source of truth for future local image rebuilds
 - Multi-worker deployments must set `REDIS_URL` as well as `WEBSOCKET_REDIS_URL`; the latter only covers Socket.IO, while the former is required for AppConfig persistent-config sync so admin connection settings do not revert across workers
 - Before pushing a release commit or tag, run `python scripts/release_preflight.py` from an environment that has the repo's Python and Node dependencies installed; by default it now also runs `scripts/chat_smoke.py`, so set one of `OPENWEBUI_SMOKE_TRUSTED_EMAIL`, `OPENWEBUI_SMOKE_EMAIL` + `OPENWEBUI_SMOKE_PASSWORD`, `OPENWEBUI_SMOKE_API_KEY`, or `OPENWEBUI_SMOKE_BEARER_TOKEN` for the target runtime unless you are intentionally skipping the smoke with `OPENWEBUI_SKIP_CHAT_SMOKE=1`
@@ -83,7 +83,7 @@ This fork now tracks Open WebUI `v0.9.2` and carries a small set of deployment-f
 
 ### Responses API compatibility
 
-- Upstream `v0.9.2` continues to cover the previously forked Responses API task-normalization and native tool-loop fixes that were needed for Gemini and LM Studio-compatible providers
+- Upstream `v0.9.4` continues to cover the previously forked Responses API task-normalization and native tool-loop fixes that were needed for Gemini and LM Studio-compatible providers
 - This fork keeps the more defensive response-content parsing and timing/error hardening that protects task helpers and streamed post-processing across chat-completions-style and Responses-style payloads
 - Merge Responses now also parses Responses API SSE events on the frontend, so LM Studio-style local connections that stream `response.output_text.delta` / `response.completed` no longer fail MOA merges solely because the merge parser expected Chat Completions deltas
 - Merge Responses now asks the MOA task endpoint for non-stream JSON completions and extracts the normalized final assistant content from that response, which sidesteps Chutes/OpenAI-compatible reasoning models whose streamed merge responses emit long `reasoning_content` traces before completion but never provide usable `delta.content` tokens to the merge UI
@@ -94,7 +94,7 @@ This fork now tracks Open WebUI `v0.9.2` and carries a small set of deployment-f
 - Streamed upstream timeout failures now surface as an explicit timeout or stream-stall message instead of an empty red error banner
 - The generic streamed response wrapper now also persists and emits that timeout text when the failure happens during streamed response iteration, so stored `error.content` remains populated for the affected assistant message
 - OpenAI-compatible and Ollama streaming upstream requests now wait for the first meaningful upstream output chunk without applying the idle timeout, ignoring role-only deltas and Responses API status preludes such as `response.created` / `response.in_progress` before the timeout starts; non-stream requests continue to use the configured total request timeout
-- OpenAI-compatible streamed proxy responses also strip stale `Content-Encoding`, `Content-Length`, and `Transfer-Encoding` headers after aiohttp auto-decompression so downstream chat responses do not fail on the post-`v0.9.2` proxy cleanup path
+- OpenAI-compatible streamed proxy responses also strip stale `Content-Encoding`, `Content-Length`, and `Transfer-Encoding` headers after aiohttp auto-decompression so downstream chat responses do not fail on the post-`v0.9.4` proxy cleanup path
 - Native `fetch_url` tool calls now cap page loading with the configured Web Loader timeout when available and otherwise fall back to a 30-second budget, so slow pages fail with a visible tool error instead of leaving chats stuck in `fetch_url`
 
 ### Multi-worker session cleanup stability
@@ -150,6 +150,10 @@ If the change is release-worthy, also update [CHANGELOG.md](CHANGELOG.md).
 If the change affects public-share or public-link UI strings, also update [src/lib/i18n/locales/ja-JP/translation.json](src/lib/i18n/locales/ja-JP/translation.json).
 
 ## Maintenance Record
+
+- 2026-05-10: prepared fork release `0.9.4-publicshare.1` by converting the `v0.9.4` sync from `Unreleased`, updating published-image references to the new baseline, and refreshing the workspace publish helper default tag; key files: `CHANGELOG.md`, `README.md`, `FORK_NOTES.md`, workspace `../README.md`, and workspace `../publish-openwebui-image.ps1`; validation: the same `44 passed` targeted pytest run, Node `v22.22.1` temporary-worktree `npm run build`, local image rebuild, `docker compose up -d --force-recreate open-webui`, `docker inspect open-webui --format '{{.Config.Image}} {{.State.Health.Status}} {{.RestartCount}}'` showing `open-webui-public-share healthy 0`, and `curl.exe -sS http://localhost:3000/api/config` returning version `0.9.4` recorded in the sync entry below.
+
+- 2026-05-10: synced the fork from upstream `v0.9.2` to `v0.9.4` on a temporary integration worktree, carried forward anonymous public shares, public-link settings, the public-host allowlist, OpenRouter ZDR, helper-task metadata sanitization, notes/settings refinements, and streamed timeout/error hardening, then fixed the merged runtime startup blockers by restoring PostgreSQL URL detection for async startup and adding the missing Alembic merge revision before rebuilding and redeploying the local image; key files: `CHANGELOG.md`, `FORK_NOTES.md`, `README.md`, workspace `../README.md`, `backend/open_webui/internal/db.py`, `backend/open_webui/main.py`, `backend/open_webui/routers/tasks.py`, `backend/open_webui/migrations/versions/e6f7a8b9c0d1_merge_memory_index_and_fork_heads.py`, `src/lib/components/AddConnectionModal.svelte`, `src/lib/components/chat/Chat.svelte`, and `src/lib/components/chat/ShareChatModal.svelte`; validation: `PYTHONPATH=backend c:/Users/it/openwebui/.venv/Scripts/python.exe -m pytest backend/open_webui/test/util/test_http_timeouts.py backend/open_webui/test/util/test_error_handling.py backend/open_webui/test/util/test_public_share.py backend/open_webui/test/util/test_public_shares_router.py backend/open_webui/test/util/test_task_metadata.py backend/open_webui/test/util/test_openrouter_zdr.py -q` with `44 passed`, Node `v22.22.1` with `NODE_OPTIONS=--max-old-space-size=8192` `npm run build` in the temporary sync worktree, local `docker build --provenance=false --sbom=false --build-arg USE_SLIM=true -t open-webui-public-share c:/Users/it/openwebui/open-webui-public-share`, `docker compose up -d --force-recreate open-webui`, `docker inspect open-webui --format '{{.Config.Image}} {{.State.Health.Status}} {{.RestartCount}}'` showing `open-webui-public-share healthy 0`, and `curl.exe -sS -D - http://localhost:3000/api/config -o NUL` plus `curl.exe -sS http://localhost:3000/api/config` returning `HTTP/1.1 200 OK` with version `0.9.4` and public links enabled.
 
 - 2026-05-05: bounded native `fetch_url` tool calls with the effective Web Loader timeout fallback and fixed the multi-worker session-cleanup lock cadence so workers stop churning during long-lived chats; key files: `backend/open_webui/retrieval/utils.py`, `backend/open_webui/retrieval/web/utils.py`, `backend/open_webui/tools/builtin.py`, `backend/open_webui/socket/main.py`, `backend/open_webui/socket/utils.py`, `backend/open_webui/test/util/test_web_fetch_timeouts.py`, `backend/open_webui/test/util/test_socket_utils.py`, `CHANGELOG.md`, `FORK_NOTES.md`; validation: targeted pytest for the new timeout and socket cleanup tests plus edited-file diagnostics.
 
@@ -216,6 +220,7 @@ If the change affects public-share or public-link UI strings, also update [src/l
 
 ## Fork Release Summary
 
+- `0.9.4-publicshare.1`: full upstream `v0.9.4` sync retaining anonymous public shares, public-link settings, the public-host allowlist, OpenRouter ZDR, helper-task metadata sanitization, notes/settings refinements, and timeout/error hardening, while also fixing the merged PostgreSQL async startup path and collapsing the new Alembic heads so rebuilt containers boot cleanly on the released image
 - `0.9.2-publicshare.4`: hardens native `fetch_url` so it inherits the effective Web Loader timeout and fails closed after 30 seconds when no admin override is set, while also keeping multi-worker session cleanup lock renewals safely inside the Redis lock TTL to stop avoidable worker churn during long-lived chats
 - `0.9.2-publicshare.3`: clears the current GHCR publish warnings by moving the Docker workflow's JavaScript actions to Node 24 and keeping empty secret placeholders out of the published image, while also shipping the surface-aware settings emphasis pass across chat/admin surfaces plus the follow-up saved-connections highlighting and prompt-editor top alignment fixes
 
@@ -241,7 +246,7 @@ If the change affects public-share or public-link UI strings, also update [src/l
 
 ## Upstream Base
 
-Fork mainline now tracks upstream `v0.9.2`.
+Fork mainline now tracks upstream `v0.9.4`.
 
 Retained fork-only areas on top of that base:
 

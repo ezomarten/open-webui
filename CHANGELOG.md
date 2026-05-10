@@ -7,6 +7,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.9.4-publicshare.1] - 2026-05-10
+
+### Changed
+
+- Synced fork mainline to upstream `0.9.4` while preserving anonymous public shares, public-link admin settings, the public-host allowlist, OpenRouter Zero Retention connections, helper-task metadata sanitization, notes/settings refinements, and the existing streamed timeout/error handling.
+
+### Fixed
+
+- Task helper endpoints now await the upstream `0.9.4` async prompt-template builders while still overriding helper metadata, keeping title, follow-up, tags, image prompt, query, autocomplete, emoji, and MOA helper calls compatible with direct connections without leaking inherited tool exposure.
+- Chat completion cleanup now combines the upstream `0.9.4` MCP and background-task reliability fixes with the fork's chat files/public-share persistence path, so successful responses are returned cleanly and multi-model chats clear their active state correctly after task teardown.
+- Connection settings keep the upstream provider/Azure handling together with the fork's OpenRouter ZDR toggle, and the chat UI retains both stale-merge cleanup and terminal-availability guards on `0.9.4`.
+- PostgreSQL deployments keep the fork's async runtime startup path on `0.9.4` by recognizing `postgres://` and `postgresql+psycopg://` style URLs before async engine setup, avoiding the Windows-side startup `NameError` that otherwise blocked app import.
+- The merged `0.9.4` migration graph now includes a no-op Alembic merge revision joining the upstream memory-index head with the fork's existing startup merge head, so rebuilt containers complete `alembic upgrade head` instead of stopping at a multiple-heads error during startup.
+
 ## [0.9.2-publicshare.4] - 2026-05-05
 
 ### Fixed

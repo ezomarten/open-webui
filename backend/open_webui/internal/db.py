@@ -1,4 +1,5 @@
 import os
+import sys
 import json
 import logging
 import ssl as _stdlib_ssl
@@ -211,6 +212,12 @@ def _make_async_url(url: str) -> str:
     return url
 
 
+def _is_postgres_url(url: str) -> bool:
+    parsed = urlparse(url)
+    scheme = parsed.scheme.lower()
+    return scheme.startswith('postgresql') or scheme == 'postgres'
+
+
 # ============================================================
 # SYNC ENGINE (used only for: startup migrations, config loading,
 #              Alembic, peewee migration, health checks)
@@ -344,6 +351,15 @@ def get_db_context(db: Optional[Session] = None):
 ASYNC_SQLALCHEMY_DATABASE_URL = _make_async_url(
     DATABASE_URL_WITHOUT_SSL if DATABASE_SSL_MODE else SQLALCHEMY_DATABASE_URL
 )
+
+# psycopg v3 cannot run in async mode under Windows' default
+# ProactorEventLoop — switch to SelectorEventLoop before creating
+# the async engine.  This runs at import time, which is early enough
+# to cover every entry point (workers, reload, direct invocations).
+if sys.platform == 'win32' and _is_postgres_url(DATABASE_URL):
+    import asyncio
+
+    asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
 
 if 'sqlite' in ASYNC_SQLALCHEMY_DATABASE_URL:
     # Generous default — async coroutines + no session sharing = high connection demand.

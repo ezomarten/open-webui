@@ -108,6 +108,7 @@ async def get_task_config(request: Request, user=Depends(get_verified_user)):
         'ENABLE_RETRIEVAL_QUERY_GENERATION': request.app.state.config.ENABLE_RETRIEVAL_QUERY_GENERATION,
         'QUERY_GENERATION_PROMPT_TEMPLATE': request.app.state.config.QUERY_GENERATION_PROMPT_TEMPLATE,
         'TOOLS_FUNCTION_CALLING_PROMPT_TEMPLATE': request.app.state.config.TOOLS_FUNCTION_CALLING_PROMPT_TEMPLATE,
+        'ENABLE_VOICE_MODE_PROMPT': request.app.state.config.ENABLE_VOICE_MODE_PROMPT,
         'VOICE_MODE_PROMPT_TEMPLATE': request.app.state.config.VOICE_MODE_PROMPT_TEMPLATE,
     }
 
@@ -128,6 +129,7 @@ class TaskConfigForm(BaseModel):
     ENABLE_RETRIEVAL_QUERY_GENERATION: bool
     QUERY_GENERATION_PROMPT_TEMPLATE: str
     TOOLS_FUNCTION_CALLING_PROMPT_TEMPLATE: str
+    ENABLE_VOICE_MODE_PROMPT: bool
     VOICE_MODE_PROMPT_TEMPLATE: Optional[str]
 
 
@@ -156,6 +158,7 @@ async def update_task_config(request: Request, form_data: TaskConfigForm, user=D
     request.app.state.config.QUERY_GENERATION_PROMPT_TEMPLATE = form_data.QUERY_GENERATION_PROMPT_TEMPLATE
     request.app.state.config.TOOLS_FUNCTION_CALLING_PROMPT_TEMPLATE = form_data.TOOLS_FUNCTION_CALLING_PROMPT_TEMPLATE
 
+    request.app.state.config.ENABLE_VOICE_MODE_PROMPT = form_data.ENABLE_VOICE_MODE_PROMPT
     request.app.state.config.VOICE_MODE_PROMPT_TEMPLATE = form_data.VOICE_MODE_PROMPT_TEMPLATE
 
     return {
@@ -174,6 +177,7 @@ async def update_task_config(request: Request, form_data: TaskConfigForm, user=D
         'ENABLE_RETRIEVAL_QUERY_GENERATION': request.app.state.config.ENABLE_RETRIEVAL_QUERY_GENERATION,
         'QUERY_GENERATION_PROMPT_TEMPLATE': request.app.state.config.QUERY_GENERATION_PROMPT_TEMPLATE,
         'TOOLS_FUNCTION_CALLING_PROMPT_TEMPLATE': request.app.state.config.TOOLS_FUNCTION_CALLING_PROMPT_TEMPLATE,
+        'ENABLE_VOICE_MODE_PROMPT': request.app.state.config.ENABLE_VOICE_MODE_PROMPT,
         'VOICE_MODE_PROMPT_TEMPLATE': request.app.state.config.VOICE_MODE_PROMPT_TEMPLATE,
     }
 
@@ -188,6 +192,7 @@ async def generate_title(request: Request, form_data: dict, user=Depends(get_ver
 
     if getattr(request.state, 'direct', False) and hasattr(request.state, 'model'):
         models = {
+            **request.app.state.MODELS,
             request.state.model['id']: request.state.model,
         }
     else:
@@ -216,7 +221,7 @@ async def generate_title(request: Request, form_data: dict, user=Depends(get_ver
     else:
         template = DEFAULT_TITLE_GENERATION_PROMPT_TEMPLATE
 
-    content = title_generation_template(template, form_data['messages'], user)
+    content = await title_generation_template(template, form_data['messages'], user)
 
     max_tokens = models[task_model_id].get('info', {}).get('params', {}).get('max_tokens', 1000)
     task_metadata = build_task_metadata(request, TASKS.TITLE_GENERATION, form_data)
@@ -266,6 +271,7 @@ async def generate_follow_ups(request: Request, form_data: dict, user=Depends(ge
 
     if getattr(request.state, 'direct', False) and hasattr(request.state, 'model'):
         models = {
+            **request.app.state.MODELS,
             request.state.model['id']: request.state.model,
         }
     else:
@@ -294,7 +300,7 @@ async def generate_follow_ups(request: Request, form_data: dict, user=Depends(ge
     else:
         template = DEFAULT_FOLLOW_UP_GENERATION_PROMPT_TEMPLATE
 
-    content = follow_up_generation_template(template, form_data['messages'], user)
+    content = await follow_up_generation_template(template, form_data['messages'], user)
     task_metadata = build_task_metadata(request, TASKS.FOLLOW_UP_GENERATION, form_data)
 
     payload = {
@@ -335,6 +341,7 @@ async def generate_chat_tags(request: Request, form_data: dict, user=Depends(get
 
     if getattr(request.state, 'direct', False) and hasattr(request.state, 'model'):
         models = {
+            **request.app.state.MODELS,
             request.state.model['id']: request.state.model,
         }
     else:
@@ -363,7 +370,7 @@ async def generate_chat_tags(request: Request, form_data: dict, user=Depends(get
     else:
         template = DEFAULT_TAGS_GENERATION_PROMPT_TEMPLATE
 
-    content = tags_generation_template(template, form_data['messages'], user)
+    content = await tags_generation_template(template, form_data['messages'], user)
     task_metadata = build_task_metadata(request, TASKS.TAGS_GENERATION, form_data)
 
     payload = {
@@ -398,6 +405,7 @@ async def generate_chat_tags(request: Request, form_data: dict, user=Depends(get
 async def generate_image_prompt(request: Request, form_data: dict, user=Depends(get_verified_user)):
     if getattr(request.state, 'direct', False) and hasattr(request.state, 'model'):
         models = {
+            **request.app.state.MODELS,
             request.state.model['id']: request.state.model,
         }
     else:
@@ -426,7 +434,7 @@ async def generate_image_prompt(request: Request, form_data: dict, user=Depends(
     else:
         template = DEFAULT_IMAGE_PROMPT_GENERATION_PROMPT_TEMPLATE
 
-    content = image_prompt_generation_template(template, form_data['messages'], user)
+    content = await image_prompt_generation_template(template, form_data['messages'], user)
     task_metadata = build_task_metadata(request, TASKS.IMAGE_PROMPT_GENERATION, form_data)
 
     payload = {
@@ -479,6 +487,7 @@ async def generate_queries(request: Request, form_data: dict, user=Depends(get_v
 
     if getattr(request.state, 'direct', False) and hasattr(request.state, 'model'):
         models = {
+            **request.app.state.MODELS,
             request.state.model['id']: request.state.model,
         }
     else:
@@ -507,7 +516,7 @@ async def generate_queries(request: Request, form_data: dict, user=Depends(get_v
     else:
         template = DEFAULT_QUERY_GENERATION_PROMPT_TEMPLATE
 
-    content = query_generation_template(template, form_data['messages'], user)
+    content = await query_generation_template(template, form_data['messages'], user)
     task_metadata = build_task_metadata(request, TASKS.QUERY_GENERATION, form_data)
 
     payload = {
@@ -558,6 +567,7 @@ async def generate_autocompletion(request: Request, form_data: dict, user=Depend
 
     if getattr(request.state, 'direct', False) and hasattr(request.state, 'model'):
         models = {
+            **request.app.state.MODELS,
             request.state.model['id']: request.state.model,
         }
     else:
@@ -586,7 +596,7 @@ async def generate_autocompletion(request: Request, form_data: dict, user=Depend
     else:
         template = DEFAULT_AUTOCOMPLETE_GENERATION_PROMPT_TEMPLATE
 
-    content = autocomplete_generation_template(template, prompt, messages, type, user)
+    content = await autocomplete_generation_template(template, prompt, messages, type, user)
     task_metadata = build_task_metadata(request, TASKS.AUTOCOMPLETE_GENERATION, form_data)
 
     payload = {
@@ -621,6 +631,7 @@ async def generate_autocompletion(request: Request, form_data: dict, user=Depend
 async def generate_emoji(request: Request, form_data: dict, user=Depends(get_verified_user)):
     if getattr(request.state, 'direct', False) and hasattr(request.state, 'model'):
         models = {
+            **request.app.state.MODELS,
             request.state.model['id']: request.state.model,
         }
     else:
@@ -646,7 +657,7 @@ async def generate_emoji(request: Request, form_data: dict, user=Depends(get_ver
 
     template = DEFAULT_EMOJI_GENERATION_PROMPT_TEMPLATE
 
-    content = emoji_generation_template(template, form_data['prompt'], user)
+    content = await emoji_generation_template(template, form_data['prompt'], user)
     task_metadata = build_task_metadata(request, TASKS.EMOJI_GENERATION, form_data)
 
     payload = {
@@ -687,6 +698,7 @@ async def generate_emoji(request: Request, form_data: dict, user=Depends(get_ver
 async def generate_moa_response(request: Request, form_data: dict, user=Depends(get_verified_user)):
     if getattr(request.state, 'direct', False) and hasattr(request.state, 'model'):
         models = {
+            **request.app.state.MODELS,
             request.state.model['id']: request.state.model,
         }
     else:

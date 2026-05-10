@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { getContext } from 'svelte';
-	import { models, config } from '$lib/stores';
+	import { models, config, user } from '$lib/stores';
 
 	import { toast } from 'svelte-sonner';
 	import {
@@ -226,7 +226,12 @@
 
 				{#if chat.share_id}
 					<div class="mt-3">
-						<AccessControl bind:accessGrants accessRoles={['read']} onChange={saveAccessGrants} />
+						<AccessControl
+							bind:accessGrants
+							accessRoles={['read']}
+							sharePublic={$user?.permissions?.sharing?.public_chats || $user?.role === 'admin'}
+							onChange={saveAccessGrants}
+						/>
 					</div>
 				{/if}
 
