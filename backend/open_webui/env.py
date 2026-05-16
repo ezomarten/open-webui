@@ -198,15 +198,13 @@ changelog_json = {}
 
 # Iterate over each version
 for version in soup.find_all('h2'):
-    version_text = version.get_text().strip()
-    if not version_text.startswith('[') or ']' not in version_text:
-        continue
+    heading_text = version.get_text().strip()
+    heading_parts = heading_text.split(' - ', 1)
+    version_number = heading_parts[0][1:-1]  # Remove brackets
 
-    version_parts = version_text.split(' - ', 1)
-    version_number = version_parts[0][1:-1]  # Remove brackets
-    date = version_parts[1] if len(version_parts) > 1 else ''
-
-    version_data = {'date': date}
+    version_data = {}
+    if len(heading_parts) > 1:
+        version_data['date'] = heading_parts[1]
 
     # Find the next sibling that is a h3 tag (section title)
     current = version.find_next_sibling()
@@ -264,6 +262,15 @@ ENABLE_EASTER_EGGS = os.environ.get('ENABLE_EASTER_EGGS', 'True').lower() == 'tr
 # redirect (prevents client-side IP/UA/Referer leaks to attacker-
 # controlled origins) and fall through to the default image instead.
 ENABLE_PROFILE_IMAGE_URL_FORWARDING = os.environ.get('ENABLE_PROFILE_IMAGE_URL_FORWARDING', 'True').lower() == 'true'
+
+PROFILE_IMAGE_ALLOWED_MIME_TYPES = frozenset(
+    t.strip()
+    for t in os.environ.get(
+        'PROFILE_IMAGE_ALLOWED_MIME_TYPES',
+        'image/png,image/jpeg,image/gif,image/webp',
+    ).split(',')
+    if t.strip()
+)
 
 ####################################
 # WEBUI_BUILD_HASH
@@ -580,8 +587,6 @@ ENABLE_OPENAI_API_PASSTHROUGH = os.environ.get('ENABLE_OPENAI_API_PASSTHROUGH', 
 
 WEBUI_AUTH_SIGNOUT_REDIRECT_URL = os.environ.get('WEBUI_AUTH_SIGNOUT_REDIRECT_URL', None)
 
-PUBLIC_SHARE_BASE_URL = os.environ.get("PUBLIC_SHARE_BASE_URL", "").rstrip("/")
-
 ####################################
 # WEBUI_SECRET_KEY
 ####################################
@@ -670,7 +675,7 @@ if LICENSE_PUBLIC_KEY:
 -----BEGIN PUBLIC KEY-----
 {LICENSE_PUBLIC_KEY}
 -----END PUBLIC KEY-----
-""".encode('utf-8'))
+""".encode())
 
 
 ####################################
@@ -828,6 +833,13 @@ else:
 
 
 AIOHTTP_CLIENT_SESSION_SSL = os.environ.get('AIOHTTP_CLIENT_SESSION_SSL', 'True').lower() == 'true'
+
+# When False (default), outbound HTTP requests do not follow 3xx redirects.
+# This prevents redirect-based SSRF where a public URL 302-redirects to an
+# internal address (RFC 1918, loopback, cloud-metadata 169.254.169.254).
+# Set to True only if your deployment requires redirect following and you
+# have other SSRF protections in place (e.g. egress firewall).
+AIOHTTP_CLIENT_ALLOW_REDIRECTS = os.environ.get('AIOHTTP_CLIENT_ALLOW_REDIRECTS', 'False').lower() == 'true'
 
 AIOHTTP_CLIENT_TIMEOUT_MODEL_LIST = os.environ.get(
     'AIOHTTP_CLIENT_TIMEOUT_MODEL_LIST',

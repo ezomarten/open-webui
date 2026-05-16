@@ -88,8 +88,8 @@ from open_webui.routers import (
     channels,
     chats,
     notes,
-    public_shares,
     folders,
+    public_shares,
     configs,
     groups,
     files,
@@ -463,6 +463,7 @@ from open_webui.config import (
     WEBUI_URL,
     PUBLIC_SHARE_BASE_URL,
     RESPONSE_WATERMARK,
+    IFRAME_CSP,
     # Admin
     ENABLE_ADMIN_CHAT_ACCESS,
     ENABLE_ADMIN_ANALYTICS,
@@ -491,12 +492,6 @@ from open_webui.config import (
     reset_config,
     async_reset_config,
 )
-from open_webui.utils.public_share import (
-    get_public_share_response_headers,
-    get_public_share_host,
-    is_public_share_enabled,
-)
-from open_webui.utils.error_handling import get_exception_message
 from open_webui.env import (
     ENABLE_CUSTOM_MODEL_FALLBACK,
     LICENSE_KEY,
@@ -535,7 +530,6 @@ from open_webui.env import (
     ENABLE_OTEL,
     EXTERNAL_PWA_MANIFEST_URL,
     AIOHTTP_CLIENT_SESSION_SSL,
-    AIOHTTP_CLIENT_TIMEOUT,
     ENABLE_STAR_SESSIONS_MIDDLEWARE,
     ENABLE_PUBLIC_ACTIVE_USERS_COUNT,
     # Admin Account Runtime Creation
@@ -588,6 +582,11 @@ from open_webui.utils.oauth import (
     OAuthClientInformationFull,
 )
 from open_webui.utils.security_headers import SecurityHeadersMiddleware
+from open_webui.utils.public_share import (
+    get_public_share_response_headers,
+    get_public_share_host,
+    is_public_share_enabled,
+)
 from open_webui.utils.redis import get_redis_connection
 
 from open_webui.tasks import (
@@ -1410,8 +1409,6 @@ if ENABLE_COMPRESSION_MIDDLEWARE:
 # `terminate_force_close` tracebacks under aiosqlite and as random
 # CancelledError storms across the request path. See
 # `open_webui.utils.asgi_middleware` for the rationale.
-
-
 class PublicShareHostMiddleware:
     def __init__(self, app, *, fastapi_app) -> None:
         self.app = app
@@ -1428,6 +1425,7 @@ class PublicShareHostMiddleware:
         if not self._fastapi_app.state.PUBLIC_SHARE_HOST or request_host != self._fastapi_app.state.PUBLIC_SHARE_HOST:
             await self.app(scope, receive, send)
             return
+
         request_path = request.url.path
         public_share_api_prefix = '/api/v1/public-shares/'
         public_share_api_remainder = (
@@ -1540,12 +1538,12 @@ app.include_router(users.router, prefix='/api/v1/users', tags=['users'])
 
 app.include_router(channels.router, prefix='/api/v1/channels', tags=['channels'])
 app.include_router(chats.router, prefix='/api/v1/chats', tags=['chats'])
+app.include_router(notes.router, prefix='/api/v1/notes', tags=['notes'])
 app.include_router(
     public_shares.router,
     prefix='/api/v1/public-shares',
     tags=['public-shares'],
 )
-app.include_router(notes.router, prefix='/api/v1/notes', tags=['notes'])
 
 
 app.include_router(models.router, prefix='/api/v1/models', tags=['models'])
@@ -1906,7 +1904,9 @@ async def chat_completion(
 
         if metadata.get('chat_id') and user:
             chat_id = metadata['chat_id']
-            if not chat_id.startswith('local:'):  # temporary chats are not stored
+            if not chat_id.startswith('local:') and not chat_id.startswith(
+                'channel:'
+            ):  # temporary/channel chats are not stored
                 if is_new_chat:
                     # Build the full history upfront with ALL assistant placeholders
                     user_message = metadata.get('user_message') or {}
@@ -2075,11 +2075,10 @@ async def chat_completion(
     except HTTPException:
         raise
     except Exception as e:
-        error_message = get_exception_message(e, request_timeout_seconds=AIOHTTP_CLIENT_TIMEOUT)
-        log.debug(f"Error processing chat metadata ({e.__class__.__name__}): {error_message}")
+        log.warning(f'Error processing chat metadata: {e}')
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail=error_message,
+            detail=str(e),
         )
 
     async def process_chat(request, form_data, user, metadata, model, tasks=None):
@@ -2118,15 +2117,14 @@ async def chat_completion(
                 await asyncio.shield(emit_cancel_event())
             except Exception:
                 pass
-            finally:
-                raise  # re-raise to ensure proper task cancellation handling
+            raise  # re-raise to ensure proper task cancellation handling
         except Exception as e:
-            error_detail = get_exception_message(e, request_timeout_seconds=AIOHTTP_CLIENT_TIMEOUT)
+            error_detail = e.detail if isinstance(e, HTTPException) else str(e)
             log.error('Error processing chat payload: %s', error_detail)
             if metadata.get('chat_id') and metadata.get('message_id'):
                 # Update the chat message with the error
                 try:
-                    if not metadata['chat_id'].startswith('local:'):
+                    if not metadata['chat_id'].startswith('local:') and not metadata['chat_id'].startswith('channel:'):
                         await Chats.upsert_message_to_chat_by_id_and_message_id(
                             metadata['chat_id'],
                             metadata['message_id'],
@@ -2151,8 +2149,10 @@ async def chat_completion(
                 except Exception:
                     pass
             else:
-                # Legacy/direct API paths do not have a chat-bound websocket
-                # error channel, so they must receive a normal HTTP failure.
+                # No chat_id/message_id → legacy/direct API path with no
+                # WebSocket error channel.  We must surface the error as
+                # a proper HTTP response; without this the function would
+                # return None which FastAPI serializes as null.  #23924
                 raise HTTPException(
                     status_code=status.HTTP_400_BAD_REQUEST,
                     detail=error_detail,
@@ -2181,23 +2181,19 @@ async def chat_completion(
             except BaseException as e:
                 log.debug(f'Error cleaning up MCP clients: {e}')
 
-            # Deregister this task, then emit chat:active=false if no others remain.
+            # Deregister this task, then emit chat:active=false if no others remain
             try:
                 chat_id = metadata.get('chat_id')
                 task_id = metadata.get('task_id')
                 if chat_id and task_id:
                     await cleanup_task(request.app.state.redis, task_id, chat_id)
                     if not await has_active_tasks(request.app.state.redis, chat_id):
-                        try:
-                            event_emitter = await get_event_emitter(metadata, update_db=False)
-                            if event_emitter:
+                        event_emitter = await get_event_emitter(metadata, update_db=False)
+                        if event_emitter:
+                            try:
                                 await asyncio.shield(event_emitter({'type': 'chat:active', 'data': {'active': False}}))
-                        except asyncio.CancelledError:
-                            pass
-                        except Exception:
-                            pass
-            except asyncio.CancelledError:
-                pass
+                            except asyncio.CancelledError:
+                                pass
             except Exception:
                 pass
 
@@ -2393,7 +2389,7 @@ async def list_tasks_endpoint(request: Request, user=Depends(get_admin_user)):
 
 @app.get('/api/tasks/chat/{chat_id:path}')
 async def list_tasks_by_chat_id_endpoint(request: Request, chat_id: str, user=Depends(get_verified_user)):
-    if chat_id.startswith('local:'):
+    if chat_id.startswith('local:') or chat_id.startswith('channel:'):
         socket_id = chat_id[len('local:') :]
         owner_id = get_user_id_from_session_pool(socket_id)
         if owner_id != user.id and user.role != 'admin':
@@ -2411,7 +2407,7 @@ async def list_tasks_by_chat_id_endpoint(request: Request, chat_id: str, user=De
 
 @app.post('/api/tasks/chat/{chat_id:path}/stop')
 async def stop_tasks_by_chat_id_endpoint(request: Request, chat_id: str, user=Depends(get_verified_user)):
-    if chat_id.startswith('local:'):
+    if chat_id.startswith('local:') or chat_id.startswith('channel:'):
         socket_id = chat_id[len('local:') :]
         owner_id = get_user_id_from_session_pool(socket_id)
         if owner_id != user.id and user.role != 'admin':
@@ -2567,6 +2563,7 @@ async def get_app_config(request: Request):
                     'pending_user_overlay_title': app.state.config.PENDING_USER_OVERLAY_TITLE,
                     'pending_user_overlay_content': app.state.config.PENDING_USER_OVERLAY_CONTENT,
                     'response_watermark': app.state.config.RESPONSE_WATERMARK,
+                    'iframe_csp': IFRAME_CSP,
                 },
                 'license_metadata': app.state.LICENSE_METADATA,
                 **(

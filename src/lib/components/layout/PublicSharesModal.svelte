@@ -22,6 +22,7 @@
 	let allChatsLoaded = false;
 	let chatListLoading = false;
 	let searchDebounceTimeout: any;
+	const publicShareErrorMessage = (error) => $i18n.t(error?.detail ?? `${error}`);
 
 	let filter: any = {};
 	$: filter = {
@@ -43,7 +44,7 @@
 
 	const loadPublicShares = async (_page = 1) => {
 		return getPublicShareList(localStorage.token, _page, filter).catch((error) => {
-			toast.error(`${error?.detail ?? error}`);
+			toast.error(publicShareErrorMessage(error));
 			return null;
 		});
 	};
@@ -84,7 +85,7 @@
 
 	const stopPublicShareHandler = async (chat: any) => {
 		const res = await deletePublicShareByChatId(localStorage.token, chat.chat_id).catch((error) => {
-			toast.error(`${error?.detail ?? error}`);
+			toast.error(publicShareErrorMessage(error));
 			return null;
 		});
 
@@ -110,6 +111,12 @@
 		init();
 	}
 </script>
+
+<!-- localisation keys for public-share backend errors handled through dynamic toast details:
+{$i18n.t('Failed to stop public link.')}
+{$i18n.t('No public messages found.')}
+{$i18n.t('Public link stopped successfully.')}
+-->
 
 <ChatsModal
 	bind:show

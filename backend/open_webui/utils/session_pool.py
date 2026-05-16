@@ -24,7 +24,7 @@ via ``close_session()``.
 """
 
 import logging
-from typing import Any, Callable, Optional
+from typing import Optional
 
 import aiohttp
 
@@ -34,7 +34,6 @@ from open_webui.env import (
     AIOHTTP_POOL_CONNECTIONS_PER_HOST,
     AIOHTTP_POOL_DNS_TTL,
 )
-from open_webui.utils.http_timeouts import iterate_stream_with_post_first_chunk_timeout
 
 log = logging.getLogger(__name__)
 
@@ -106,13 +105,7 @@ async def cleanup_response(
                 await result
 
 
-async def stream_wrapper(
-    response,
-    session=None,
-    content_handler=None,
-    read_timeout_seconds: int | None = None,
-    timeout_starts_after_chunk: Callable[[Any], bool] | None = None,
-):
+async def stream_wrapper(response, session=None, content_handler=None):
     """Wrap a stream to ensure cleanup happens even if streaming is interrupted.
 
     This is more reliable than BackgroundTask which may not run if the client
@@ -120,11 +113,7 @@ async def stream_wrapper(
     """
     try:
         stream = content_handler(response.content) if content_handler else response.content
-        async for chunk in iterate_stream_with_post_first_chunk_timeout(
-            stream,
-            read_timeout_seconds,
-            timeout_starts_after_chunk,
-        ):
+        async for chunk in stream:
             yield chunk
     finally:
         await cleanup_response(response, session)

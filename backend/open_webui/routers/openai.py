@@ -60,25 +60,12 @@ from open_webui.utils.session_pool import (
     get_session,
     stream_wrapper,
 )
-from open_webui.utils.http_timeouts import (
-    build_upstream_request_timeout_for_payload,
-    chunk_contains_meaningful_stream_output,
-)
 
 from open_webui.utils.auth import get_admin_user, get_verified_user
 from open_webui.utils.headers import include_user_info_headers, get_custom_headers
 from open_webui.utils.anthropic import is_anthropic_url, get_anthropic_models
 
 log = logging.getLogger(__name__)
-
-
-# Headers that become stale after aiohttp auto-decompresses the upstream
-# response body. Forwarding them verbatim can trigger a second decode pass.
-_STRIP_PROXY_HEADERS = frozenset({'Content-Encoding', 'Content-Length', 'Transfer-Encoding'})
-
-
-def _clean_proxy_headers(raw_headers) -> dict:
-    return {k: v for k, v in raw_headers.items() if k not in _STRIP_PROXY_HEADERS}
 
 
 ##########################################
@@ -88,6 +75,17 @@ def _clean_proxy_headers(raw_headers) -> dict:
 # the question that summoned them.
 #
 ##########################################
+
+# Headers that become stale after aiohttp auto-decompresses the upstream
+# response body.  Forwarding them verbatim causes desktop / programmatic
+# clients to attempt decompression of an already-decoded payload, resulting
+# in ZlibError.  See https://github.com/aio-libs/aiohttp/issues/4462.
+_STRIP_PROXY_HEADERS = frozenset({'Content-Encoding', 'Content-Length', 'Transfer-Encoding'})
+
+
+def _clean_proxy_headers(raw_headers) -> dict:
+    """Return a copy of *raw_headers* with stale encoding headers removed."""
+    return {k: v for k, v in raw_headers.items() if k not in _STRIP_PROXY_HEADERS}
 
 
 async def send_get_request(
@@ -1185,8 +1183,6 @@ async def generate_chat_completion(
         if logit_bias:
             payload['logit_bias'] = json.loads(logit_bias)
 
-    request_timeout = build_upstream_request_timeout_for_payload(AIOHTTP_CLIENT_TIMEOUT, payload)
-
     headers, cookies = await get_headers_and_cookies(request, url, key, api_config, metadata, user=user)
 
     is_responses = api_config.get('api_type') == 'responses'
@@ -1248,7 +1244,7 @@ async def generate_chat_completion(
             headers=headers,
             cookies=cookies,
             ssl=AIOHTTP_CLIENT_SESSION_SSL,
-            timeout=request_timeout,
+            timeout=aiohttp.ClientTimeout(total=AIOHTTP_CLIENT_TIMEOUT),
         )
 
         # Check if response is SSE
@@ -1274,12 +1270,7 @@ async def generate_chat_completion(
 
             streaming = True
             return StreamingResponse(
-                stream_wrapper(
-                    r,
-                    content_handler=stream_chunks_handler,
-                    read_timeout_seconds=AIOHTTP_CLIENT_TIMEOUT,
-                    timeout_starts_after_chunk=chunk_contains_meaningful_stream_output,
-                ),
+                stream_wrapper(r, content_handler=stream_chunks_handler),
                 status_code=r.status,
                 headers=_clean_proxy_headers(r.headers),
             )
@@ -1423,7 +1414,6 @@ async def responses(
     Routes to the correct upstream backend based on the model field.
     """
     payload = form_data.model_dump(exclude_none=True)
-    request_timeout = build_upstream_request_timeout_for_payload(AIOHTTP_CLIENT_TIMEOUT, payload)
 
     idx = 0
     model_id = form_data.model
@@ -1479,19 +1469,14 @@ async def responses(
             headers=headers,
             cookies=cookies,
             ssl=AIOHTTP_CLIENT_SESSION_SSL,
-            timeout=request_timeout,
+            timeout=aiohttp.ClientTimeout(total=AIOHTTP_CLIENT_TIMEOUT),
         )
 
         # Check if response is SSE
         if 'text/event-stream' in r.headers.get('Content-Type', ''):
             streaming = True
             return StreamingResponse(
-                stream_wrapper(
-                    r,
-                    content_handler=stream_chunks_handler,
-                    read_timeout_seconds=AIOHTTP_CLIENT_TIMEOUT,
-                    timeout_starts_after_chunk=chunk_contains_meaningful_stream_output,
-                ),
+                stream_wrapper(r),
                 status_code=r.status,
                 headers=_clean_proxy_headers(r.headers),
             )
@@ -1544,8 +1529,6 @@ async def proxy(path: str, request: Request, user=Depends(get_verified_user)):
             payload = json.loads(body)
         except (json.JSONDecodeError, ValueError):
             payload = None
-
-    request_timeout = build_upstream_request_timeout_for_payload(AIOHTTP_CLIENT_TIMEOUT, payload)
 
     idx = 0
     model_id = payload.get('model') if isinstance(payload, dict) else None
@@ -1603,19 +1586,14 @@ async def proxy(path: str, request: Request, user=Depends(get_verified_user)):
             headers=headers,
             cookies=cookies,
             ssl=AIOHTTP_CLIENT_SESSION_SSL,
-            timeout=request_timeout,
+            timeout=aiohttp.ClientTimeout(total=AIOHTTP_CLIENT_TIMEOUT),
         )
 
         # Check if response is SSE
         if 'text/event-stream' in r.headers.get('Content-Type', ''):
             streaming = True
             return StreamingResponse(
-                stream_wrapper(
-                    r,
-                    content_handler=stream_chunks_handler,
-                    read_timeout_seconds=AIOHTTP_CLIENT_TIMEOUT,
-                    timeout_starts_after_chunk=chunk_contains_meaningful_stream_output,
-                ),
+                stream_wrapper(r),
                 status_code=r.status,
                 headers=_clean_proxy_headers(r.headers),
             )

@@ -40,12 +40,7 @@
 		pinnedNotes
 	} from '$lib/stores';
 
-	import {
-		downloadPdf,
-		readMarkdownFile,
-		readPlainTextFile,
-		createNoteContentFromMarkdown
-	} from './utils';
+	import { downloadPdf } from './utils';
 
 	import Controls from './NoteEditor/Controls.svelte';
 	import Chat from './NoteEditor/Chat.svelte';
@@ -85,6 +80,7 @@
 
 	import Calendar from '../icons/Calendar.svelte';
 	import Users from '../icons/Users.svelte';
+	import LockClosed from '../icons/LockClosed.svelte';
 
 	import Image from '../common/Image.svelte';
 	import FileItem from '../common/FileItem.svelte';
@@ -105,9 +101,6 @@
 	import AdjustmentsHorizontalOutline from '../icons/AdjustmentsHorizontalOutline.svelte';
 
 	export let id: null | string = null;
-
-	type NoteImportFormat = 'markdown' | 'plain-text';
-	type NoteImportMode = 'replace' | 'append-end' | 'insert-cursor';
 
 	let editor = null;
 	let note = null;
@@ -153,10 +146,6 @@
 	let selectedPanel = 'chat';
 
 	let selectedContent = null;
-	let lastSelection = {
-		from: null,
-		to: null
-	};
 
 	let showDeleteConfirm = false;
 	let showAccessControlModal = false;
@@ -167,7 +156,6 @@
 
 	let dragged = false;
 	let loading = false;
-	let importInProgress = false;
 
 	let editing = false;
 	let streaming = false;
@@ -260,186 +248,6 @@
 	const onEdited = async () => {
 		if (!editor) return;
 		editor.commands.setContent(note.data.content.html);
-	};
-
-	const hasNoteContent = () => {
-		const markdownContent = note?.data?.content?.md ?? '';
-		const htmlContent = note?.data?.content?.html ?? '';
-
-		return markdownContent.trim() !== '' || htmlContent.replace(/<p><\/p>/g, '').trim() !== '';
-	};
-
-	const showImportError = (message: string) => {
-		if (message === 'Only markdown files are allowed') {
-			toast.error($i18n.t('Only markdown files are allowed'));
-		} else if (message === 'Only plain text files are allowed') {
-			toast.error($i18n.t('Only plain text files are allowed'));
-		} else if (message === 'Invalid file content') {
-			toast.error($i18n.t('Invalid file content'));
-		} else if (message === 'Failed to read file') {
-			toast.error($i18n.t('Failed to read file'));
-		} else {
-			toast.error(message);
-		}
-	};
-
-	const applyImportedContent = async (
-		content,
-		mode: NoteImportMode,
-		options: { title?: string; updateTitle?: boolean } = {}
-	) => {
-		if (!note?.write_access || !content?.html) {
-			return;
-		}
-
-		const noteHasContent = hasNoteContent();
-		const effectiveMode = !noteHasContent && mode !== 'replace' ? 'replace' : mode;
-
-		if (noteHasContent) {
-			insertNoteVersion(note);
-		}
-
-		if (options.updateTitle && options.title) {
-			note.title = options.title;
-			changeDebounceHandler();
-		}
-
-		if (!editor || editor.isDestroyed) {
-			note.data.content.json = content.json;
-			note.data.content.html = content.html;
-			note.data.content.md = content.md;
-			versionIdx = null;
-			return;
-		}
-
-		if (effectiveMode === 'replace') {
-			note.data.content.json = content.json;
-			note.data.content.html = content.html;
-			note.data.content.md = content.md;
-			await tick();
-			editor.commands.setContent(content.html);
-			versionIdx = null;
-			return;
-		}
-
-		const documentEnd = editor.state.doc.content.size;
-		const fallbackFrom = editor.state.selection.from;
-		const fallbackTo = editor.state.selection.to;
-		const rawFrom =
-			effectiveMode === 'append-end'
-				? documentEnd
-				: (lastSelection.from ?? fallbackFrom ?? documentEnd);
-		const rawTo =
-			effectiveMode === 'append-end' ? documentEnd : (lastSelection.to ?? fallbackTo ?? rawFrom);
-		const safeFrom = Math.max(0, Math.min(rawFrom, documentEnd));
-		const safeTo = Math.max(safeFrom, Math.min(rawTo, documentEnd));
-
-		const htmlToInsert = effectiveMode === 'append-end' ? `<p></p>${content.html}` : content.html;
-		const insertTarget = safeFrom === safeTo ? safeFrom : { from: safeFrom, to: safeTo };
-		const inserted = editor.commands.insertContentAt(insertTarget, htmlToInsert);
-
-		if (!inserted) {
-			throw new Error('Failed to paste clipboard contents');
-		}
-
-		versionIdx = null;
-	};
-
-	const importFileToNote = async (format: NoteImportFormat, mode: NoteImportMode, file: File) => {
-		if (!note?.write_access || importInProgress) {
-			return;
-		}
-
-		importInProgress = true;
-
-		try {
-			const result =
-				format === 'markdown' ? await readMarkdownFile(file) : await readPlainTextFile(file);
-			const shouldUpdateTitle =
-				mode === 'replace' && !!result.title && (!note.title || note.title === $i18n.t('Untitled'));
-
-			await applyImportedContent(result.content, mode, {
-				title: result.title,
-				updateTitle: shouldUpdateTitle
-			});
-		} catch (error) {
-			showImportError(`${error}`);
-		} finally {
-			importInProgress = false;
-		}
-	};
-
-	const openImportPicker = (format: NoteImportFormat, mode: NoteImportMode) => {
-		if (!note?.write_access || editing || importInProgress) {
-			return;
-		}
-
-		const input = document.createElement('input');
-		input.type = 'file';
-		input.accept =
-			format === 'markdown'
-				? '.md,.markdown,.mdown,.mkd,.mkdn,text/markdown,text/x-markdown'
-				: '.txt,text/plain';
-		input.multiple = false;
-		input.click();
-
-		input.onchange = async (event) => {
-			const files = (event.target as HTMLInputElement)?.files;
-
-			if (files && files.length > 0) {
-				await importFileToNote(format, mode, files[0]);
-			}
-		};
-	};
-
-	const pasteMarkdownFromClipboard = async (mode: NoteImportMode) => {
-		if (!note?.write_access || editing || importInProgress) {
-			return;
-		}
-
-		if (!navigator.clipboard?.readText) {
-			toast.error($i18n.t('Failed to read clipboard contents'));
-			return;
-		}
-
-		importInProgress = true;
-
-		try {
-			const clipboardText = await navigator.clipboard.readText();
-
-			if (!clipboardText) {
-				return;
-			}
-
-			try {
-				await applyImportedContent(createNoteContentFromMarkdown(clipboardText), mode);
-			} catch (error) {
-				console.error('Failed to paste markdown from clipboard', error);
-				toast.error($i18n.t('Failed to paste clipboard contents'));
-			}
-		} catch (error) {
-			toast.error($i18n.t('Failed to read clipboard contents'));
-		} finally {
-			importInProgress = false;
-		}
-	};
-
-	const copyMarkdownToClipboard = async () => {
-		const res = await copyToClipboard(note?.data?.content?.md ?? '').catch(() => false);
-
-		if (res) {
-			toast.success($i18n.t('Copied to clipboard'));
-		} else {
-			toast.error($i18n.t('Failed to copy to clipboard'));
-		}
-	};
-
-	const handleMenuImport = (format: NoteImportFormat, mode: NoteImportMode) => {
-		openImportPicker(format, mode);
-	};
-
-	const handleMenuPasteMarkdown = (mode: NoteImportMode) => {
-		pasteMarkdownFromClipboard(mode);
 	};
 
 	const generateTitleHandler = async () => {
@@ -1109,9 +917,7 @@ Provide the enhanced notes in markdown format. Use markdown syntax for headings,
 				</div>
 			{:else}
 				<div class=" w-full flex flex-col {loading ? 'opacity-20' : ''}">
-					<div
-						class="shrink-0 w-full flex flex-col gap-2 px-3.5 mb-1.5 md:flex-row md:items-center md:justify-between"
-					>
+					<div class="shrink-0 w-full flex justify-between items-center px-3.5 mb-1.5">
 						<div class="w-full min-w-0 flex items-center">
 							{#if $mobile}
 								<div
@@ -1138,7 +944,7 @@ Provide the enhanced notes in markdown format. Use markdown syntax for headings,
 							{/if}
 
 							<input
-								class="w-full min-w-0 bg-transparent text-xl font-medium outline-hidden sm:text-2xl"
+								class="w-full text-2xl font-medium bg-transparent outline-hidden"
 								type="text"
 								bind:value={note.title}
 								placeholder={titleGenerating ? $i18n.t('Generating...') : $i18n.t('Title')}
@@ -1187,133 +993,134 @@ Provide the enhanced notes in markdown format. Use markdown syntax for headings,
 									</Tooltip>
 								</div>
 							{/if}
-						</div>
 
-						<div
-							class="flex shrink-0 flex-wrap items-center justify-end gap-0.5 md:flex-nowrap md:translate-x-1"
-						>
-							{#if note?.write_access}
-								{#if editor}
-									<div>
-										<div class="flex items-center gap-0.5 self-center min-w-fit" dir="ltr">
-											<button
-												class="self-center p-1 hover:enabled:bg-black/5 dark:hover:enabled:bg-white/5 dark:hover:enabled:text-white hover:enabled:text-black rounded-md transition disabled:cursor-not-allowed disabled:text-gray-500 disabled:hover:text-gray-500"
-												on:click={() => {
-													editor.chain().focus().undo().run();
-													// versionNavigateHandler('prev');
-												}}
-												disabled={!editor.can().undo()}
-											>
-												<ArrowUturnLeft className="size-4" />
-											</button>
+							<div class="flex items-center gap-0.5 shrink-0 translate-x-1">
+								{#if note?.write_access}
+									{#if editor}
+										<div>
+											<div class="flex items-center gap-0.5 self-center min-w-fit" dir="ltr">
+												<button
+													class="self-center p-1 hover:enabled:bg-black/5 dark:hover:enabled:bg-white/5 dark:hover:enabled:text-white hover:enabled:text-black rounded-md transition disabled:cursor-not-allowed disabled:text-gray-500 disabled:hover:text-gray-500"
+													on:click={() => {
+														editor.chain().focus().undo().run();
+														// versionNavigateHandler('prev');
+													}}
+													disabled={!editor.can().undo()}
+												>
+													<ArrowUturnLeft className="size-4" />
+												</button>
 
-											<button
-												class="self-center p-1 hover:enabled:bg-black/5 dark:hover:enabled:bg-white/5 dark:hover:enabled:text-white hover:enabled:text-black rounded-md transition disabled:cursor-not-allowed disabled:text-gray-500 disabled:hover:text-gray-500"
-												on:click={() => {
-													editor.chain().focus().redo().run();
-													// versionNavigateHandler('next');
-												}}
-												disabled={!editor.can().redo()}
-											>
-												<ArrowUturnRight className="size-4" />
-											</button>
+												<button
+													class="self-center p-1 hover:enabled:bg-black/5 dark:hover:enabled:bg-white/5 dark:hover:enabled:text-white hover:enabled:text-black rounded-md transition disabled:cursor-not-allowed disabled:text-gray-500 disabled:hover:text-gray-500"
+													on:click={() => {
+														editor.chain().focus().redo().run();
+														// versionNavigateHandler('next');
+													}}
+													disabled={!editor.can().redo()}
+												>
+													<ArrowUturnRight className="size-4" />
+												</button>
+											</div>
 										</div>
-									</div>
+									{/if}
+
+									<Tooltip placement="top" content={$i18n.t('Chat')} className="cursor-pointer">
+										<button
+											class="p-1.5 bg-transparent hover:bg-white/5 transition rounded-lg"
+											on:click={() => {
+												if (showPanel && selectedPanel === 'chat') {
+													showPanel = false;
+												} else {
+													if (!showPanel) {
+														showPanel = true;
+													}
+													selectedPanel = 'chat';
+												}
+											}}
+										>
+											<ChatBubbleOval />
+										</button>
+									</Tooltip>
+
+									<Tooltip placement="top" content={$i18n.t('Controls')} className="cursor-pointer">
+										<button
+											class="p-1.5 bg-transparent hover:bg-white/5 transition rounded-lg"
+											on:click={() => {
+												if (showPanel && selectedPanel === 'settings') {
+													showPanel = false;
+												} else {
+													if (!showPanel) {
+														showPanel = true;
+													}
+													selectedPanel = 'settings';
+												}
+											}}
+										>
+											<AdjustmentsHorizontalOutline />
+										</button>
+									</Tooltip>
 								{/if}
 
-								<Tooltip placement="top" content={$i18n.t('Chat')} className="cursor-pointer">
-									<button
-										class="p-1.5 bg-transparent hover:bg-white/5 transition rounded-lg"
-										on:click={() => {
-											if (showPanel && selectedPanel === 'chat') {
-												showPanel = false;
-											} else {
-												if (!showPanel) {
-													showPanel = true;
-												}
-												selectedPanel = 'chat';
-											}
-										}}
-									>
-										<ChatBubbleOval />
-									</button>
-								</Tooltip>
+								<NoteMenu
+									onDownload={(type) => {
+										downloadHandler(type);
+									}}
+									onCopyLink={async () => {
+										const baseUrl = window.location.origin;
+										const res = await copyToClipboard(`${baseUrl}/notes/${note.id}`);
 
-								<Tooltip placement="top" content={$i18n.t('Controls')} className="cursor-pointer">
-									<button
-										class="p-1.5 bg-transparent hover:bg-white/5 transition rounded-lg"
-										on:click={() => {
-											if (showPanel && selectedPanel === 'settings') {
-												showPanel = false;
-											} else {
-												if (!showPanel) {
-													showPanel = true;
-												}
-												selectedPanel = 'settings';
-											}
-										}}
-									>
-										<AdjustmentsHorizontalOutline />
-									</button>
-								</Tooltip>
-							{/if}
-
-							<NoteMenu
-								onDownload={(type) => {
-									downloadHandler(type);
-								}}
-								onImport={note?.write_access ? handleMenuImport : null}
-								onPasteMarkdown={note?.write_access ? handleMenuPasteMarkdown : null}
-								onCopyMarkdown={copyMarkdownToClipboard}
-								onAccess={note?.write_access
-									? () => {
-											showAccessControlModal = true;
+										if (res) {
+											toast.success($i18n.t('Copied link to clipboard'));
+										} else {
+											toast.error($i18n.t('Failed to copy link'));
 										}
-									: null}
-								onCopyLink={async () => {
-									const baseUrl = window.location.origin;
-									const res = await copyToClipboard(`${baseUrl}/notes/${note.id}`);
+									}}
+									onCopyToClipboard={async () => {
+										const res = await copyToClipboard(
+											note.data.content.md,
+											note.data.content.html,
+											true
+										).catch((error) => {
+											toast.error(`${error}`);
+											return null;
+										});
 
-									if (res) {
-										toast.success($i18n.t('Copied link to clipboard'));
-									} else {
-										toast.error($i18n.t('Failed to copy link'));
-									}
-								}}
-								onCopyToClipboard={async () => {
-									const res = await copyToClipboard(
-										note.data.content.md,
-										note.data.content.html,
-										true
-									).catch((error) => {
-										toast.error(`${error}`);
-										return null;
-									});
+										if (res) {
+											toast.success($i18n.t('Copied to clipboard'));
+										}
+									}}
+									onDelete={() => {
+										showDeleteConfirm = true;
+									}}
+									isPinned={note.is_pinned ?? false}
+									onPin={async () => {
+										await toggleNotePinnedStatusById(localStorage.token, note.id);
+										note = await getNoteById(localStorage.token, note.id);
+										pinnedNotes.set(await getPinnedNoteList(localStorage.token).catch(() => []));
+									}}
+								>
+									<div class="p-1 bg-transparent hover:bg-white/5 transition rounded-lg">
+										<EllipsisHorizontal className="size-5" />
+									</div>
+								</NoteMenu>
 
-									if (res) {
-										toast.success($i18n.t('Copied to clipboard'));
-									}
-								}}
-								onDelete={() => {
-									showDeleteConfirm = true;
-								}}
-								isPinned={note.is_pinned ?? false}
-								onPin={async () => {
-									await toggleNotePinnedStatusById(localStorage.token, note.id);
-									note = await getNoteById(localStorage.token, note.id);
-									pinnedNotes.set(await getPinnedNoteList(localStorage.token).catch(() => []));
-								}}
-							>
-								<div class="p-1 bg-transparent hover:bg-white/5 transition rounded-lg">
-									<EllipsisHorizontal className="size-5" />
-								</div>
-							</NoteMenu>
-
-							{#if !note?.write_access}
-								<div class="shrink-0 text-xs text-gray-500 px-2 py-1">
-									{$i18n.t('Read-Only Access')}
-								</div>
-							{/if}
+								{#if note?.write_access}
+									<button
+										class="shrink-0 bg-gray-50 hover:bg-gray-100 text-black dark:bg-gray-850 dark:hover:bg-gray-800 dark:text-white transition px-2.5 py-1 rounded-full flex gap-1.5 items-center text-sm"
+										on:click={() => {
+											showAccessControlModal = true;
+										}}
+										disabled={note?.user_id !== $user?.id && $user?.role !== 'admin'}
+									>
+										<LockClosed strokeWidth="2.5" className="size-3.5" />
+										{$i18n.t('Access')}
+									</button>
+								{:else}
+									<div class="shrink-0 text-xs text-gray-500 px-2 py-1">
+										{$i18n.t('Read-Only Access')}
+									</div>
+								{/if}
+							</div>
 						</div>
 					</div>
 
@@ -1404,10 +1211,6 @@ Provide the enhanced notes in markdown format. Use markdown syntax for headings,
 							editable={versionIdx === null && !editing && note?.write_access}
 							onSelectionUpdate={({ editor }) => {
 								const { from, to } = editor.state.selection;
-								lastSelection = {
-									from,
-									to
-								};
 								const selectedText = editor.state.doc.textBetween(from, to, ' ');
 
 								if (selectedText.length === 0) {

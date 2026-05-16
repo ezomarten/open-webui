@@ -19,7 +19,6 @@ ARG USE_AUXILIARY_EMBEDDING_MODEL=TaylorAI/bge-micro-v2
 ARG USE_TIKTOKEN_ENCODING_NAME="cl100k_base"
 
 ARG BUILD_HASH=dev-build
-ARG SOURCE_REPOSITORY_URL=https://github.com/farefore/open-webui-public-share
 # Override at your own risk - non-root configurations are untested
 ARG UID=0
 ARG GID=0
@@ -41,14 +40,12 @@ RUN npm ci --force
 
 COPY . .
 ENV APP_BUILD_HASH=${BUILD_HASH}
-ENV NODE_OPTIONS=--max-old-space-size=4096
 RUN npm run build
 
 ######## WebUI backend ########
-FROM python:3.11.14-slim-bookworm AS base
+FROM python:3.11-slim-bookworm AS base
 
 # Use args
-ARG SOURCE_REPOSITORY_URL
 ARG USE_CUDA
 ARG USE_OLLAMA
 ARG USE_CUDA_VER
@@ -62,9 +59,6 @@ ARG GID
 
 # Python settings
 ENV PYTHONUNBUFFERED=1
-
-LABEL org.opencontainers.image.source=$SOURCE_REPOSITORY_URL
-LABEL org.opencontainers.image.description="Open WebUI fork with anonymous public share support"
 
 ## Basis ##
 ENV ENV=prod \
@@ -83,8 +77,9 @@ ENV OLLAMA_BASE_URL="/ollama" \
     OPENAI_API_BASE_URL=""
 
 ## API Key and Security Config ##
-# Inject runtime secrets through compose/env or *_FILE settings instead of baking placeholders into the image.
-ENV SCARF_NO_ANALYTICS=true \
+ENV OPENAI_API_KEY="" \
+    WEBUI_SECRET_KEY="" \
+    SCARF_NO_ANALYTICS=true \
     DO_NOT_TRACK=true \
     ANONYMIZED_TELEMETRY=false
 
@@ -143,13 +138,13 @@ COPY --chown=$UID:$GID ./backend/requirements.txt ./requirements.txt
 # Set UV_LINK_MODE to copy to prevent 0-byte file corruption in QEMU arm64 cross-builds
 ENV UV_LINK_MODE=copy
 
-RUN set -eux; \
-	pip3 install --no-cache-dir uv; \
+RUN set -e; \
+    pip3 install --no-cache-dir uv; \
     if [ "$USE_CUDA" = "true" ]; then \
     # If you use CUDA the whisper and embedding model will be downloaded on first use
     # fix: pin torch<=2.9.1 - torch 2.10.0 aarch64 wheels cause SIGILL on ARM devices (RPi 4 Cortex-A72) #21349
     pip3 install 'torch<=2.9.1' torchvision torchaudio --index-url https://download.pytorch.org/whl/$USE_CUDA_DOCKER_VER --no-cache-dir; \
-    pip3 install --no-cache-dir -r requirements.txt; \
+    uv pip install --system -r requirements.txt --no-cache-dir; \
     python -c "import os; from sentence_transformers import SentenceTransformer; SentenceTransformer(os.environ['RAG_EMBEDDING_MODEL'], device='cpu')"; \
     python -c "import os; from sentence_transformers import SentenceTransformer; SentenceTransformer(os.environ.get('AUXILIARY_EMBEDDING_MODEL', 'TaylorAI/bge-micro-v2'), device='cpu')"; \
     python -c "import os; from faster_whisper import WhisperModel; WhisperModel(os.environ['WHISPER_MODEL'], device='cpu', compute_type='int8', download_root=os.environ['WHISPER_MODEL_DIR'])"; \
@@ -157,7 +152,7 @@ RUN set -eux; \
     python -c "import nltk; nltk.download('punkt_tab')"; \
     else \
     pip3 install 'torch<=2.9.1' torchvision torchaudio --index-url https://download.pytorch.org/whl/cpu --no-cache-dir; \
-    pip3 install --no-cache-dir -r requirements.txt; \
+    uv pip install --system -r requirements.txt --no-cache-dir; \
     if [ "$USE_SLIM" != "true" ]; then \
     python -c "import os; from sentence_transformers import SentenceTransformer; SentenceTransformer(os.environ['RAG_EMBEDDING_MODEL'], device='cpu')"; \
     python -c "import os; from sentence_transformers import SentenceTransformer; SentenceTransformer(os.environ.get('AUXILIARY_EMBEDDING_MODEL', 'TaylorAI/bge-micro-v2'), device='cpu')"; \

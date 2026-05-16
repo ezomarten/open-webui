@@ -310,6 +310,7 @@ type Config = {
 	ui?: {
 		pending_user_overlay_title?: string;
 		pending_user_overlay_content?: string;
+		iframe_csp?: string;
 	};
 };
 

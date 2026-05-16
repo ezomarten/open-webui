@@ -1,6 +1,6 @@
 # Fork Notes
 
-This fork now tracks Open WebUI `v0.9.4` and carries a small set of deployment-focused customizations for anonymous public sharing.
+This fork now tracks Open WebUI `v0.9.5` and carries a small set of deployment-focused customizations for anonymous public sharing.
 
 ## Goals
 
@@ -15,7 +15,7 @@ This fork now tracks Open WebUI `v0.9.4` and carries a small set of deployment-f
 - Deployment workspace operator runbook lives in [../README.md](../README.md)
 - Local rebuilds only affect runtime when workspace root [../.env](../.env) sets `OPENWEBUI_IMAGE=open-webui-public-share` or another local `open-webui-public-share[:tag]` reference
 - If [../.env](../.env) points to a GHCR tag, compose recreate will continue to run the GHCR image even after a successful local `docker build`
-- Current published fork release is `0.9.4-publicshare.1`
+- Current published fork release is `0.9.5-publicshare.1`
 - Current local fork head should be treated as the source of truth for future local image rebuilds
 - Multi-worker deployments must set `REDIS_URL` as well as `WEBSOCKET_REDIS_URL`; the latter only covers Socket.IO, while the former is required for AppConfig persistent-config sync so admin connection settings do not revert across workers
 - Before pushing a release commit or tag, run `python scripts/release_preflight.py` from an environment that has the repo's Python and Node dependencies installed; by default it now also runs `scripts/chat_smoke.py`, so set one of `OPENWEBUI_SMOKE_TRUSTED_EMAIL`, `OPENWEBUI_SMOKE_EMAIL` + `OPENWEBUI_SMOKE_PASSWORD`, `OPENWEBUI_SMOKE_API_KEY`, or `OPENWEBUI_SMOKE_BEARER_TOKEN` for the target runtime unless you are intentionally skipping the smoke with `OPENWEBUI_SKIP_CHAT_SMOKE=1`
@@ -28,6 +28,7 @@ This fork now tracks Open WebUI `v0.9.4` and carries a small set of deployment-f
 - Adds `/p/{public_share_id}` pages and `/api/v1/public-shares/*` APIs for anonymous access
 - Uses snapshot-based public shares so the public page does not require the owner session
 - Keeps one active public share per chat
+- The top-level app wiring for public shares remains intentionally explicit in `backend/open_webui/main.py`, `backend/open_webui/config.py`, and `src/lib/components/chat/ShareChatModal.svelte`, with source-level regression tests guarding against future upstream syncs silently dropping the feature integration again
 - Public-share chat lookups in the create/get/delete routes explicitly await the async Chats model so public-link generation does not pass coroutine objects into snapshot building after the upstream async database migration
 - Public-share snapshots now preserve the public user/assistant history tree so parallel multi-model responses render on anonymous pages instead of collapsing to only the current branch
 - Public-share snapshot extraction also falls back from sanitized `history.messages` trees to the flattened `messages` list when saved history only contains non-public roles, which avoids false `No public messages found.` failures for still-visible chats
@@ -83,7 +84,7 @@ This fork now tracks Open WebUI `v0.9.4` and carries a small set of deployment-f
 
 ### Responses API compatibility
 
-- Upstream `v0.9.4` continues to cover the previously forked Responses API task-normalization and native tool-loop fixes that were needed for Gemini and LM Studio-compatible providers
+- Upstream `v0.9.5` continues to cover the previously forked Responses API task-normalization and native tool-loop fixes that were needed for Gemini and LM Studio-compatible providers
 - This fork keeps the more defensive response-content parsing and timing/error hardening that protects task helpers and streamed post-processing across chat-completions-style and Responses-style payloads
 - Merge Responses now also parses Responses API SSE events on the frontend, so LM Studio-style local connections that stream `response.output_text.delta` / `response.completed` no longer fail MOA merges solely because the merge parser expected Chat Completions deltas
 - Merge Responses now asks the MOA task endpoint for non-stream JSON completions and extracts the normalized final assistant content from that response, which sidesteps Chutes/OpenAI-compatible reasoning models whose streamed merge responses emit long `reasoning_content` traces before completion but never provide usable `delta.content` tokens to the merge UI
@@ -94,7 +95,7 @@ This fork now tracks Open WebUI `v0.9.4` and carries a small set of deployment-f
 - Streamed upstream timeout failures now surface as an explicit timeout or stream-stall message instead of an empty red error banner
 - The generic streamed response wrapper now also persists and emits that timeout text when the failure happens during streamed response iteration, so stored `error.content` remains populated for the affected assistant message
 - OpenAI-compatible and Ollama streaming upstream requests now wait for the first meaningful upstream output chunk without applying the idle timeout, ignoring role-only deltas and Responses API status preludes such as `response.created` / `response.in_progress` before the timeout starts; non-stream requests continue to use the configured total request timeout
-- OpenAI-compatible streamed proxy responses also strip stale `Content-Encoding`, `Content-Length`, and `Transfer-Encoding` headers after aiohttp auto-decompression so downstream chat responses do not fail on the post-`v0.9.4` proxy cleanup path
+- OpenAI-compatible streamed proxy responses also strip stale `Content-Encoding`, `Content-Length`, and `Transfer-Encoding` headers after aiohttp auto-decompression so downstream chat responses do not fail on the upstream proxy cleanup path
 - Native `fetch_url` tool calls now cap page loading with the configured Web Loader timeout when available and otherwise fall back to a 30-second budget, so slow pages fail with a visible tool error instead of leaving chats stuck in `fetch_url`
 
 ### Multi-worker session cleanup stability
@@ -150,6 +151,10 @@ If the change is release-worthy, also update [CHANGELOG.md](CHANGELOG.md).
 If the change affects public-share or public-link UI strings, also update [src/lib/i18n/locales/ja-JP/translation.json](src/lib/i18n/locales/ja-JP/translation.json).
 
 ## Maintenance Record
+
+- 2026-05-16: prepared fork release `0.9.5-publicshare.1` by restoring the public-share feature after the `v0.9.5` replay silently dropped top-level wiring in `backend/open_webui/main.py`, `backend/open_webui/config.py`, and `src/lib/components/chat/ShareChatModal.svelte`, adding regression coverage for that integration, hardening `backend/open_webui/env.py` so `CHANGELOG.md` can keep an `Unreleased` heading without breaking imports or image builds, and updating published-image references to the new baseline; key files: `backend/open_webui/main.py`, `backend/open_webui/config.py`, `backend/open_webui/env.py`, `src/lib/components/chat/ShareChatModal.svelte`, `src/lib/components/layout/PublicSharesModal.svelte`, `src/lib/i18n/locales/ja-JP/translation.json`, `backend/open_webui/test/util/test_public_share_wiring.py`, `README.md`, `CHANGELOG.md`, `FORK_NOTES.md`, workspace `../README.md`, and workspace `../publish-openwebui-image.ps1`; validation: `PYTHONPATH=backend c:/Users/it/openwebui/.venv/Scripts/python.exe -m pytest backend/open_webui/test/util/test_public_share.py backend/open_webui/test/util/test_public_shares_router.py backend/open_webui/test/util/test_public_share_wiring.py -q` with `18 passed`, plus Node `v22.22.1` `npm run build`
+
+- 2026-05-15: synced the fork working tree from upstream `v0.9.4` to `v0.9.5` by replaying the fork patch set onto the new upstream base, restored the fork's missing sync DB context helper and Web Loader timeout plumbing after the replay, and rebuilt plus redeployed the local test runtime; key files: `CHANGELOG.md`, `FORK_NOTES.md`, `README.md`, workspace `../README.md`, `backend/open_webui/internal/db.py`, `backend/open_webui/retrieval/utils.py`, and the replayed upstream-overlap backend/frontend/static files; validation: `PYTHONPATH=backend c:/Users/it/openwebui/.venv/Scripts/python.exe -m pytest backend/open_webui/test/util/test_http_timeouts.py backend/open_webui/test/util/test_error_handling.py backend/open_webui/test/util/test_public_share.py backend/open_webui/test/util/test_public_shares_router.py backend/open_webui/test/util/test_task_metadata.py backend/open_webui/test/util/test_openrouter_zdr.py backend/open_webui/test/util/test_web_fetch_timeouts.py backend/open_webui/test/util/test_socket_utils.py backend/open_webui/test/util/test_web_search.py -q` with `46 passed`, Node `v22.22.1` `npm ci`, `npm run i18n:parse`, and `npm run build`, `docker build --provenance=false --sbom=false --build-arg USE_SLIM=true -t open-webui-public-share c:/Users/it/openwebui/open-webui-public-share`, `docker compose up -d --force-recreate open-webui`, `docker inspect open-webui --format '{{.Config.Image}} {{.State.Health.Status}} {{.RestartCount}}'` showing `open-webui-public-share healthy 0`, `curl.exe -I http://localhost:3000` returning `HTTP/1.1 200 OK`, and `curl.exe http://localhost:3000/api/config` returning version `0.9.5`.
 
 - 2026-05-10: prepared fork release `0.9.4-publicshare.1` by converting the `v0.9.4` sync from `Unreleased`, updating published-image references to the new baseline, and refreshing the workspace publish helper default tag; key files: `CHANGELOG.md`, `README.md`, `FORK_NOTES.md`, workspace `../README.md`, and workspace `../publish-openwebui-image.ps1`; validation: the same `44 passed` targeted pytest run, Node `v22.22.1` temporary-worktree `npm run build`, local image rebuild, `docker compose up -d --force-recreate open-webui`, `docker inspect open-webui --format '{{.Config.Image}} {{.State.Health.Status}} {{.RestartCount}}'` showing `open-webui-public-share healthy 0`, and `curl.exe -sS http://localhost:3000/api/config` returning version `0.9.4` recorded in the sync entry below.
 
@@ -246,7 +251,7 @@ If the change affects public-share or public-link UI strings, also update [src/l
 
 ## Upstream Base
 
-Fork mainline now tracks upstream `v0.9.4`.
+Fork mainline now tracks upstream `v0.9.5`.
 
 Retained fork-only areas on top of that base:
 

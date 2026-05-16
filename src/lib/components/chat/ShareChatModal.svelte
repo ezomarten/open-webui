@@ -32,6 +32,7 @@
 	let publicShareLoading = false;
 	let accessGrants: any[] = [];
 	const i18n = getContext('i18n');
+	const publicShareErrorMessage = (error) => $i18n.t(error?.detail ?? `${error}`);
 
 	const shareLocalChat = async () => {
 		const sharedChat = await shareChatById(localStorage.token, chatId);
@@ -82,7 +83,7 @@
 
 		const syncedPublicShare = await upsertPublicShareByChatId(localStorage.token, chatId).catch(
 			(error) => {
-				toast.error(`${error?.detail ?? error}`);
+				toast.error(publicShareErrorMessage(error));
 				return null;
 			}
 		);
@@ -116,7 +117,7 @@
 
 	const stopPublicShare = async () => {
 		const res = await deletePublicShareByChatId(localStorage.token, chatId).catch((error) => {
-			toast.error(`${error?.detail ?? error}`);
+			toast.error(publicShareErrorMessage(error));
 			return null;
 		});
 

@@ -27,9 +27,11 @@ For more information, be sure to check out our [Open WebUI Documentation](https:
 
 ## Fork Overview
 
-This repository is a deployment-focused fork of Open WebUI `v0.9.4`. It keeps the upstream application intact where possible and adds the minimum patch set needed for a dual-host deployment where the main app stays protected while anonymous public shares are exposed from a separate host.
+This repository is a deployment-focused fork of Open WebUI `v0.9.5`. It keeps the upstream application intact where possible and adds the minimum patch set needed for a dual-host deployment where the main app stays protected while anonymous public shares are exposed from a separate host.
 
-Fork mainline now tracks upstream `v0.9.4`. The current published fork release is `0.9.4-publicshare.1`.
+Fork mainline now tracks upstream `v0.9.5`. The current published fork release is `0.9.5-publicshare.1`.
+
+The local build path in this README targets the current `v0.9.5` fork head. GHCR examples below are pinned to the latest published release tag.
 
 ### Fork-specific additions
 
@@ -47,10 +49,10 @@ Build locally:
 docker build --provenance=false --sbom=false --build-arg USE_SLIM=true -t open-webui-public-share .
 ```
 
-Pull the current release image:
+Pull the current published release image:
 
 ```bash
-docker pull ghcr.io/farefore/open-webui-public-share:0.9.4-publicshare.1
+docker pull ghcr.io/farefore/open-webui-public-share:0.9.5-publicshare.1
 ```
 
 Relevant configuration for this fork:
@@ -75,7 +77,7 @@ OLLAMA_BASE_URL=http://host.docker.internal:11434
 # OPENAI_API_KEY=sk-...
 ```
 
-To run the current published release image instead of a local build, set `OPENWEBUI_IMAGE=ghcr.io/farefore/open-webui-public-share:0.9.4-publicshare.1`.
+To run the current published release image instead of a local build, set `OPENWEBUI_IMAGE=ghcr.io/farefore/open-webui-public-share:0.9.5-publicshare.1`.
 
 Example `compose.yaml`:
 

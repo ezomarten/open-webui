@@ -50,11 +50,6 @@ from open_webui.models.groups import Groups
 from open_webui.utils.access_control import check_model_access
 from open_webui.utils.misc import (
     calculate_sha256,
-    stream_chunks_handler,
-)
-from open_webui.utils.http_timeouts import (
-    build_upstream_request_timeout,
-    chunk_contains_meaningful_stream_output,
 )
 from open_webui.utils.session_pool import (
     cleanup_response,
@@ -92,11 +87,14 @@ log = logging.getLogger(__name__)
 ##########################################
 
 # Headers that become stale after aiohttp auto-decompresses the upstream
-# response body. Forwarding them verbatim can trigger a second decode pass.
+# response body.  Forwarding them verbatim causes desktop / programmatic
+# clients to attempt decompression of an already-decoded payload, resulting
+# in ZlibError.  See https://github.com/aio-libs/aiohttp/issues/4462.
 _STRIP_PROXY_HEADERS = frozenset({'Content-Encoding', 'Content-Length', 'Transfer-Encoding'})
 
 
 def _clean_proxy_headers(raw_headers) -> dict:
+    """Return a copy of *raw_headers* with stale encoding headers removed."""
     return {k: v for k, v in raw_headers.items() if k not in _STRIP_PROXY_HEADERS}
 
 
@@ -156,7 +154,7 @@ async def send_request(
             data=payload,
             headers=headers,
             ssl=AIOHTTP_CLIENT_SESSION_SSL,
-            timeout=build_upstream_request_timeout(AIOHTTP_CLIENT_TIMEOUT, stream=stream),
+            timeout=aiohttp.ClientTimeout(total=AIOHTTP_CLIENT_TIMEOUT),
         )
 
         if not r.ok:
@@ -182,12 +180,7 @@ async def send_request(
 
             streaming = True
             return StreamingResponse(
-                stream_wrapper(
-                    r,
-                    content_handler=stream_chunks_handler,
-                    read_timeout_seconds=AIOHTTP_CLIENT_TIMEOUT,
-                    timeout_starts_after_chunk=chunk_contains_meaningful_stream_output,
-                ),
+                stream_wrapper(r),
                 status_code=r.status,
                 headers=response_headers,
             )

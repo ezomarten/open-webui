@@ -43,6 +43,7 @@ from open_webui.retrieval.loaders.youtube import YoutubeLoader
 
 from open_webui.env import (
     AIOHTTP_CLIENT_TIMEOUT,
+    AIOHTTP_CLIENT_ALLOW_REDIRECTS,
     OFFLINE_MODE,
     ENABLE_FORWARD_USER_INFO_HEADERS,
     AIOHTTP_CLIENT_SESSION_SSL,
@@ -199,8 +200,17 @@ def get_content_from_url(request, url: str) -> str:
     loader_timeout = get_web_loader_timeout_seconds(request)
 
     # Streamed GET to check Content-Type without downloading the body.
+    # allow_redirects=False prevents redirect-based SSRF: validate_url() above is
+    # called on the originally-submitted URL only; following 3xx redirects without
+    # re-validation would let an attacker reach private IPs (RFC1918, loopback,
+    # cloud-metadata 169.254.169.254) via a public host that redirects internally.
     try:
-        response = requests.get(url, stream=True, timeout=loader_timeout)
+        response = requests.get(
+            url,
+            stream=True,
+            timeout=loader_timeout,
+            allow_redirects=AIOHTTP_CLIENT_ALLOW_REDIRECTS,
+        )
         response.raise_for_status()
         content_type = response.headers.get('Content-Type', '')
     except Exception:

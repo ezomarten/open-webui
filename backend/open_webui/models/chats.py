@@ -9,7 +9,6 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.sql import exists
 from sqlalchemy.sql.expression import bindparam
 from open_webui.internal.db import Base, JSONField, get_async_db_context
-from open_webui.models.public_shares import PublicShares
 from open_webui.models.tags import TagModel, Tag, Tags
 from open_webui.models.folders import Folders
 from open_webui.models.chat_messages import ChatMessage, ChatMessages
@@ -394,7 +393,6 @@ class ChatTable:
                 chat_item.updated_at = int(time.time())
 
                 await db.commit()
-                await db.refresh(chat_item)
 
                 return ChatModel.model_validate(chat_item)
         except Exception:
@@ -461,24 +459,87 @@ class ChatTable:
                 return None
             return row[0] or 'New Chat'
 
+    @staticmethod
+    def get_unresolved_parent_ids(messages_map: dict) -> set[str]:
+        """Return parent IDs referenced by messages but absent from the map.
+
+        An empty set means the message graph is fully connected.
+        """
+        return {
+            msg['parentId']
+            for msg in messages_map.values()
+            if msg.get('parentId') and msg['parentId'] not in messages_map
+        }
+
+    async def backfill_messages_by_chat_id(self, chat_id: str, user_id: str, messages: dict[str, dict]) -> None:
+        """Write messages to the ``chat_message`` table so future lookups
+        use the fast path.  Errors are logged but never raised.
+        """
+        for message_id, message in messages.items():
+            if not isinstance(message, dict) or not message.get('role'):
+                continue
+            try:
+                await ChatMessages.upsert_message(
+                    message_id=message_id,
+                    chat_id=chat_id,
+                    user_id=user_id,
+                    data=message,
+                )
+            except Exception as e:
+                log.warning('Backfill failed for message %s in chat %s: %s', message_id, chat_id, e)
+
     async def get_messages_map_by_chat_id(self, id: str) -> Optional[dict]:
         """Message map for walking history (see ``get_message_list``).
 
-        Prefer ``chat_message`` rows to avoid loading the large ``chat``
-        JSON blob; fall back to embedded history when no rows exist
-        (legacy chats).
+        Prefer ``chat_message`` rows to avoid loading the large embedded
+        history; fall back to the legacy JSON when no rows exist.
+        When rows exist but the parent-link graph has gaps (e.g. migration
+        failures), missing messages are merged from the legacy history
+        and backfilled so future requests self-heal.
         """
         # Fast path: build from normalized chat_message rows.
         messages_map = await ChatMessages.get_messages_map_by_chat_id(id)
+
         if messages_map is not None:
+            unresolved_ids = self.get_unresolved_parent_ids(messages_map)
+            if not unresolved_ids:
+                return messages_map
+
+            # Graph has gaps — enrich from the legacy embedded history.
+            log.info(
+                'Chat %s: %d unresolved parent reference(s) in chat_message — enriching from legacy history',
+                id,
+                len(unresolved_ids),
+            )
+            chat = await self.get_chat_by_id(id)
+            if chat:
+                history_messages = chat.chat.get('history', {}).get('messages', {}) or {}
+                missing_messages = {
+                    message_id: history_messages[message_id]
+                    for message_id in unresolved_ids
+                    if message_id in history_messages
+                }
+
+                if missing_messages:
+                    messages_map.update(missing_messages)
+
+                    # Backfill so future requests use the fast path.
+                    await self.backfill_messages_by_chat_id(id, chat.user_id, missing_messages)
+
             return messages_map
 
-        # No rows — fall back to the embedded JSON blob for legacy chats.
+        # No rows — fall back to the legacy embedded history.
         chat = await self.get_chat_by_id(id)
         if chat is None:
             return None
 
-        return chat.chat.get('history', {}).get('messages', {}) or {}
+        history_messages = chat.chat.get('history', {}).get('messages', {}) or {}
+
+        # Backfill so future requests use the fast path.
+        if history_messages:
+            await self.backfill_messages_by_chat_id(id, chat.user_id, history_messages)
+
+        return history_messages
 
     async def get_message_by_id_and_message_id(self, id: str, message_id: str) -> Optional[dict]:
         chat = await self.get_chat_by_id(id)
@@ -1439,7 +1500,6 @@ class ChatTable:
 
     async def delete_chat_by_id(self, id: str, db: Optional[AsyncSession] = None) -> bool:
         try:
-            PublicShares.delete_public_share_by_chat_id(id)
             async with get_async_db_context(db) as db:
                 await db.execute(update(AutomationRun).filter_by(chat_id=id).values(chat_id=None))
                 await db.execute(delete(ChatMessage).filter_by(chat_id=id))
@@ -1452,7 +1512,6 @@ class ChatTable:
 
     async def delete_chat_by_id_and_user_id(self, id: str, user_id: str, db: Optional[AsyncSession] = None) -> bool:
         try:
-            PublicShares.delete_public_share_by_chat_id(id)
             async with get_async_db_context(db) as db:
                 await db.execute(update(AutomationRun).filter_by(chat_id=id).values(chat_id=None))
                 await db.execute(delete(ChatMessage).filter_by(chat_id=id))
@@ -1468,14 +1527,15 @@ class ChatTable:
             async with get_async_db_context(db) as db:
                 await self.delete_shared_chats_by_user_id(user_id, db=db)
 
-                chat_ids = (await db.execute(select(Chat.id).filter_by(user_id=user_id))).scalars().all()
-                PublicShares.delete_public_shares_by_chat_ids(list(chat_ids))
-
-                chat_id_subquery = select(Chat.id).filter_by(user_id=user_id)
+                chat_id_subquery = select(Chat.id).filter_by(user_id=user_id).scalar_subquery()
                 await db.execute(
-                    update(AutomationRun).filter(AutomationRun.chat_id.in_(chat_id_subquery)).values(chat_id=None)
+                    update(AutomationRun)
+                    .filter(AutomationRun.chat_id.in_(select(Chat.id).filter_by(user_id=user_id)))
+                    .values(chat_id=None)
                 )
-                await db.execute(delete(ChatMessage).filter(ChatMessage.chat_id.in_(chat_id_subquery)))
+                await db.execute(
+                    delete(ChatMessage).filter(ChatMessage.chat_id.in_(select(Chat.id).filter_by(user_id=user_id)))
+                )
                 await db.execute(delete(Chat).filter_by(user_id=user_id))
                 await db.commit()
 
@@ -1488,11 +1548,6 @@ class ChatTable:
     ) -> bool:
         try:
             async with get_async_db_context(db) as db:
-                chat_ids = (
-                    (await db.execute(select(Chat.id).filter_by(user_id=user_id, folder_id=folder_id))).scalars().all()
-                )
-                PublicShares.delete_public_shares_by_chat_ids(list(chat_ids))
-
                 chat_ids_stmt = select(Chat.id).filter_by(user_id=user_id, folder_id=folder_id)
                 await db.execute(
                     update(AutomationRun).filter(AutomationRun.chat_id.in_(chat_ids_stmt)).values(chat_id=None)

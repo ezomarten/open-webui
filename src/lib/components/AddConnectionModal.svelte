@@ -29,7 +29,7 @@
 	export let ollama = false;
 	export let direct = false;
 
-	export let connection: any = null;
+	export let connection = null;
 
 	let url = '';
 	let key = '';
@@ -47,8 +47,6 @@
 	let enable = true;
 	let apiVersion = '';
 	let apiType = ''; // '' = chat completions (default), 'responses' = Responses API
-	let openrouterZdrOnly = false;
-	let isOpenRouter = false;
 
 	let headers = '';
 
@@ -59,16 +57,6 @@
 
 	let loading = false;
 	let showDeleteConfirmDialog = false;
-
-	const isOpenRouterUrl = (value: string) => {
-		try {
-			return new URL(value).hostname.endsWith('openrouter.ai');
-		} catch {
-			return value.toLowerCase().includes('openrouter.ai');
-		}
-	};
-
-	$: isOpenRouter = isOpenRouterUrl(url);
 
 	const verifyOllamaHandler = async () => {
 		// remove trailing slash from url
@@ -115,7 +103,6 @@
 					auth_type,
 					...(provider ? { provider } : azure ? { azure: true } : {}),
 					api_version: apiVersion,
-					...(isOpenRouter ? { openrouter_zdr_only: openrouterZdrOnly } : {}),
 					...(_headers ? { headers: _headers } : {})
 				}
 			},
@@ -204,7 +191,6 @@
 				headers: headers ? JSON.parse(headers) : undefined,
 				...(provider ? { provider } : !ollama && azure ? { azure: true } : {}),
 				...(azure ? { api_version: apiVersion } : {}),
-				...(isOpenRouter ? { openrouter_zdr_only: openrouterZdrOnly } : {}),
 				...(apiType ? { api_type: apiType } : {})
 			}
 		};
@@ -220,7 +206,6 @@
 		prefixId = '';
 		tags = [];
 		modelIds = [];
-		openrouterZdrOnly = false;
 	};
 
 	const init = () => {
@@ -245,7 +230,6 @@
 				provider = connection.config?.provider ?? (connection.config?.azure ? 'azure' : '');
 				apiVersion = connection.config?.api_version ?? '';
 				apiType = connection.config?.api_type ?? '';
-				openrouterZdrOnly = connection.config?.openrouter_zdr_only ?? false;
 			}
 		}
 	};
@@ -480,31 +464,6 @@
 							</div>
 						{/if}
 
-						{#if !ollama && isOpenRouter}
-							<div class="flex flex-row justify-between items-center w-full mt-2 gap-3">
-								<div class="flex flex-col">
-									<label
-										for="openrouter-zdr-only-toggle"
-										class={`mb-0.5 text-xs text-gray-500
-										${($settings?.highContrastMode ?? false) ? 'text-gray-800 dark:text-gray-100' : ''}`}
-									>
-										{$i18n.t('OpenRouter ZDR Only')}
-									</label>
-									<div
-										class={`text-xs ${($settings?.highContrastMode ?? false) ? 'text-gray-800 dark:text-gray-100' : 'text-gray-500'}`}
-									>
-										{$i18n.t(
-											'Use OpenRouter Zero Retention endpoints for model discovery and force provider.zdr on requests'
-										)}
-									</div>
-								</div>
-
-								<div class="shrink-0">
-									<Switch id="openrouter-zdr-only-toggle" bind:state={openrouterZdrOnly} />
-								</div>
-							</div>
-						{/if}
-
 						<div class="flex gap-2 mt-2">
 							<div class="flex flex-col w-full">
 								<label
@@ -662,13 +621,6 @@
 										{$i18n.t('Leave empty to include all models from "{{url}}/api/tags" endpoint', {
 											url: url
 										})}
-									{:else if isOpenRouter && openrouterZdrOnly}
-										{$i18n.t(
-											'Leave empty to include all models from "{{url}}/endpoints/zdr" endpoint',
-											{
-												url: url
-											}
-										)}
 									{:else if azure}
 										{$i18n.t('Deployment names are required for Azure OpenAI')}
 										<!-- {$i18n.t('Leave empty to include all models from "{{url}}" endpoint', {
