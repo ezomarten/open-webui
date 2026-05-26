@@ -115,7 +115,7 @@ If you publish the service through two hostnames, keep the container bound to lo
 
 After the first start, administrators can manage `Enable Public Links` and `Public Link URL` from **Admin > General**. The environment variables above seed the initial state; the saved admin settings become the source of truth afterward.
 
-See [FORK_NOTES.md](./FORK_NOTES.md) for the fork scope, limitations, and release history.
+See [FORK_FEATURES.md](./FORK_FEATURES.md) for the per-feature catalog and limitations, and [FORK_NOTES.md](./FORK_NOTES.md) for the maintenance timeline and release history.
 
 ## Key Features of Open WebUI ⭐
 

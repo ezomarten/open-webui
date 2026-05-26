@@ -2,11 +2,7 @@
 
 This fork now tracks Open WebUI `v0.9.5` and carries a small set of deployment-focused customizations for anonymous public sharing.
 
-## Goals
-
-- Keep the main application protected behind an identity layer such as Cloudflare Access
-- Serve anonymous public share pages from a separate host
-- Keep the patch set small enough to rebase onto upstream releases
+The per-feature catalog (Goals, fork-only customizations, public-host allowlist, current limitations) lives in [`FORK_FEATURES.md`](FORK_FEATURES.md). This file focuses on workflow rules, the maintenance timeline, and release history.
 
 ## Current Operating Assumptions
 
@@ -21,109 +17,27 @@ This fork now tracks Open WebUI `v0.9.5` and carries a small set of deployment-f
 - Before pushing a release commit or tag, run `python scripts/release_preflight.py` from an environment that has the repo's Python and Node dependencies installed; by default it now also runs `scripts/chat_smoke.py`, so set one of `OPENWEBUI_SMOKE_TRUSTED_EMAIL`, `OPENWEBUI_SMOKE_EMAIL` + `OPENWEBUI_SMOKE_PASSWORD`, `OPENWEBUI_SMOKE_API_KEY`, or `OPENWEBUI_SMOKE_BEARER_TOKEN` for the target runtime unless you are intentionally skipping the smoke with `OPENWEBUI_SKIP_CHAT_SMOKE=1`
 - For GHCR pushes from GitHub Actions, either grant the package Actions access for this repository or configure repository secrets `GHCR_USERNAME` and `GHCR_TOKEN`; otherwise `docker/build-push-action` can fail with `403 Forbidden` on blob HEAD requests even when login succeeds with `GITHUB_TOKEN`
 
-## Included Customizations
+## Fork Management Contract
 
-### Anonymous public shares
+FORK_NOTES.md alone has proven insufficient: two consecutive upstream syncs silently dropped fork-only wiring (public-share in `v0.9.5`, OpenRouter ZDR earlier) because the catalog above is human prose and cannot be checked programmatically. The contract below makes the inventory machine-verifiable.
 
-- Adds `/p/{public_share_id}` pages and `/api/v1/public-shares/*` APIs for anonymous access
-- Uses snapshot-based public shares so the public page does not require the owner session
-- Keeps one active public share per chat
-- The top-level app wiring for public shares remains intentionally explicit in `backend/open_webui/main.py`, `backend/open_webui/config.py`, and `src/lib/components/chat/ShareChatModal.svelte`, with source-level regression tests guarding against future upstream syncs silently dropping the feature integration again
-- Public-share chat lookups in the create/get/delete routes explicitly await the async Chats model so public-link generation does not pass coroutine objects into snapshot building after the upstream async database migration
-- Public-share snapshots now preserve the public user/assistant history tree so parallel multi-model responses render on anonymous pages instead of collapsing to only the current branch
-- Public-share snapshot extraction also falls back from sanitized `history.messages` trees to the flattened `messages` list when saved history only contains non-public roles, which avoids false `No public messages found.` failures for still-visible chats
+- The authoritative inventory of fork-only customizations is [`fork-features.json`](fork-features.json). Whenever a fork-only customization is added, changed, or removed, that file MUST be updated in the same task.
+- Each fork feature SHOULD carry a source-grep wiring test (`backend/open_webui/test/util/test_<slug>_wiring.py`) that asserts the integration points still exist after upstream sync. If a feature does not have one yet, the manifest entry MUST list `"add-wiring-test"` in `pending_actions` and the slug MUST appear in the Pending Improvements section below.
+- Each fork patch site SHOULD carry a sentinel comment of the form `# fork:<slug>` (or `<!-- fork:<slug> -->` / `// fork:<slug>` depending on the file) at the top of every modified region. Wiring tests should grep for the sentinel rather than fragile substrings so upstream reformatting cannot break the guard. If a feature has not been tagged yet, the manifest entry MUST list `"add-sentinel"` in `pending_actions`.
+- The meta-test `backend/open_webui/test/util/test_fork_features_manifest.py` enforces the structural shape of `fork-features.json` and refuses drift between the manifest and this file.
+- The aggregate gate is [`scripts/verify-fork-wiring.ps1`](scripts/verify-fork-wiring.ps1). Run it twice during every upstream sync: once on the BEFORE base (must pass) and once on the AFTER merge (must also pass). A green BEFORE and red AFTER pinpoints exactly which fork patches were dropped by the sync.
 
-### Public page compatibility
+## Pending Improvements
 
-- Public-share snapshots preserve image attachments and expose a share-scoped file content route
-- Public-share snapshots also preserve public web citations so anonymous pages can show source links and preview snippets
-- Public pages fall back to browser speech synthesis when authenticated TTS settings are unavailable
-- Public pages can load `/pyodide/*` assets so browser-side Python execution continues to work
-- Public-share responses and public-host `/p/*` pages add explicit noindex, nosniff, no-referrer, frame-deny, and public-page CSP headers, while the public page avoids credentialed static-asset fetches and third-party favicon lookups in read-only citation/search UI
+The items below are tracked here so they are not lost across maintenance cycles. They are also represented as machine-checkable entries in [`fork-features.json`](fork-features.json) (the meta-test fails if either side drifts).
 
-### Admin-configurable public links
+### Pending wiring tests / sentinel comments
 
-- Admin > General includes `Enable Public Links` and `Public Link URL`
-- Persistent config keys:
-  - `ui.enable_public_chat_sharing`
-  - `ui.public_share_base_url`
-- `ENABLE_PUBLIC_CHAT_SHARING` and `PUBLIC_SHARE_BASE_URL` still work as initial env seeds, but saved admin settings take precedence after startup
+All feature slugs now have `wiring_test` set in [`fork-features.json`](fork-features.json) and `# fork:<slug>` sentinel comments in their source files. There is no pending wiring-test backlog at this time. New fork features must add both the wiring test and sentinels in the same change.
 
-### OpenRouter Zero Retention connections
+### Pending workflow improvements
 
-- Admin and direct connection settings include an optional `openrouter_zdr_only` flag for OpenRouter-backed connections
-- When enabled, model discovery switches from `/api/v1/models` to `/api/v1/endpoints/zdr`
-- Proxied chat, responses, legacy proxy requests, and browser-side direct chat requests also force `provider.zdr=true` for that connection
-
-### About disclosure
-
-- Settings > About includes a fork disclosure that states this deployment is a customized fork of Open WebUI and is not affiliated with or maintained by the official Open WebUI team
-
-### Settings modal usability
-
-- Chat settings, chat Controls section headers, advanced parameter panels, and admin settings now use a shared but surface-aware hover/focus system plus narrower desktop content columns so widely spaced label/control pairs stay grouped while editing in both light and dark themes; modal light-theme rows intentionally use stronger emphasis than admin rows, and explicit opt-in wrappers avoid flex-column layout regressions on admin forms
-- Admin Settings > Connections now opts saved OpenAI/Ollama connection rows into that same emphasis treatment, and workspace model prompt-suggestion editors keep the prompt field top-aligned instead of centering it beside the title inputs
-
-### Notes markdown import
-
-- Notes now include a dedicated Markdown import action for existing notes that converts external `.md` files into the rich-text note format instead of inserting raw markdown text
-- Shared note creation/import helpers now normalize markdown into note-ready HTML, so imported markdown previews render correctly from both the notes list import flow and URL/query based note creation
-- Markdown file detection now accepts common `.md`-style extensions even when browsers report `text/plain` or an empty MIME type, which commonly happens on Windows
-- The note menu now groups import actions by format and insertion mode, supporting replace, append-to-end, and insert-at-cursor for Markdown and plain text imports, plus clipboard actions for paste-as-Markdown and copy-as-Markdown; nested submenus now stay open correctly while moving the pointer into third-level menu content, and root dropdown outside-click guards no longer swallow clicks on portaled submenu actions
-- Clipboard paste follow-ups now insert at a stable saved ProseMirror range instead of depending on editor refocus, treat append-to-end on an empty note as a replace operation so Chromium-family browsers no longer throw a misleading clipboard-read failure, move `Access` into the note overflow menu, stack the note header on narrow screens so the title field keeps usable width, and clamp nested submenu placement within the viewport so `Download` / `Clipboard` menus stay visible on phone-width layouts
-- Notes list rows now switch to a mobile-first two-line layout that gives the title most of the row width on narrow screens, keeps the updated-time label visible, and truncates only the creator label when space runs short
-
-### Web search result limiting
-
-- When web search query generation is enabled, automatic web search now enforces `WEB_SEARCH_RESULT_COUNT` across the combined deduplicated result set before loading pages or injecting snippet-only context
-
-### Helper task metadata sanitization
-
-- Internal helper task endpoints override inherited request metadata so native function-calling chats do not leak builtin tool exposure into title, follow-up, tags, query, image-prompt, autocomplete, emoji, or MOA helper calls
-- Helper tasks force `params.function_calling="default"` and clear inherited `tool_ids`, `tool_servers`, and `features`
-
-### Responses API compatibility
-
-- Upstream `v0.9.5` continues to cover the previously forked Responses API task-normalization and native tool-loop fixes that were needed for Gemini and LM Studio-compatible providers
-- This fork keeps the more defensive response-content parsing and timing/error hardening that protects task helpers and streamed post-processing across chat-completions-style and Responses-style payloads
-- Merge Responses now also parses Responses API SSE events on the frontend, so LM Studio-style local connections that stream `response.output_text.delta` / `response.completed` no longer fail MOA merges solely because the merge parser expected Chat Completions deltas
-- Merge Responses now asks the MOA task endpoint for non-stream JSON completions and extracts the normalized final assistant content from that response, which sidesteps Chutes/OpenAI-compatible reasoning models whose streamed merge responses emit long `reasoning_content` traces before completion but never provide usable `delta.content` tokens to the merge UI
-
-### Chat timeout error messaging
-
-- Chat processing now converts blank exception strings into human-readable error content before saving or emitting `chat:message:error`
-- Streamed upstream timeout failures now surface as an explicit timeout or stream-stall message instead of an empty red error banner
-- The generic streamed response wrapper now also persists and emits that timeout text when the failure happens during streamed response iteration, so stored `error.content` remains populated for the affected assistant message
-- OpenAI-compatible and Ollama streaming upstream requests now wait for the first meaningful upstream output chunk without applying the idle timeout, ignoring role-only deltas and Responses API status preludes such as `response.created` / `response.in_progress` before the timeout starts; non-stream requests continue to use the configured total request timeout
-- OpenAI-compatible streamed proxy responses also strip stale `Content-Encoding`, `Content-Length`, and `Transfer-Encoding` headers after aiohttp auto-decompression so downstream chat responses do not fail on the upstream proxy cleanup path
-- Native `fetch_url` tool calls now cap page loading with the configured Web Loader timeout when available and otherwise fall back to a 30-second budget, so slow pages fail with a visible tool error instead of leaving chats stuck in `fetch_url`
-
-### Multi-worker session cleanup stability
-
-- Session cleanup now renews its Redis lock on a cadence shorter than the lock TTL, preventing avoidable worker churn from lock-renew failures during long-lived chats on multi-worker deployments
-
-## Public Host Allowlist
-
-When a request arrives on the public share host derived from `PUBLIC_SHARE_BASE_URL`, the fork only allows the following routes:
-
-- `GET /api/config`
-- `GET /_app/*`
-- `GET /static/*`
-- `GET /manifest.json`
-- `GET /opensearch.xml`
-- `GET|HEAD /pyodide/*`
-- `GET|HEAD /p/{public_share_id}` when public links are enabled
-- `GET|HEAD /api/v1/public-shares/{public_share_id}` when public links are enabled
-- `GET|HEAD /api/v1/public-shares/{public_share_id}/files/{file_id}/content` when public links are enabled
-
-Other routes on the public host return `404`.
-
-## Current Limitations
-
-- Public shares only expose sanitized user/assistant history; non-public roles are collapsed out of the visible tree and older pre-v4 links need `Update and Copy Public Link` to regenerate the snapshot
-- Image attachments and public web citations are included, but other file types and private citations remain excluded
-- Public-link generation requires both a valid absolute `PUBLIC_SHARE_BASE_URL` and `Enable Public Links` turned on
-- OpenRouter Zero Retention model discovery collapses endpoint variants by `model_id`, keeping provider names and tags as metadata on the merged entry
+- `git-merge-based-upstream-sync`: Replace the manual replay-onto-temporary-worktree upstream sync with a git merge or rebase workflow so dropped patches surface as conflicts instead of silent omissions. Tracked since 2026-05-26.
 
 ## Maintenance Record Rules
 
@@ -131,11 +45,15 @@ Whenever a fork-only customization is added, changed, or removed, update this fi
 
 Each update should keep the following current:
 
-- `Included Customizations`
+- [`FORK_FEATURES.md`](FORK_FEATURES.md) (the human-readable feature catalog)
+- [`fork-features.json`](fork-features.json) (the machine-readable manifest)
 - `Current Operating Assumptions`
+- `Pending Improvements`
 - `Maintenance Record`
 - `Upstream Base`
 - `Upstream Sync Checklist`
+
+If the change adds a new fork-only customization, also add (or schedule via `pending_actions` in the manifest) the corresponding `test_<slug>_wiring.py` and `# fork:<slug>` sentinel comments.
 
 Each maintenance entry should include:
 
@@ -151,6 +69,15 @@ If the change is release-worthy, also update [CHANGELOG.md](CHANGELOG.md).
 If the change affects public-share or public-link UI strings, also update [src/lib/i18n/locales/ja-JP/translation.json](src/lib/i18n/locales/ja-JP/translation.json).
 
 ## Maintenance Record
+
+- 2026-05-27: split FORK_NOTES.md into a feature catalog and a maintenance-timeline record per Pending Improvements item E (`split-fork-notes-into-catalog-and-record`). Created `FORK_FEATURES.md` containing the Goals, Feature Index table (one row per of the 13 fork-feature slugs with summary + sentinel + wiring-test link), Feature Details sections (verbatim from the former `## Included Customizations`), Public Host Allowlist, and Current Limitations sections. Removed those four sections from `FORK_NOTES.md` and added an intro pointer; updated the Maintenance Record Rules checklist to reference `FORK_FEATURES.md` instead of the now-removed `Included Customizations` heading. Removed the `split-fork-notes-into-catalog-and-record` entry from `fork-features.json` > `pending_workflow_improvements` and from FORK_NOTES.md > Pending workflow improvements. Updated workspace-level `../AGENTS.md` and repo-level `AGENTS.md` to list `FORK_FEATURES.md` as the canonical feature catalog while keeping `FORK_NOTES.md` as the workflow/timeline doc, and updated `README.md` to point fork-feature questions at `FORK_FEATURES.md`. Key files: `FORK_FEATURES.md`, `FORK_NOTES.md`, `fork-features.json`, `AGENTS.md`, `README.md`, workspace `../AGENTS.md`; validation: `powershell -ExecutionPolicy Bypass -File scripts/verify-fork-wiring.ps1` still passes (the manifest meta-test only requires `## Pending Improvements` and per-id mentions in `FORK_NOTES.md`, both still present).
+
+- 2026-05-27: completed the frontend half of the v0.9.5 fork-wiring restoration begun on 2026-05-26 and discovered a fourth silently-regressed feature (`notes-md-import`) that the audit on 2026-05-26 had missed because its helper module (`src/lib/components/notes/utils.ts`) and unit tests had survived intact while the production call sites in `Notes.svelte`, `NoteEditor.svelte`, and `Notes/NoteMenu.svelte` had been reverted to the pre-fork inline-`marked.parse` / inline-`FileReader` flow during the upstream merge. Restoration was done by overlaying the v094 reference copies of those three files (the upstream's only intentional change to them in v0.9.5 was a `LockClosed`-icon standalone Access button which conflicts with the fork's submenu design and was intentionally not re-applied); verified no syntax errors and the four `NoteMenu.svelte` props `onImport`/`onPasteMarkdown`/`onCopyMarkdown`/`onAccess` are once again wired. Added `// fork:notes-md-import` / `<!-- fork:notes-md-import -->` sentinel comments at the helper exports (`isMarkdownFile`, `readMarkdownFile`, `readPlainTextFile`) and at every consumer call site, plus `<!-- fork:about-disclosure -->` above the Settings > About disclosure div in `src/lib/components/chat/Settings/About.svelte` and `/* fork:settings-emphasis */` markers at both the `:root` CSS-variable block and the `.ow-settings-*` class block in `src/app.css` (with a `<!-- fork:settings-emphasis -->` consumer sample in `OllamaConnection.svelte`). Added three new frontend wiring tests (`test_about_disclosure_wiring.py`, `test_settings_emphasis_wiring.py`, `test_notes_md_import_wiring.py`) following the same sentinel-count + import-presence pattern used by the 2026-05-26 backend batch. Updated `fork-features.json` to point each of the three frontend slugs at its new `wiring_test`, drop their `pending_actions`, and correct stale `notable_files` paths (notably `about-disclosure` now points to `src/lib/components/chat/Settings/About.svelte` instead of the non-existent `SettingsModal.svelte`). Removed the three frontend bullets from the `Pending wiring tests / sentinel comments` section and replaced it with a backlog-empty note. Combined with the 2026-05-26 backend batch, the fork now has eight features (five backend, three frontend) under sentinel + wiring-test coverage and four silent regressions caught and restored. Key files: `src/lib/components/notes/Notes.svelte`, `src/lib/components/notes/NoteEditor.svelte`, `src/lib/components/notes/Notes/NoteMenu.svelte`, `src/lib/components/notes/utils.ts`, `src/lib/components/chat/Settings/About.svelte`, `src/app.css`, `src/lib/components/admin/Settings/Connections/OllamaConnection.svelte`, `backend/open_webui/test/util/test_about_disclosure_wiring.py`, `backend/open_webui/test/util/test_settings_emphasis_wiring.py`, `backend/open_webui/test/util/test_notes_md_import_wiring.py`, `fork-features.json`, `FORK_NOTES.md`; validation: three new wiring tests green via `PYTHONPATH=backend c:/Users/it/openwebui/.venv/Scripts/python.exe -m pytest backend/open_webui/test/util/test_about_disclosure_wiring.py backend/open_webui/test/util/test_settings_emphasis_wiring.py backend/open_webui/test/util/test_notes_md_import_wiring.py -q` with `8 passed`, plus the aggregate gate `powershell -ExecutionPolicy Bypass -File scripts/verify-fork-wiring.ps1`.
+- 2026-05-26: restored three silently-regressed fork features after the `v0.9.5` upstream sync was found to have dropped their production call sites while leaving helper modules and unit tests intact (exactly the failure mode the Fork Management Contract was designed to catch): re-wired `routers/tasks.py` to import `generate_chat_completion as _generate_chat_completion` and route every helper task endpoint through a local wrapper that applies `build_task_metadata` + `request_metadata_override` + `normalize_task_response` so builtin tool exposure no longer leaks into title/follow-up/etc. helpers and Responses-API output is normalized for task callers; re-wired the three `routers/openai.py` upstream proxies (chat/completions, /responses, generic passthrough) to build the payload-aware streaming timeout via `build_upstream_request_timeout_for_payload`; added `# fork:<slug>` sentinel comments at every wired site for the five backend features `task-metadata-sanitize`, `responses-api-compat`, `chat-timeout-msg`, `web-search-result-count`, and `session-cleanup-lock`; added five new sentinel-grep wiring tests (`test_task_metadata_wiring.py`, `test_responses_api_compat_wiring.py`, `test_chat_timeout_msg_wiring.py`, `test_web_search_result_count_wiring.py`, `test_session_cleanup_lock_wiring.py`); updated `fork-features.json` to point each of the five slugs at its new `wiring_test` and remove the `pending_actions` field; key files: `backend/open_webui/routers/tasks.py`, `backend/open_webui/routers/openai.py`, `backend/open_webui/routers/retrieval.py`, `backend/open_webui/socket/main.py`, `backend/open_webui/utils/task_metadata.py`, `backend/open_webui/utils/misc.py`, `backend/open_webui/utils/http_timeouts.py`, `backend/open_webui/utils/web_search.py`, `backend/open_webui/test/util/test_task_metadata_wiring.py`, `backend/open_webui/test/util/test_responses_api_compat_wiring.py`, `backend/open_webui/test/util/test_chat_timeout_msg_wiring.py`, `backend/open_webui/test/util/test_web_search_result_count_wiring.py`, `backend/open_webui/test/util/test_session_cleanup_lock_wiring.py`, `fork-features.json`, `FORK_NOTES.md`; validation: the five new wiring tests plus the existing manifest meta-test green via `PYTHONPATH=backend c:/Users/it/openwebui/.venv/Scripts/python.exe -m pytest backend/open_webui/test/util/test_task_metadata_wiring.py backend/open_webui/test/util/test_responses_api_compat_wiring.py backend/open_webui/test/util/test_chat_timeout_msg_wiring.py backend/open_webui/test/util/test_web_search_result_count_wiring.py backend/open_webui/test/util/test_session_cleanup_lock_wiring.py -q` with `16 passed`, plus the aggregate gate `powershell -ExecutionPolicy Bypass -File scripts/verify-fork-wiring.ps1`.
+
+- 2026-05-26: introduced the Fork Management Contract so fork-only behavior is now tracked in a machine-readable manifest in addition to this file; added `fork-features.json` covering every documented customization with sentinel-tag plans plus pending-action tracking, added `backend/open_webui/test/util/test_fork_features_manifest.py` as a meta-test that fails if the manifest is malformed or drifts from FORK_NOTES.md, added `scripts/verify-fork-wiring.ps1` as the single before/after upstream-sync gate (auto-discovers `test_*_wiring.py` plus every supporting unit test referenced by the manifest), and recorded the deferred workflow improvements (git-merge-based upstream sync, FORK_NOTES split) under Pending Improvements so they cannot be silently dropped; key files: `fork-features.json`, `backend/open_webui/test/util/test_fork_features_manifest.py`, `scripts/verify-fork-wiring.ps1`, `FORK_NOTES.md`, `AGENTS.md`, workspace `../AGENTS.md`; validation: `pwsh open-webui-public-share/scripts/verify-fork-wiring.ps1` passing locally.
+
+- 2026-05-26: restored the OpenRouter Zero Retention (ZDR) feature after auditing fork-only behavior and discovering that the wiring patches to `backend/open_webui/routers/openai.py` and `src/lib/components/AddConnectionModal.svelte` had been silently dropped during a past upstream sync (the helper module `backend/open_webui/utils/openrouter.py`, its unit tests, and the browser-side helpers in `src/lib/apis/openai/index.ts` had survived but had no remaining callers in the router/admin UI, so the toggle was invisible and `provider.zdr` was no longer forced on outgoing requests); re-wired model discovery (`get_models_list_url` + `normalize_models_response` + `is_openrouter_zdr_model_list_enabled` across `get_models_request`, the multi-URL `/models` aggregator, and `verify_connection`) and outgoing payload enforcement (`apply_openrouter_zdr_preferences` in `generate_chat_completion`, the Responses route, and the legacy passthrough `proxy`), reinserted the admin/direct ZDR toggle plus the `/endpoints/zdr` empty-list hint into the connection modal, added the three missing ja-JP locale strings, and added a new source-grep regression test mirroring the public-share wiring guard so this class of upstream-sync drop will fail loudly in CI; key files: `backend/open_webui/routers/openai.py`, `backend/open_webui/test/util/test_openrouter_zdr_wiring.py`, `src/lib/components/AddConnectionModal.svelte`, `src/lib/i18n/locales/ja-JP/translation.json`, `FORK_NOTES.md`; validation: `PYTHONPATH=backend c:/Users/it/openwebui/.venv/Scripts/python.exe -m pytest backend/open_webui/test/util/test_openrouter_zdr.py backend/open_webui/test/util/test_openrouter_zdr_wiring.py -q` with `7 passed`.
 
 - 2026-05-16: prepared fork release `0.9.5-publicshare.1` by restoring the public-share feature after the `v0.9.5` replay silently dropped top-level wiring in `backend/open_webui/main.py`, `backend/open_webui/config.py`, and `src/lib/components/chat/ShareChatModal.svelte`, adding regression coverage for that integration, hardening `backend/open_webui/env.py` so `CHANGELOG.md` can keep an `Unreleased` heading without breaking imports or image builds, and updating published-image references to the new baseline; key files: `backend/open_webui/main.py`, `backend/open_webui/config.py`, `backend/open_webui/env.py`, `src/lib/components/chat/ShareChatModal.svelte`, `src/lib/components/layout/PublicSharesModal.svelte`, `src/lib/i18n/locales/ja-JP/translation.json`, `backend/open_webui/test/util/test_public_share_wiring.py`, `README.md`, `CHANGELOG.md`, `FORK_NOTES.md`, workspace `../README.md`, and workspace `../publish-openwebui-image.ps1`; validation: `PYTHONPATH=backend c:/Users/it/openwebui/.venv/Scripts/python.exe -m pytest backend/open_webui/test/util/test_public_share.py backend/open_webui/test/util/test_public_shares_router.py backend/open_webui/test/util/test_public_share_wiring.py -q` with `18 passed`, plus Node `v22.22.1` `npm run build`
 

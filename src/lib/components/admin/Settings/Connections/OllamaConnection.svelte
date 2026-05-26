@@ -49,6 +49,7 @@
 
 <ManageOllamaModal bind:show={showManageModal} urlIdx={idx} />
 
+<!-- fork:settings-emphasis -->
 <div class="ow-settings-row flex w-full gap-1.5 items-center">
 	<Tooltip
 		className="w-full relative"

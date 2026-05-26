@@ -60,10 +60,20 @@ from open_webui.utils.session_pool import (
     get_session,
     stream_wrapper,
 )
+# fork:chat-timeout-msg
+from open_webui.utils.http_timeouts import (
+    build_upstream_request_timeout_for_payload,
+)
 
 from open_webui.utils.auth import get_admin_user, get_verified_user
 from open_webui.utils.headers import include_user_info_headers, get_custom_headers
 from open_webui.utils.anthropic import is_anthropic_url, get_anthropic_models
+from open_webui.utils.openrouter import (
+    apply_openrouter_zdr_preferences,
+    get_models_list_url,
+    is_openrouter_zdr_model_list_enabled,
+    normalize_models_response,
+)
 
 log = logging.getLogger(__name__)
 
@@ -131,7 +141,15 @@ async def get_models_request(
 ):
     if is_anthropic_url(url):
         return await get_anthropic_models(url, key, user=user)
-    return await send_get_request(request, f'{url}/models', key, user=user, config=config)
+    api_config = config or {}
+    response = await send_get_request(
+        request,
+        get_models_list_url(url, api_config),
+        key,
+        user=user,
+        config=api_config,
+    )
+    return normalize_models_response(url, api_config, response)
 
 
 def openai_reasoning_model_handler(payload):
@@ -642,7 +660,7 @@ async def get_models(request: Request, url_idx: Optional[int] = None, user=Depen
                         raise Exception('Failed to connect to Anthropic API')
                 else:
                     async with session.get(
-                        f'{url}/models',
+                        get_models_list_url(url, api_config),
                         headers=headers,
                         cookies=cookies,
                         ssl=AIOHTTP_CLIENT_SESSION_SSL,
@@ -659,7 +677,11 @@ async def get_models(request: Request, url_idx: Optional[int] = None, user=Depen
 
                         response_data = await r.json()
 
-                        if 'api.openai.com' in url:
+                        if is_openrouter_zdr_model_list_enabled(url, api_config):
+                            response_data = normalize_models_response(
+                                url, api_config, response_data
+                            )
+                        elif 'api.openai.com' in url:
                             response_data['data'] = [
                                 model
                                 for model in response_data.get('data', [])
@@ -751,7 +773,7 @@ async def verify_connection(
                 return result
             else:
                 async with session.get(
-                    f'{url}/models',
+                    get_models_list_url(url, api_config),
                     headers=headers,
                     cookies=cookies,
                     ssl=AIOHTTP_CLIENT_SESSION_SSL,
@@ -766,6 +788,9 @@ async def verify_connection(
                             return JSONResponse(status_code=r.status, content=response_data)
                         else:
                             return PlainTextResponse(status_code=r.status, content=response_data)
+
+                    if isinstance(response_data, dict):
+                        response_data = normalize_models_response(url, api_config, response_data)
 
                     return response_data
 
@@ -1176,6 +1201,8 @@ async def generate_chat_completion(
     if 'max_tokens' in payload and 'max_completion_tokens' in payload:
         del payload['max_tokens']
 
+    payload = apply_openrouter_zdr_preferences(url, api_config, payload)
+
     # Convert the modified body back to JSON
     if 'logit_bias' in payload and payload['logit_bias']:
         logit_bias = convert_logit_bias_input_to_json(payload['logit_bias'])
@@ -1228,6 +1255,9 @@ async def generate_chat_completion(
                     part.get('text', '') for part in message['content'] if part.get('type') in ('input_text', 'text')
                 )
 
+    # fork:chat-timeout-msg
+    request_timeout = build_upstream_request_timeout_for_payload(AIOHTTP_CLIENT_TIMEOUT, payload)
+
     payload = json.dumps(payload)
 
     r = None
@@ -1244,7 +1274,7 @@ async def generate_chat_completion(
             headers=headers,
             cookies=cookies,
             ssl=AIOHTTP_CLIENT_SESSION_SSL,
-            timeout=aiohttp.ClientTimeout(total=AIOHTTP_CLIENT_TIMEOUT),
+            timeout=request_timeout,
         )
 
         # Check if response is SSE
@@ -1421,8 +1451,6 @@ async def responses(
     # Enforce per-model access control
     await check_model_access(user, await Models.get_model_by_id(model_id), BYPASS_MODEL_ACCESS_CONTROL)
 
-    body = json.dumps(payload)
-
     if model_id:
         models = request.app.state.OPENAI_MODELS
         if not models or model_id not in models:
@@ -1437,6 +1465,9 @@ async def responses(
         str(idx),
         request.app.state.config.OPENAI_API_CONFIGS.get(url, {}),  # Legacy support
     )
+
+    payload = apply_openrouter_zdr_preferences(url, api_config, payload)
+    body = json.dumps(payload)
 
     r = None
     streaming = False
@@ -1462,6 +1493,8 @@ async def responses(
             request_url = f'{url}/responses'
 
         session = await get_session()
+        # fork:chat-timeout-msg
+        request_timeout = build_upstream_request_timeout_for_payload(AIOHTTP_CLIENT_TIMEOUT, payload)
         r = await session.request(
             method='POST',
             url=request_url,
@@ -1469,7 +1502,7 @@ async def responses(
             headers=headers,
             cookies=cookies,
             ssl=AIOHTTP_CLIENT_SESSION_SSL,
-            timeout=aiohttp.ClientTimeout(total=AIOHTTP_CLIENT_TIMEOUT),
+            timeout=request_timeout,
         )
 
         # Check if response is SSE
@@ -1549,6 +1582,10 @@ async def proxy(path: str, request: Request, user=Depends(get_verified_user)):
         ),  # Legacy support
     )
 
+    if isinstance(payload, dict):
+        payload = apply_openrouter_zdr_preferences(url, api_config, payload)
+        body = json.dumps(payload).encode()
+
     r = None
     streaming = False
 
@@ -1579,6 +1616,8 @@ async def proxy(path: str, request: Request, user=Depends(get_verified_user)):
             request_url = f'{url}/{path}'
 
         session = await get_session()
+        # fork:chat-timeout-msg
+        request_timeout = build_upstream_request_timeout_for_payload(AIOHTTP_CLIENT_TIMEOUT, payload)
         r = await session.request(
             method=request.method,
             url=request_url,
@@ -1586,7 +1625,7 @@ async def proxy(path: str, request: Request, user=Depends(get_verified_user)):
             headers=headers,
             cookies=cookies,
             ssl=AIOHTTP_CLIENT_SESSION_SSL,
-            timeout=aiohttp.ClientTimeout(total=AIOHTTP_CLIENT_TIMEOUT),
+            timeout=request_timeout,
         )
 
         # Check if response is SSE

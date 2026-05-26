@@ -594,6 +594,7 @@ def get_message_content_from_response(response: dict) -> Optional[str]:
     return get_content_from_message(message)
 
 
+# fork:responses-api-compat
 def normalize_task_response(response: Any) -> Any:
     if not isinstance(response, dict):
         return response
@@ -1078,6 +1079,7 @@ async def stream_wrapper(
     """
     try:
         stream = content_handler(response.content) if content_handler else response.content
+        # fork:chat-timeout-msg
         async for chunk in iterate_stream_with_post_first_chunk_timeout(
             stream,
             read_timeout_seconds,

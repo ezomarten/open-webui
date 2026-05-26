@@ -99,6 +99,7 @@
 			</div>
 		</div>
 
+		<!-- fork:about-disclosure -->
 		<div
 			role="note"
 			class="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-xs text-gray-700 dark:border-amber-900/50 dark:bg-amber-950/30 dark:text-gray-200"

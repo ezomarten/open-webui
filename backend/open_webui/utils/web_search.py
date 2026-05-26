@@ -8,6 +8,7 @@ def _get_search_result_link(item: Any) -> str | None:
     return getattr(item, "link", None)
 
 
+# fork:web-search-result-count
 def collect_limited_search_results(
     search_results: Sequence[Sequence[Any] | None], max_results: int | None
 ) -> tuple[list[Any], list[str]]:

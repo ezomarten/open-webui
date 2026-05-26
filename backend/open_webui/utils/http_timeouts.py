@@ -10,6 +10,7 @@ import aiohttp
 DEFAULT_STREAM_CONNECT_TIMEOUT_SECONDS = 30
 
 
+# fork:chat-timeout-msg
 def build_upstream_request_timeout(timeout_seconds: int | None, stream: bool = False) -> aiohttp.ClientTimeout:
     if not stream:
         return aiohttp.ClientTimeout(total=timeout_seconds)
@@ -25,6 +26,7 @@ def build_upstream_request_timeout(timeout_seconds: int | None, stream: bool = F
     )
 
 
+# fork:chat-timeout-msg
 def build_upstream_request_timeout_for_payload(
     timeout_seconds: int | None, payload: dict[str, Any] | None
 ) -> aiohttp.ClientTimeout:
@@ -34,6 +36,7 @@ def build_upstream_request_timeout_for_payload(
     )
 
 
+# fork:chat-timeout-msg
 def get_stream_idle_timeout_message(timeout_seconds: int | None) -> str:
     if timeout_seconds:
         return "Upstream streaming response stalled " f"for {timeout_seconds} seconds without receiving data."
@@ -182,6 +185,7 @@ def chunk_contains_meaningful_stream_output(chunk: Any) -> bool:
     return False
 
 
+# fork:chat-timeout-msg
 async def iterate_stream_with_post_first_chunk_timeout(
     stream,
     timeout_seconds: int | None = None,

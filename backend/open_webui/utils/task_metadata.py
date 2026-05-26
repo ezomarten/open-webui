@@ -2,6 +2,7 @@ from contextlib import contextmanager
 from typing import Any
 
 
+# fork:task-metadata-sanitize
 def build_task_metadata(request: Any, task: str, form_data: dict) -> dict:
     inherited_metadata = dict(request.state.metadata) if hasattr(request.state, 'metadata') else {}
 
@@ -20,6 +21,7 @@ def build_task_metadata(request: Any, task: str, form_data: dict) -> dict:
     }
 
 
+# fork:task-metadata-sanitize
 @contextmanager
 def request_metadata_override(request: Any, metadata_override: dict | None):
     if metadata_override is None:

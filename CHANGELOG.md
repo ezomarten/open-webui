@@ -5,6 +5,21 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Changed
+
+- Split `FORK_NOTES.md` into a feature catalog ([`FORK_FEATURES.md`](FORK_FEATURES.md), with a 13-row Feature Index and per-slug details, Public Host Allowlist, and Current Limitations) and a workflow/timeline document (`FORK_NOTES.md`, retaining the Fork Management Contract, Pending Improvements, Maintenance Record, Upstream Base, and Upstream Sync Checklist). `fork-features.json` remains the machine-readable source of truth and the meta-test continues to enforce that the workflow doc and manifest stay in sync.
+
+### Added
+
+- Fork Management Contract: machine-readable manifest [`fork-features.json`](fork-features.json) (13 features), meta-test `backend/open_webui/test/util/test_fork_features_manifest.py`, and aggregate gate `scripts/verify-fork-wiring.ps1` that runs every fork-wiring test plus every supporting unit test referenced by the manifest. The gate is intended to be run before and after every upstream sync; a green BEFORE and red AFTER pinpoints exactly which fork patches the sync dropped.
+- `# fork:<slug>` / `<!-- fork:<slug> -->` / `// fork:<slug>` / `/* fork:<slug> */` sentinel comments at every patch site for all 13 fork features, plus per-feature source-grep wiring tests `backend/open_webui/test/util/test_<slug>_wiring.py` for `about-disclosure`, `chat-timeout-msg`, `notes-md-import`, `openrouter-zdr`, `responses-api-compat`, `session-cleanup-lock`, `settings-emphasis`, `task-metadata-sanitize`, and `web-search-result-count`. The pre-existing `test_public_share_wiring.py` also covers `public-share`, `public-host-allowlist`, `public-link-settings`, and `env-changelog-unreleased`.
+
+### Fixed
+
+- Restored four fork features that the `v0.9.5` upstream replay had silently dropped from production call sites while leaving helper modules and unit tests intact: `task-metadata-sanitize` and `responses-api-compat` re-wired through `routers/tasks.py`; `chat-timeout-msg` re-wired through the three `routers/openai.py` upstream proxies; `notes-md-import` re-wired through `Notes.svelte`, `NoteEditor.svelte`, and `Notes/NoteMenu.svelte` (the inline `marked.parse` / inline `FileReader` fallback had crept back in during the merge). Earlier in the cycle the same audit pattern caught and restored `openrouter-zdr` (router + admin UI + ja-JP strings).
+
 ## [0.9.5-publicshare.1] - 2026-05-16
 
 ### Changed

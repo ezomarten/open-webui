@@ -1,0 +1,192 @@
+{
+  "$schema_note": "Machine-readable inventory of every fork-only customization. The meta-test backend/open_webui/test/util/test_fork_features_manifest.py is the single source of truth for what must exist after every upstream sync. Whenever a fork-only feature is added, changed, or removed, update this file in the same task. See FORK_NOTES.md > Fork Management Contract.",
+  "schema_version": 1,
+  "fork_features": [
+    {
+      "slug": "public-share",
+      "summary": "Anonymous public-share pages, snapshot-based /p/* routes, /api/v1/public-shares/* APIs, and the create/get/delete chat-await fix.",
+      "sentinel_tag": "fork:public-share",
+      "wiring_test": "backend/open_webui/test/util/test_public_share_wiring.py",
+      "supporting_unit_tests": [
+        "backend/open_webui/test/util/test_public_share.py",
+        "backend/open_webui/test/util/test_public_shares_router.py"
+      ],
+      "notable_files": [
+        "backend/open_webui/main.py",
+        "backend/open_webui/config.py",
+        "backend/open_webui/routers/public_shares.py",
+        "src/lib/components/chat/ShareChatModal.svelte",
+        "src/lib/components/layout/PublicSharesModal.svelte"
+      ],
+      "status": "active"
+    },
+    {
+      "slug": "public-host-allowlist",
+      "summary": "PublicShareHostMiddleware that restricts the anonymous host to read-only routes.",
+      "sentinel_tag": "fork:public-host-allowlist",
+      "wiring_test": "backend/open_webui/test/util/test_public_share_wiring.py",
+      "supporting_unit_tests": [],
+      "notable_files": ["backend/open_webui/main.py"],
+      "status": "active"
+    },
+    {
+      "slug": "public-link-settings",
+      "summary": "Admin > General Enable Public Links + Public Link URL with PersistentConfig keys ui.enable_public_chat_sharing and ui.public_share_base_url.",
+      "sentinel_tag": "fork:public-link-settings",
+      "wiring_test": "backend/open_webui/test/util/test_public_share_wiring.py",
+      "supporting_unit_tests": [],
+      "notable_files": [
+        "backend/open_webui/config.py",
+        "backend/open_webui/main.py",
+        "src/lib/components/admin/Settings/General.svelte"
+      ],
+      "status": "active"
+    },
+    {
+      "slug": "openrouter-zdr",
+      "summary": "OpenRouter Zero Retention model discovery (/endpoints/zdr) and provider.zdr enforcement on outgoing chat/responses/proxy/browser-direct payloads.",
+      "sentinel_tag": "fork:openrouter-zdr",
+      "wiring_test": "backend/open_webui/test/util/test_openrouter_zdr_wiring.py",
+      "supporting_unit_tests": [
+        "backend/open_webui/test/util/test_openrouter_zdr.py"
+      ],
+      "notable_files": [
+        "backend/open_webui/routers/openai.py",
+        "backend/open_webui/utils/openrouter.py",
+        "src/lib/components/AddConnectionModal.svelte",
+        "src/lib/apis/openai/index.ts"
+      ],
+      "status": "active"
+    },
+    {
+      "slug": "about-disclosure",
+      "summary": "Settings > About fork disclosure that this deployment is a customized fork unaffiliated with the official Open WebUI team.",
+      "sentinel_tag": "fork:about-disclosure",
+      "wiring_test": "backend/open_webui/test/util/test_about_disclosure_wiring.py",
+      "supporting_unit_tests": [],
+      "notable_files": ["src/lib/components/chat/Settings/About.svelte"],
+      "status": "active"
+    },
+    {
+      "slug": "settings-emphasis",
+      "summary": "Surface-aware hover/focus emphasis system and narrower content columns for Settings/Admin modals, including the workspace prompt-suggestion alignment fix.",
+      "sentinel_tag": "fork:settings-emphasis",
+      "wiring_test": "backend/open_webui/test/util/test_settings_emphasis_wiring.py",
+      "supporting_unit_tests": [],
+      "notable_files": [
+        "src/app.css",
+        "src/lib/components/admin/Settings/Connections/OllamaConnection.svelte",
+        "src/lib/components/admin/Settings/Connections/OpenAIConnection.svelte",
+        "src/lib/components/workspace/Models/PromptSuggestions.svelte"
+      ],
+      "status": "active"
+    },
+    {
+      "slug": "notes-md-import",
+      "summary": "Notes Markdown / .txt import with replace/append/insert-at-cursor modes, clipboard paste-as-Markdown / copy-as-Markdown helpers, mobile two-line layout, and submenu/clipboard fixes.",
+      "sentinel_tag": "fork:notes-md-import",
+      "wiring_test": "backend/open_webui/test/util/test_notes_md_import_wiring.py",
+      "supporting_unit_tests": [],
+      "notable_files": [
+        "src/lib/components/notes/NoteEditor.svelte",
+        "src/lib/components/notes/Notes.svelte",
+        "src/lib/components/notes/Notes/NoteMenu.svelte",
+        "src/lib/components/notes/utils.ts"
+      ],
+      "status": "active"
+    },
+    {
+      "slug": "web-search-result-count",
+      "summary": "WEB_SEARCH_RESULT_COUNT enforcement across the deduplicated combined result set during automatic web search.",
+      "sentinel_tag": "fork:web-search-result-count",
+      "wiring_test": "backend/open_webui/test/util/test_web_search_result_count_wiring.py",
+      "supporting_unit_tests": [
+        "backend/open_webui/test/util/test_web_search.py"
+      ],
+      "notable_files": [
+        "backend/open_webui/retrieval/web/utils.py",
+        "backend/open_webui/utils/middleware.py"
+      ],
+      "status": "active"
+    },
+    {
+      "slug": "task-metadata-sanitize",
+      "summary": "Helper task endpoints force params.function_calling='default' and clear inherited tool_ids/tool_servers/features so builtin tool exposure does not leak into title/follow-up/etc. helper calls.",
+      "sentinel_tag": "fork:task-metadata-sanitize",
+      "wiring_test": "backend/open_webui/test/util/test_task_metadata_wiring.py",
+      "supporting_unit_tests": [
+        "backend/open_webui/test/util/test_task_metadata.py"
+      ],
+      "notable_files": [
+        "backend/open_webui/utils/task_metadata.py",
+        "backend/open_webui/routers/tasks.py"
+      ],
+      "status": "active"
+    },
+    {
+      "slug": "responses-api-compat",
+      "summary": "Defensive response-content parsing plus Merge Responses frontend SSE parser for Chat Completions and Responses API payloads (LM Studio / Chutes compatibility).",
+      "sentinel_tag": "fork:responses-api-compat",
+      "wiring_test": "backend/open_webui/test/util/test_responses_api_compat_wiring.py",
+      "supporting_unit_tests": [
+        "backend/open_webui/test/util/test_response_normalization.py",
+        "backend/open_webui/test/util/test_error_handling.py"
+      ],
+      "notable_files": [
+        "backend/open_webui/utils/response.py",
+        "backend/open_webui/utils/middleware.py",
+        "src/lib/apis/streaming/index.ts"
+      ],
+      "status": "active"
+    },
+    {
+      "slug": "chat-timeout-msg",
+      "summary": "Blank-exception-to-human-readable conversion, streamed timeout/stream-stall messaging, _clean_proxy_headers stripping stale encoding headers, first-meaningful-chunk idle-timeout skip (including Responses preludes), and fetch_url Web Loader timeout fallback.",
+      "sentinel_tag": "fork:chat-timeout-msg",
+      "wiring_test": "backend/open_webui/test/util/test_chat_timeout_msg_wiring.py",
+      "supporting_unit_tests": [
+        "backend/open_webui/test/util/test_http_timeouts.py",
+        "backend/open_webui/test/util/test_error_handling.py",
+        "backend/open_webui/test/util/test_web_fetch_timeouts.py"
+      ],
+      "notable_files": [
+        "backend/open_webui/routers/openai.py",
+        "backend/open_webui/routers/ollama.py",
+        "backend/open_webui/utils/middleware.py",
+        "backend/open_webui/tools/builtin.py"
+      ],
+      "status": "active"
+    },
+    {
+      "slug": "session-cleanup-lock",
+      "summary": "Session cleanup renews its Redis lock on a cadence shorter than the lock TTL to prevent worker churn on multi-worker deployments.",
+      "sentinel_tag": "fork:session-cleanup-lock",
+      "wiring_test": "backend/open_webui/test/util/test_session_cleanup_lock_wiring.py",
+      "supporting_unit_tests": [
+        "backend/open_webui/test/util/test_socket_utils.py"
+      ],
+      "notable_files": [
+        "backend/open_webui/socket/main.py",
+        "backend/open_webui/socket/utils.py"
+      ],
+      "status": "active"
+    },
+    {
+      "slug": "env-changelog-unreleased",
+      "summary": "env.py CHANGELOG parser tolerates an Unreleased heading without breaking imports or image builds.",
+      "sentinel_tag": "fork:env-changelog-unreleased",
+      "wiring_test": "backend/open_webui/test/util/test_public_share_wiring.py",
+      "supporting_unit_tests": [],
+      "notable_files": ["backend/open_webui/env.py"],
+      "status": "active"
+    }
+  ],
+  "pending_workflow_improvements": [
+    {
+      "id": "git-merge-based-upstream-sync",
+      "summary": "Replace the manual replay-onto-temporary-worktree upstream sync with a git merge/rebase workflow so dropped patches surface as loud conflicts instead of silent omissions. (FORK_NOTES.md Pending Improvements item C.)",
+      "owner_doc": "FORK_NOTES.md#pending-improvements",
+      "tracked_since": "2026-05-26"
+    }
+  ]
+}

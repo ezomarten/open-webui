@@ -32,6 +32,7 @@ noteMarkdownRenderer.listitem = (text, task, checked) => {
 	return `<li>${text}</li>`;
 };
 
+// fork:notes-md-import
 export const isMarkdownFile = (file: File) => {
 	const mimeType = (file.type ?? '').toLowerCase();
 	return MARKDOWN_MIME_TYPES.has(mimeType) || MARKDOWN_FILE_EXTENSION_REGEX.test(file.name);
@@ -127,6 +128,7 @@ export const createNoteContentFromPlainText = (text: string) => ({
 	md: text
 });
 
+// fork:notes-md-import
 export const readMarkdownFile = async (file: File) => {
 	if (!isMarkdownFile(file)) {
 		throw new Error('Only markdown files are allowed');
@@ -141,6 +143,7 @@ export const readMarkdownFile = async (file: File) => {
 	};
 };
 
+// fork:notes-md-import
 export const readPlainTextFile = async (file: File) => {
 	if (!isPlainTextFile(file)) {
 		throw new Error('Only plain text files are allowed');

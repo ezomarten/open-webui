@@ -15,18 +15,35 @@ This repository is a small-patch fork of Open WebUI. The goal is to stay close t
 
 ## Required Documentation Rule
 
-Whenever fork-only behavior changes, update [FORK_NOTES.md](FORK_NOTES.md) in the same task.
+Whenever fork-only behavior changes, update [FORK_FEATURES.md](FORK_FEATURES.md), [FORK_NOTES.md](FORK_NOTES.md), AND [fork-features.json](fork-features.json) in the same task. `FORK_FEATURES.md` is the human-readable feature catalog (one section per slug). `FORK_NOTES.md` is the workflow/timeline doc (Fork Management Contract, Pending Improvements, Maintenance Record, Upstream Base, Upstream Sync Checklist). `fork-features.json` is the machine-readable source of truth. The meta-test `backend/open_webui/test/util/test_fork_features_manifest.py` enforces that they stay in sync.
 
-At minimum, keep these sections current:
+At minimum, keep these current:
 
-- `Included Customizations`
-- `Current Operating Assumptions`
-- `Maintenance Record Rules`
-- `Maintenance Record`
-- `Upstream Base`
-- `Upstream Sync Checklist`
+- `FORK_FEATURES.md` (catalog: Goals, Feature Index, Feature Details, Public Host Allowlist, Current Limitations)
+- `FORK_NOTES.md` > Current Operating Assumptions
+- `FORK_NOTES.md` > Fork Management Contract
+- `FORK_NOTES.md` > Pending Improvements
+- `FORK_NOTES.md` > Maintenance Record Rules
+- `FORK_NOTES.md` > Maintenance Record
+- `FORK_NOTES.md` > Upstream Base
+- `FORK_NOTES.md` > Upstream Sync Checklist
 
 If the change is release-worthy, also update [CHANGELOG.md](CHANGELOG.md).
+
+## Fork Wiring Test Rule
+
+Whenever a fork-only customization is added, either:
+
+1. Add a source-grep wiring test at `backend/open_webui/test/util/test_<slug>_wiring.py` that asserts every integration point still exists in source, AND tag each patch site with a `# fork:<slug>` / `<!-- fork:<slug> -->` / `// fork:<slug>` sentinel comment so the test can grep for the tag instead of a fragile substring; OR
+2. Mark the manifest entry in [fork-features.json](fork-features.json) with `"pending_actions": ["add-wiring-test", "add-sentinel"]` and list the feature in the FORK_NOTES.md Pending Improvements section.
+
+Before and after every upstream merge or replay, run:
+
+```
+pwsh ./scripts/verify-fork-wiring.ps1
+```
+
+A green BEFORE and red AFTER pinpoints exactly which fork patches were dropped by the sync.
 
 ## Required Cross-Workspace Rule
 

@@ -6,7 +6,9 @@ from typing import Optional
 import logging
 import re
 
-from open_webui.utils.chat import generate_chat_completion
+from open_webui.utils.chat import generate_chat_completion as _generate_chat_completion
+# fork:responses-api-compat
+from open_webui.utils.misc import normalize_task_response
 from open_webui.utils.task import (
     title_generation_template,
     follow_up_generation_template,
@@ -23,6 +25,11 @@ from open_webui.constants import ERROR_MESSAGES, TASKS
 from open_webui.routers.pipelines import process_pipeline_inlet_filter
 
 from open_webui.utils.task import get_task_model_id
+# fork:task-metadata-sanitize
+from open_webui.utils.task_metadata import (
+    build_task_metadata,
+    request_metadata_override,
+)
 
 from open_webui.config import (
     DEFAULT_TITLE_GENERATION_PROMPT_TEMPLATE,
@@ -39,6 +46,44 @@ from open_webui.config import (
 log = logging.getLogger(__name__)
 
 router = APIRouter()
+
+
+# fork:task-metadata-sanitize
+# fork:responses-api-compat
+async def generate_chat_completion(
+    request: Request,
+    form_data: dict,
+    user,
+    metadata_override: Optional[dict] = None,
+    **kwargs,
+):
+    """Local task wrapper that sanitizes metadata and normalizes Responses API output.
+
+    Fork-only:
+    - fork:task-metadata-sanitize ensures task LLM calls don't inherit builtin
+      tool exposure or non-default function_calling mode from the original chat
+      metadata.
+    - fork:responses-api-compat converts Responses-API output (used by some
+      upstream providers like OpenRouter) to chat-completion shape so task
+      callers see a uniform response format.
+    """
+    if metadata_override is not None:
+        form_data = {
+            **form_data,
+            'metadata': metadata_override,
+        }
+
+    # fork:task-metadata-sanitize
+    with request_metadata_override(request, metadata_override):
+        response = await _generate_chat_completion(
+            request,
+            form_data=form_data,
+            user=user,
+            **kwargs,
+        )
+
+    # fork:responses-api-compat
+    return normalize_task_response(response)
 
 
 ##################################
@@ -195,6 +240,8 @@ async def generate_title(request: Request, form_data: dict, user=Depends(get_ver
     content = await title_generation_template(template, form_data['messages'], user)
 
     max_tokens = models[task_model_id].get('info', {}).get('params', {}).get('max_tokens', 1000)
+    # fork:task-metadata-sanitize
+    task_metadata = build_task_metadata(request, TASKS.TITLE_GENERATION, form_data)
 
     payload = {
         'model': task_model_id,
@@ -207,12 +254,7 @@ async def generate_title(request: Request, form_data: dict, user=Depends(get_ver
                 'max_completion_tokens': max_tokens,
             }
         ),
-        'metadata': {
-            **(request.state.metadata if hasattr(request.state, 'metadata') else {}),
-            'task': str(TASKS.TITLE_GENERATION),
-            'task_body': form_data,
-            'chat_id': form_data.get('chat_id', None),
-        },
+        'metadata': task_metadata,
     }
 
     # Process the payload through the pipeline
@@ -222,7 +264,12 @@ async def generate_title(request: Request, form_data: dict, user=Depends(get_ver
         raise e
 
     try:
-        return await generate_chat_completion(request, form_data=payload, user=user)
+        return await generate_chat_completion(
+            request,
+            form_data=payload,
+            user=user,
+            metadata_override=task_metadata,
+        )
     except Exception as e:
         log.error('Exception occurred', exc_info=True)
         return JSONResponse(
@@ -271,17 +318,14 @@ async def generate_follow_ups(request: Request, form_data: dict, user=Depends(ge
         template = DEFAULT_FOLLOW_UP_GENERATION_PROMPT_TEMPLATE
 
     content = await follow_up_generation_template(template, form_data['messages'], user)
+    # fork:task-metadata-sanitize
+    task_metadata = build_task_metadata(request, TASKS.FOLLOW_UP_GENERATION, form_data)
 
     payload = {
         'model': task_model_id,
         'messages': [{'role': 'user', 'content': content}],
         'stream': False,
-        'metadata': {
-            **(request.state.metadata if hasattr(request.state, 'metadata') else {}),
-            'task': str(TASKS.FOLLOW_UP_GENERATION),
-            'task_body': form_data,
-            'chat_id': form_data.get('chat_id', None),
-        },
+        'metadata': task_metadata,
     }
 
     # Process the payload through the pipeline
@@ -291,7 +335,12 @@ async def generate_follow_ups(request: Request, form_data: dict, user=Depends(ge
         raise e
 
     try:
-        return await generate_chat_completion(request, form_data=payload, user=user)
+        return await generate_chat_completion(
+            request,
+            form_data=payload,
+            user=user,
+            metadata_override=task_metadata,
+        )
     except Exception as e:
         log.error('Exception occurred', exc_info=True)
         return JSONResponse(
@@ -340,17 +389,14 @@ async def generate_chat_tags(request: Request, form_data: dict, user=Depends(get
         template = DEFAULT_TAGS_GENERATION_PROMPT_TEMPLATE
 
     content = await tags_generation_template(template, form_data['messages'], user)
+    # fork:task-metadata-sanitize
+    task_metadata = build_task_metadata(request, TASKS.TAGS_GENERATION, form_data)
 
     payload = {
         'model': task_model_id,
         'messages': [{'role': 'user', 'content': content}],
         'stream': False,
-        'metadata': {
-            **(request.state.metadata if hasattr(request.state, 'metadata') else {}),
-            'task': str(TASKS.TAGS_GENERATION),
-            'task_body': form_data,
-            'chat_id': form_data.get('chat_id', None),
-        },
+        'metadata': task_metadata,
     }
 
     # Process the payload through the pipeline
@@ -360,7 +406,12 @@ async def generate_chat_tags(request: Request, form_data: dict, user=Depends(get
         raise e
 
     try:
-        return await generate_chat_completion(request, form_data=payload, user=user)
+        return await generate_chat_completion(
+            request,
+            form_data=payload,
+            user=user,
+            metadata_override=task_metadata,
+        )
     except Exception as e:
         log.error(f'Error generating chat completion: {e}')
         return JSONResponse(
@@ -403,17 +454,14 @@ async def generate_image_prompt(request: Request, form_data: dict, user=Depends(
         template = DEFAULT_IMAGE_PROMPT_GENERATION_PROMPT_TEMPLATE
 
     content = await image_prompt_generation_template(template, form_data['messages'], user)
+    # fork:task-metadata-sanitize
+    task_metadata = build_task_metadata(request, TASKS.IMAGE_PROMPT_GENERATION, form_data)
 
     payload = {
         'model': task_model_id,
         'messages': [{'role': 'user', 'content': content}],
         'stream': False,
-        'metadata': {
-            **(request.state.metadata if hasattr(request.state, 'metadata') else {}),
-            'task': str(TASKS.IMAGE_PROMPT_GENERATION),
-            'task_body': form_data,
-            'chat_id': form_data.get('chat_id', None),
-        },
+        'metadata': task_metadata,
     }
 
     # Process the payload through the pipeline
@@ -423,7 +471,12 @@ async def generate_image_prompt(request: Request, form_data: dict, user=Depends(
         raise e
 
     try:
-        return await generate_chat_completion(request, form_data=payload, user=user)
+        return await generate_chat_completion(
+            request,
+            form_data=payload,
+            user=user,
+            metadata_override=task_metadata,
+        )
     except Exception as e:
         log.error('Exception occurred', exc_info=True)
         return JSONResponse(
@@ -484,17 +537,14 @@ async def generate_queries(request: Request, form_data: dict, user=Depends(get_v
         template = DEFAULT_QUERY_GENERATION_PROMPT_TEMPLATE
 
     content = await query_generation_template(template, form_data['messages'], user)
+    # fork:task-metadata-sanitize
+    task_metadata = build_task_metadata(request, TASKS.QUERY_GENERATION, form_data)
 
     payload = {
         'model': task_model_id,
         'messages': [{'role': 'user', 'content': content}],
         'stream': False,
-        'metadata': {
-            **(request.state.metadata if hasattr(request.state, 'metadata') else {}),
-            'task': str(TASKS.QUERY_GENERATION),
-            'task_body': form_data,
-            'chat_id': form_data.get('chat_id', None),
-        },
+        'metadata': task_metadata,
     }
 
     # Process the payload through the pipeline
@@ -504,7 +554,12 @@ async def generate_queries(request: Request, form_data: dict, user=Depends(get_v
         raise e
 
     try:
-        return await generate_chat_completion(request, form_data=payload, user=user)
+        return await generate_chat_completion(
+            request,
+            form_data=payload,
+            user=user,
+            metadata_override=task_metadata,
+        )
     except Exception as e:
         return JSONResponse(
             status_code=status.HTTP_400_BAD_REQUEST,
@@ -563,17 +618,14 @@ async def generate_autocompletion(request: Request, form_data: dict, user=Depend
         template = DEFAULT_AUTOCOMPLETE_GENERATION_PROMPT_TEMPLATE
 
     content = await autocomplete_generation_template(template, prompt, messages, type, user)
+    # fork:task-metadata-sanitize
+    task_metadata = build_task_metadata(request, TASKS.AUTOCOMPLETE_GENERATION, form_data)
 
     payload = {
         'model': task_model_id,
         'messages': [{'role': 'user', 'content': content}],
         'stream': False,
-        'metadata': {
-            **(request.state.metadata if hasattr(request.state, 'metadata') else {}),
-            'task': str(TASKS.AUTOCOMPLETE_GENERATION),
-            'task_body': form_data,
-            'chat_id': form_data.get('chat_id', None),
-        },
+        'metadata': task_metadata,
     }
 
     # Process the payload through the pipeline
@@ -583,7 +635,12 @@ async def generate_autocompletion(request: Request, form_data: dict, user=Depend
         raise e
 
     try:
-        return await generate_chat_completion(request, form_data=payload, user=user)
+        return await generate_chat_completion(
+            request,
+            form_data=payload,
+            user=user,
+            metadata_override=task_metadata,
+        )
     except Exception as e:
         log.error(f'Error generating chat completion: {e}')
         return JSONResponse(
@@ -623,6 +680,8 @@ async def generate_emoji(request: Request, form_data: dict, user=Depends(get_ver
     template = DEFAULT_EMOJI_GENERATION_PROMPT_TEMPLATE
 
     content = await emoji_generation_template(template, form_data['prompt'], user)
+    # fork:task-metadata-sanitize
+    task_metadata = build_task_metadata(request, TASKS.EMOJI_GENERATION, form_data)
 
     payload = {
         'model': task_model_id,
@@ -635,12 +694,7 @@ async def generate_emoji(request: Request, form_data: dict, user=Depends(get_ver
                 'max_completion_tokens': 4,
             }
         ),
-        'metadata': {
-            **(request.state.metadata if hasattr(request.state, 'metadata') else {}),
-            'task': str(TASKS.EMOJI_GENERATION),
-            'task_body': form_data,
-            'chat_id': form_data.get('chat_id', None),
-        },
+        'metadata': task_metadata,
     }
 
     # Process the payload through the pipeline
@@ -650,7 +704,12 @@ async def generate_emoji(request: Request, form_data: dict, user=Depends(get_ver
         raise e
 
     try:
-        return await generate_chat_completion(request, form_data=payload, user=user)
+        return await generate_chat_completion(
+            request,
+            form_data=payload,
+            user=user,
+            metadata_override=task_metadata,
+        )
     except Exception as e:
         return JSONResponse(
             status_code=status.HTTP_400_BAD_REQUEST,
@@ -683,17 +742,14 @@ async def generate_moa_response(request: Request, form_data: dict, user=Depends(
         form_data['prompt'],
         form_data['responses'],
     )
+    # fork:task-metadata-sanitize
+    task_metadata = build_task_metadata(request, TASKS.MOA_RESPONSE_GENERATION, form_data)
 
     payload = {
         'model': model_id,
         'messages': [{'role': 'user', 'content': content}],
         'stream': form_data.get('stream', False),
-        'metadata': {
-            **(request.state.metadata if hasattr(request.state, 'metadata') else {}),
-            'chat_id': form_data.get('chat_id', None),
-            'task': str(TASKS.MOA_RESPONSE_GENERATION),
-            'task_body': form_data,
-        },
+        'metadata': task_metadata,
     }
 
     # Process the payload through the pipeline
@@ -703,7 +759,12 @@ async def generate_moa_response(request: Request, form_data: dict, user=Depends(
         raise e
 
     try:
-        return await generate_chat_completion(request, form_data=payload, user=user)
+        return await generate_chat_completion(
+            request,
+            form_data=payload,
+            user=user,
+            metadata_override=task_metadata,
+        )
     except Exception as e:
         return JSONResponse(
             status_code=status.HTTP_400_BAD_REQUEST,

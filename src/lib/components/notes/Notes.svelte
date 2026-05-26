@@ -1,5 +1,4 @@
 <script lang="ts">
-	import { marked } from 'marked';
 	import { toast } from 'svelte-sonner';
 	import fileSaver from 'file-saver';
 
@@ -32,16 +31,15 @@
 	import { goto } from '$app/navigation';
 	import { WEBUI_NAME, config, user, pinnedNotes } from '$lib/stores';
 	import {
-		createNewNote,
 		deleteNoteById,
 		getNoteById,
-		getNoteList,
 		searchNotes,
 		toggleNotePinnedStatusById,
 		getPinnedNoteList
 	} from '$lib/apis/notes';
 	import { capitalizeFirstLetter, copyToClipboard, getTimeRange } from '$lib/utils';
-	import { downloadPdf, createNoteHandler } from './utils';
+	// fork:notes-md-import
+	import { downloadPdf, createNoteHandler, readMarkdownFile } from './utils';
 
 	import EllipsisHorizontal from '../icons/EllipsisHorizontal.svelte';
 	import DeleteConfirmDialog from '$lib/components/common/ConfirmDialog.svelte';
@@ -58,7 +56,6 @@
 
 	let loaded = false;
 
-	let importFiles = '';
 	let selectedNote = null;
 	let showDeleteConfirm = false;
 
@@ -115,48 +112,45 @@
 		}
 	};
 
+	const getNoteUpdatedLabel = (note) => dayjs(note.updated_at / 1000000).fromNow();
+	const getNoteUpdatedTooltip = (note) => dayjs(note.updated_at / 1000000).format('LLLL');
+	const getNoteAuthorName = (note) =>
+		capitalizeFirstLetter(note?.user?.name ?? note?.user?.email ?? $i18n.t('Deleted User'));
+	const getNoteAuthorLabel = (note) =>
+		$i18n.t('By {{name}}', {
+			name: getNoteAuthorName(note)
+		});
+
 	const inputFilesHandler = async (inputFiles) => {
-		// Check if all the file is a markdown file and extract name and content
+		let importedAny = false;
 
 		for (const file of inputFiles) {
-			if (file.type !== 'text/markdown') {
-				toast.error($i18n.t('Only markdown files are allowed'));
-				return;
-			}
-
-			const reader = new FileReader();
-			reader.onload = async (event) => {
-				const content = event.target.result;
-				let name = file.name.replace(/\.md$/, '');
-
-				if (typeof content !== 'string') {
-					toast.error($i18n.t('Invalid file content'));
-					return;
-				}
-
-				// Create a new note with the content
-				const res = await createNewNote(localStorage.token, {
-					title: name,
-					data: {
-						content: {
-							json: null,
-							html: marked.parse(content ?? ''),
-							md: content
-						}
-					},
-					meta: null,
-					access_grants: []
-				}).catch((error) => {
-					toast.error(`${error}`);
-					return null;
-				});
+			try {
+				const { title, markdown } = await readMarkdownFile(file);
+				const res = await createNoteHandler(title || dayjs().format('YYYY-MM-DD'), markdown);
 
 				if (res) {
-					init();
+					importedAny = true;
 				}
-			};
+			} catch (error) {
+				const message = `${error}`;
 
-			reader.readAsText(file);
+				if (message === 'Only markdown files are allowed') {
+					toast.error($i18n.t('Only markdown files are allowed'));
+				} else if (message === 'Invalid file content') {
+					toast.error($i18n.t('Invalid file content'));
+				} else if (message === 'Failed to read file') {
+					toast.error($i18n.t('Failed to read file'));
+				} else {
+					toast.error(message);
+				}
+
+				return;
+			}
+		}
+
+		if (importedAny) {
+			init();
 		}
 	};
 
@@ -482,40 +476,60 @@
 											<div
 												class=" flex cursor-pointer w-full px-3.5 py-1.5 border border-gray-50 dark:border-gray-850/30 bg-transparent dark:hover:bg-gray-850 hover:bg-white rounded-2xl transition"
 											>
-												<a href={`/notes/${note.id}`} class="w-full flex flex-col justify-between">
+												<a
+													href={`/notes/${note.id}`}
+													class="w-full min-w-0 flex flex-col justify-between"
+												>
 													<div class="flex-1">
-														<div class="  flex items-center gap-2 self-center justify-between">
+														<div
+															class="flex min-w-0 items-start gap-2 self-center justify-between sm:items-center"
+														>
 															<Tooltip
 																content={note.title}
-																className="flex-1"
+																className="flex-1 min-w-0"
 																placement="top-start"
 															>
-																<div
-																	class=" text-sm font-medium capitalize flex-1 w-full line-clamp-1"
-																>
-																	{note.title}
+																<div class="min-w-0 flex-1">
+																	<div
+																		class="w-full min-w-0 text-sm font-medium capitalize break-words line-clamp-2 sm:line-clamp-1"
+																	>
+																		{note.title}
+																	</div>
+
+																	<div
+																		class="mt-1 flex min-w-0 items-center gap-2 text-xs text-gray-500 sm:hidden"
+																	>
+																		<Tooltip content={getNoteUpdatedTooltip(note)}>
+																			<div class="shrink-0">
+																				{getNoteUpdatedLabel(note)}
+																			</div>
+																		</Tooltip>
+																		<Tooltip
+																			content={note?.user?.email ?? $i18n.t('Deleted User')}
+																			className="flex-1 min-w-0"
+																			placement="top-start"
+																		>
+																			<div class="min-w-0 truncate text-gray-500">
+																				{getNoteAuthorLabel(note)}
+																			</div>
+																		</Tooltip>
+																	</div>
 																</div>
 															</Tooltip>
 
 															<div class="flex shrink-0 items-center text-xs gap-2.5">
-																<Tooltip content={dayjs(note.updated_at / 1000000).format('LLLL')}>
-																	<div>
-																		{dayjs(note.updated_at / 1000000).fromNow()}
+																<Tooltip content={getNoteUpdatedTooltip(note)}>
+																	<div class="hidden shrink-0 sm:block">
+																		{getNoteUpdatedLabel(note)}
 																	</div>
 																</Tooltip>
 																<Tooltip
 																	content={note?.user?.email ?? $i18n.t('Deleted User')}
-																	className="flex shrink-0"
+																	className="hidden max-w-[14rem] sm:flex"
 																	placement="top-start"
 																>
-																	<div class="shrink-0 text-gray-500">
-																		{$i18n.t('By {{name}}', {
-																			name: capitalizeFirstLetter(
-																				note?.user?.name ??
-																					note?.user?.email ??
-																					$i18n.t('Deleted User')
-																			)
-																		})}
+																	<div class="truncate text-gray-500">
+																		{getNoteAuthorLabel(note)}
 																	</div>
 																</Tooltip>
 
@@ -642,23 +656,17 @@
 															</div>
 														</div>
 
-														<div class=" text-xs px-0.5 w-full flex justify-between items-center">
+														<div class="text-xs px-0.5 w-full flex min-w-0 items-center gap-2">
 															<div>
-																{dayjs(note.updated_at / 1000000).fromNow()}
+																{getNoteUpdatedLabel(note)}
 															</div>
 															<Tooltip
 																content={note?.user?.email ?? $i18n.t('Deleted User')}
-																className="flex shrink-0"
+																className="flex min-w-0 flex-1 justify-end"
 																placement="top-start"
 															>
-																<div class="shrink-0 text-gray-500">
-																	{$i18n.t('By {{name}}', {
-																		name: capitalizeFirstLetter(
-																			note?.user?.name ??
-																				note?.user?.email ??
-																				$i18n.t('Deleted User')
-																		)
-																	})}
+																<div class="min-w-0 truncate text-right text-gray-500">
+																	{getNoteAuthorLabel(note)}
 																</div>
 															</Tooltip>
 														</div>

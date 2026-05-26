@@ -151,6 +151,7 @@ if WEBSOCKET_MANAGER == 'redis':
         redis_sentinels=redis_sentinels,
         redis_cluster=WEBSOCKET_REDIS_CLUSTER,
     )
+    # fork:session-cleanup-lock
     session_aquire_func = session_cleanup_lock.aquire_lock
     session_renew_func = session_cleanup_lock.renew_lock
     session_release_func = session_cleanup_lock.release_lock
@@ -170,6 +171,7 @@ YDOC_MANAGER = YdocManager(
 )
 
 
+# fork:session-cleanup-lock
 async def periodic_session_pool_cleanup():
     """Reap orphaned SESSION_POOL entries that missed heartbeats (e.g. crashed instance)."""
     if not session_aquire_func():
