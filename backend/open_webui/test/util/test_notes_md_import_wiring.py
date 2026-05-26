@@ -70,16 +70,11 @@ def test_note_editor_svelte_uses_markdown_and_plain_text_helpers():
     assert 'createNoteContentFromMarkdown' in source
 
     # Format-aware import dispatch must remain wired.
-    assert (
-        "format === 'markdown' ? await readMarkdownFile(file) : await readPlainTextFile(file)"
-        in source
-    )
+    assert "format === 'markdown' ? await readMarkdownFile(file) : await readPlainTextFile(file)" in source
 
 
 def test_note_menu_exposes_import_props():
-    source = _read(
-        'src', 'lib', 'components', 'notes', 'Notes', 'NoteMenu.svelte'
-    )
+    source = _read('src', 'lib', 'components', 'notes', 'Notes', 'NoteMenu.svelte')
 
     assert SENTINEL in source
     assert 'export let onImport' in source

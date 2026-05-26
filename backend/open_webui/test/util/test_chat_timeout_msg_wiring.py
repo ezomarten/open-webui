@@ -35,10 +35,7 @@ def test_openai_router_uses_payload_aware_timeout_at_chat_sites():
     assert 'build_upstream_request_timeout_for_payload' in source
     # Chat-completions, /responses and the generic proxy must all build the
     # payload-aware timeout so streaming requests get the idle-aware policy.
-    assert (
-        source.count('build_upstream_request_timeout_for_payload(AIOHTTP_CLIENT_TIMEOUT, payload)')
-        >= 3
-    )
+    assert source.count('build_upstream_request_timeout_for_payload(AIOHTTP_CLIENT_TIMEOUT, payload)') >= 3
     assert source.count(SENTINEL) >= 4  # import + 3 call sites
 
 

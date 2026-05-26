@@ -7,6 +7,7 @@ import logging
 import re
 
 from open_webui.utils.chat import generate_chat_completion as _generate_chat_completion
+
 # fork:responses-api-compat
 from open_webui.utils.misc import normalize_task_response
 from open_webui.utils.task import (
@@ -25,6 +26,7 @@ from open_webui.constants import ERROR_MESSAGES, TASKS
 from open_webui.routers.pipelines import process_pipeline_inlet_filter
 
 from open_webui.utils.task import get_task_model_id
+
 # fork:task-metadata-sanitize
 from open_webui.utils.task_metadata import (
     build_task_metadata,

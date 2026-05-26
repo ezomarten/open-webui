@@ -60,6 +60,7 @@ from open_webui.utils.session_pool import (
     get_session,
     stream_wrapper,
 )
+
 # fork:chat-timeout-msg
 from open_webui.utils.http_timeouts import (
     build_upstream_request_timeout_for_payload,
@@ -678,9 +679,7 @@ async def get_models(request: Request, url_idx: Optional[int] = None, user=Depen
                         response_data = await r.json()
 
                         if is_openrouter_zdr_model_list_enabled(url, api_config):
-                            response_data = normalize_models_response(
-                                url, api_config, response_data
-                            )
+                            response_data = normalize_models_response(url, api_config, response_data)
                         elif 'api.openai.com' in url:
                             response_data['data'] = [
                                 model

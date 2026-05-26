@@ -27,9 +27,7 @@ def test_web_search_helper_carries_sentinel():
 def test_retrieval_router_uses_collect_limited_search_results():
     source = _read('backend', 'open_webui', 'routers', 'retrieval.py')
 
-    assert (
-        'from open_webui.utils.web_search import collect_limited_search_results' in source
-    )
+    assert 'from open_webui.utils.web_search import collect_limited_search_results' in source
     assert 'collect_limited_search_results(' in source
     assert 'WEB_SEARCH_RESULT_COUNT' in source
     assert SENTINEL in source

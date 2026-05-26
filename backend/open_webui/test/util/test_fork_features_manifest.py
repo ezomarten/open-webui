@@ -68,9 +68,7 @@ def test_feature_entries_have_required_shape():
         assert sentinel not in seen_sentinels, f'duplicate sentinel: {sentinel!r}'
         seen_sentinels.add(sentinel)
 
-        assert feature['status'] in ALLOWED_FEATURE_STATUSES, (
-            f'invalid status for {slug}: {feature["status"]!r}'
-        )
+        assert feature['status'] in ALLOWED_FEATURE_STATUSES, f'invalid status for {slug}: {feature["status"]!r}'
 
         assert isinstance(feature['supporting_unit_tests'], list)
         assert isinstance(feature['notable_files'], list)
@@ -84,8 +82,7 @@ def test_declared_wiring_tests_actually_exist():
             continue
         path = REPO_ROOT / wiring_test
         assert path.exists(), (
-            f'feature {feature["slug"]!r} declares wiring_test {wiring_test!r} '
-            f'but the file is missing'
+            f'feature {feature["slug"]!r} declares wiring_test {wiring_test!r} ' f'but the file is missing'
         )
 
 
@@ -94,9 +91,7 @@ def test_supporting_unit_tests_actually_exist():
     for feature in manifest['fork_features']:
         for unit_test in feature['supporting_unit_tests']:
             path = REPO_ROOT / unit_test
-            assert path.exists(), (
-                f'feature {feature["slug"]!r} references missing supporting test {unit_test!r}'
-            )
+            assert path.exists(), f'feature {feature["slug"]!r} references missing supporting test {unit_test!r}'
 
 
 def test_pending_actions_are_well_formed_and_tracked():
@@ -112,9 +107,7 @@ def test_pending_actions_are_well_formed_and_tracked():
         pending = feature.get('pending_actions', [])
         assert isinstance(pending, list)
         for action in pending:
-            assert action in VALID_PENDING_ACTIONS, (
-                f'feature {feature["slug"]!r} has unknown pending action {action!r}'
-            )
+            assert action in VALID_PENDING_ACTIONS, f'feature {feature["slug"]!r} has unknown pending action {action!r}'
 
         if feature['wiring_test'] is None:
             assert 'add-wiring-test' in pending, (
@@ -127,8 +120,7 @@ def test_pending_actions_are_well_formed_and_tracked():
         # manifest. This catches "forgot to update FORK_NOTES" mistakes.
         if pending:
             assert feature['slug'] in fork_notes, (
-                f'feature {feature["slug"]!r} has pending actions {pending} but is '
-                f'not mentioned in FORK_NOTES.md'
+                f'feature {feature["slug"]!r} has pending actions {pending} but is ' f'not mentioned in FORK_NOTES.md'
             )
 
 

@@ -59,18 +59,13 @@ def test_add_connection_modal_exposes_zdr_toggle():
     assert 'openrouter_zdr_only' in source
     assert "$i18n.t('OpenRouter ZDR Only')" in source
     assert (
-        'Use OpenRouter Zero Retention endpoints for model discovery and '
-        'force provider.zdr on requests'
+        'Use OpenRouter Zero Retention endpoints for model discovery and ' 'force provider.zdr on requests'
     ) in source
     assert '{{url}}/endpoints/zdr' in source
 
 
 def test_openrouter_zdr_ja_jp_translations_are_not_empty():
-    translations = json.loads(
-        _read_repo_file(
-            'src', 'lib', 'i18n', 'locales', 'ja-JP', 'translation.json'
-        )
-    )
+    translations = json.loads(_read_repo_file('src', 'lib', 'i18n', 'locales', 'ja-JP', 'translation.json'))
     required_keys = [
         'OpenRouter ZDR Only',
         'Use OpenRouter Zero Retention endpoints for model discovery and force provider.zdr on requests',
