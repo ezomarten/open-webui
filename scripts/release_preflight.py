@@ -52,7 +52,25 @@ def main() -> int:
 
     ensure_supported_node_version(node)
 
+    # pytest needs the backend package importable for the fork-guard tests.
+    existing_pp = os.environ.get("PYTHONPATH", "")
+    backend_pp = str(REPO_ROOT / "backend")
+    os.environ["PYTHONPATH"] = backend_pp if not existing_pp else f"{backend_pp}{os.pathsep}{existing_pp}"
+
+    # Fork-wiring guard tests run first and fast: the manifest meta-test, the
+    # general signature-drift guard, and every *_wiring.py source-grep test.
+    # This makes the release gate fail loudly if an upstream sync dropped a fork
+    # patch, before spending time on format/build steps.
+    fork_guard_targets = [
+        "backend/open_webui/test/util/test_fork_features_manifest.py",
+        "backend/open_webui/test/util/test_no_kwarg_signature_drift.py",
+    ]
+    wiring_dir = REPO_ROOT / "backend" / "open_webui" / "test" / "util"
+    for wiring_test in sorted(wiring_dir.glob("test_*_wiring.py")):
+        fork_guard_targets.append(wiring_test.relative_to(REPO_ROOT).as_posix())
+
     commands = [
+        [python, "-m", "pytest", "-q", *fork_guard_targets],
         [python, "-m", "black", "--check", "backend"],
         [npm, "run", "check:format"],
         [npm, "run", "check:i18n"],

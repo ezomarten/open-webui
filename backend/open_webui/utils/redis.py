@@ -40,7 +40,7 @@ class SentinelRedisProxy:
     def _master(self):
         return self._sentinel.master_for(self._service, **self._kw)
 
-    async def __getattr__(self, item):
+    def __getattr__(self, item):
         master = self._master()
         orig_attr = getattr(master, item)
 

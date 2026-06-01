@@ -47,3 +47,21 @@ def test_misc_uses_first_chunk_idle_timeout_iterator():
     # preserved.
     assert 'iterate_stream_with_post_first_chunk_timeout(' in source
     assert SENTINEL in source
+
+
+def test_get_web_loader_accepts_and_forwards_timeout():
+    """Guards the fetch_url Web Loader per-request timeout path. The v0.9.5
+    upstream replay silently dropped the ``timeout`` parameter from
+    ``get_web_loader`` while ``get_loader`` kept passing it, so ``fetch_url``
+    failed at runtime with
+    ``get_web_loader() got an unexpected keyword argument 'timeout'``.
+    """
+    web_utils = _read('backend', 'open_webui', 'retrieval', 'web', 'utils.py')
+    retrieval_utils = _read('backend', 'open_webui', 'retrieval', 'utils.py')
+
+    # Callee must declare the parameter and carry the sentinel.
+    assert 'timeout: Optional[float] = None' in web_utils
+    assert SENTINEL in web_utils
+    # Caller must forward it under the sentinel.
+    assert 'timeout=timeout,' in retrieval_utils
+    assert SENTINEL in retrieval_utils

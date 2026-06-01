@@ -1,11 +1,12 @@
 {
-	"$schema_note": "Machine-readable inventory of every fork-only customization. The meta-test backend/open_webui/test/util/test_fork_features_manifest.py is the single source of truth for what must exist after every upstream sync. Whenever a fork-only feature is added, changed, or removed, update this file in the same task. See FORK_NOTES.md > Fork Management Contract.",
-	"schema_version": 1,
+	"$schema_note": "Machine-readable inventory of every fork-only customization. The meta-test backend/open_webui/test/util/test_fork_features_manifest.py is the single source of truth for what must exist after every upstream sync. Whenever a fork-only feature is added, changed, or removed, update this file in the same task. guard_style defaults to 'sentinel' (the feature carries a fork:<slug> sentinel comment in product code that the meta-test verifies is still present); set guard_style to 'substring' for features guarded by real-code-identifier assertions in their wiring test instead of a sentinel. See FORK_NOTES.md > Fork Management Contract.",
+	"schema_version": 2,
 	"fork_features": [
 		{
 			"slug": "public-share",
 			"summary": "Anonymous public-share pages, snapshot-based /p/* routes, /api/v1/public-shares/* APIs, and the create/get/delete chat-await fix.",
 			"sentinel_tag": "fork:public-share",
+			"guard_style": "substring",
 			"wiring_test": "backend/open_webui/test/util/test_public_share_wiring.py",
 			"supporting_unit_tests": [
 				"backend/open_webui/test/util/test_public_share.py",
@@ -24,6 +25,7 @@
 			"slug": "public-host-allowlist",
 			"summary": "PublicShareHostMiddleware that restricts the anonymous host to read-only routes.",
 			"sentinel_tag": "fork:public-host-allowlist",
+			"guard_style": "substring",
 			"wiring_test": "backend/open_webui/test/util/test_public_share_wiring.py",
 			"supporting_unit_tests": [],
 			"notable_files": ["backend/open_webui/main.py"],
@@ -33,6 +35,7 @@
 			"slug": "public-link-settings",
 			"summary": "Admin > General Enable Public Links + Public Link URL with PersistentConfig keys ui.enable_public_chat_sharing and ui.public_share_base_url.",
 			"sentinel_tag": "fork:public-link-settings",
+			"guard_style": "substring",
 			"wiring_test": "backend/open_webui/test/util/test_public_share_wiring.py",
 			"supporting_unit_tests": [],
 			"notable_files": [
@@ -46,6 +49,7 @@
 			"slug": "openrouter-zdr",
 			"summary": "OpenRouter Zero Retention model discovery (/endpoints/zdr) and provider.zdr enforcement on outgoing chat/responses/proxy/browser-direct payloads.",
 			"sentinel_tag": "fork:openrouter-zdr",
+			"guard_style": "substring",
 			"wiring_test": "backend/open_webui/test/util/test_openrouter_zdr_wiring.py",
 			"supporting_unit_tests": ["backend/open_webui/test/util/test_openrouter_zdr.py"],
 			"notable_files": [
@@ -147,7 +151,9 @@
 				"backend/open_webui/routers/openai.py",
 				"backend/open_webui/routers/ollama.py",
 				"backend/open_webui/utils/middleware.py",
-				"backend/open_webui/tools/builtin.py"
+				"backend/open_webui/tools/builtin.py",
+				"backend/open_webui/retrieval/utils.py",
+				"backend/open_webui/retrieval/web/utils.py"
 			],
 			"status": "active"
 		},
@@ -164,6 +170,7 @@
 			"slug": "env-changelog-unreleased",
 			"summary": "env.py CHANGELOG parser tolerates an Unreleased heading without breaking imports or image builds.",
 			"sentinel_tag": "fork:env-changelog-unreleased",
+			"guard_style": "substring",
 			"wiring_test": "backend/open_webui/test/util/test_public_share_wiring.py",
 			"supporting_unit_tests": [],
 			"notable_files": ["backend/open_webui/env.py"],
@@ -176,6 +183,12 @@
 			"summary": "Replace the manual replay-onto-temporary-worktree upstream sync with a git merge/rebase workflow so dropped patches surface as loud conflicts instead of silent omissions. (FORK_NOTES.md Pending Improvements item C.)",
 			"owner_doc": "FORK_NOTES.md#pending-improvements",
 			"tracked_since": "2026-05-26"
+		},
+		{
+			"id": "notable-files-as-enforced-patch-sites",
+			"summary": "Tighten each feature's notable_files into the exact set of sentinel-bearing patch sites and require a sentinel at every listed site, turning notable_files into a per-site drop detector instead of the current presence-anywhere check. (FORK_NOTES.md Pending workflow improvements.)",
+			"owner_doc": "FORK_NOTES.md#pending-improvements",
+			"tracked_since": "2026-05-30"
 		}
 	]
 }

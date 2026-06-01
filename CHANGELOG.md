@@ -5,6 +5,17 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Added
+
+- Hardened the fork-sync guardrails so the "caller kept, callee patch dropped" failure mode (which caused the `get_web_loader(timeout=)` regression) cannot recur silently. Added a general static guard `backend/open_webui/test/util/test_no_kwarg_signature_drift.py` that scans the backend for bare-name calls passing a keyword the resolved callee does not accept. Strengthened the manifest meta-test with two new enforced invariants: every active feature's `notable_files` must still resolve on disk, and every sentinel-guarded feature must keep its `# fork:<slug>` sentinel in non-test source. Added a `guard_style` field to `fork-features.json` (`schema_version` bumped to 2) to mark the five intentionally substring-guarded features. Wired the drift guard into `scripts/verify-fork-wiring.ps1` and made `scripts/release_preflight.py` run all fork-guard tests first so release builds fail fast on a dropped patch.
+
+### Fixed
+
+- Restored the per-request Web Loader `timeout` parameter on `get_web_loader` (`backend/open_webui/retrieval/web/utils.py`) that the `v0.9.5` upstream replay silently dropped while `get_loader` kept forwarding it. The drop made the native `fetch_url` tool fail at runtime with `get_web_loader() got an unexpected keyword argument 'timeout'`. An explicit timeout now takes precedence over the `WEB_LOADER_TIMEOUT` config fallback. Added `# fork:chat-timeout-msg` sentinels at the callee/caller sites, extended `test_chat_timeout_msg_wiring.py` to grep them, added two integration regression tests in `test_web_fetch_timeouts.py` (signature guard + `get_loader`→`get_web_loader` forwarding guard), and added `retrieval/utils.py` + `retrieval/web/utils.py` to the `chat-timeout-msg` manifest `notable_files` so future drops surface immediately.
+- Reverted an erroneous fork change that made `RedisProxy.__getattr__` (`backend/open_webui/utils/redis.py`) an `async def` (introduced in `0.9.1-publicshare.1`). Because Python invokes `__getattr__` synchronously on every attribute access, the async version returned an un-awaited coroutine for calls like `proxy.set(...)`, raising `'coroutine' object is not callable` and breaking Redis-backed operation in both sync and async modes. The method is now a plain `def` (matching upstream `v0.9.5`); the existing async/sync dispatch in its body is unchanged.
+
 ## [0.9.5-publicshare.2] - 2026-05-26
 
 ### Changed

@@ -593,6 +593,9 @@ def get_web_loader(
     urls: Union[str, Sequence[str]],
     verify_ssl: bool = True,
     requests_per_second: int = 2,
+    # fork:chat-timeout-msg accept an explicit per-request Web Loader timeout
+    # (forwarded by get_loader/fetch_url); falls back to WEB_LOADER_TIMEOUT.
+    timeout: Optional[float] = None,
     trust_env: bool = False,
 ):
     # Check if the URLs are valid
@@ -614,14 +617,16 @@ def get_web_loader(
         WebLoaderClass = SafeWebBaseLoader
 
         request_kwargs = {}
-        if WEB_LOADER_TIMEOUT.value:
+        # fork:chat-timeout-msg explicit timeout takes precedence over config
+        timeout_value = timeout
+        if timeout_value is None and WEB_LOADER_TIMEOUT.value:
             try:
                 timeout_value = float(WEB_LOADER_TIMEOUT.value)
             except ValueError:
                 timeout_value = None
 
-            if timeout_value:
-                request_kwargs['timeout'] = timeout_value
+        if timeout_value:
+            request_kwargs['timeout'] = timeout_value
 
         if request_kwargs:
             web_loader_args['requests_kwargs'] = request_kwargs

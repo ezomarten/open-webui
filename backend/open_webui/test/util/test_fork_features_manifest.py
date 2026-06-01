@@ -32,6 +32,7 @@ REQUIRED_FEATURE_KEYS = {
     'status',
 }
 ALLOWED_FEATURE_STATUSES = {'active', 'removed'}
+ALLOWED_GUARD_STYLES = {'sentinel', 'substring'}
 
 
 def _load_manifest() -> dict:
@@ -44,7 +45,7 @@ def _load_fork_notes() -> str:
 
 def test_manifest_file_exists_and_parses():
     manifest = _load_manifest()
-    assert manifest.get('schema_version') == 1
+    assert manifest.get('schema_version') == 2
     assert isinstance(manifest.get('fork_features'), list) and manifest['fork_features']
     assert isinstance(manifest.get('pending_workflow_improvements'), list)
 
@@ -72,6 +73,76 @@ def test_feature_entries_have_required_shape():
 
         assert isinstance(feature['supporting_unit_tests'], list)
         assert isinstance(feature['notable_files'], list)
+
+        guard_style = feature.get('guard_style', 'sentinel')
+        assert guard_style in ALLOWED_GUARD_STYLES, f'invalid guard_style for {slug}: {guard_style!r}'
+
+
+def test_notable_files_exist_on_disk():
+    """Every declared notable_file must exist. Upstream syncs frequently rename
+    or delete files; an entry that no longer resolves is an early signal that a
+    fork patch site moved (and may have been dropped) underneath the manifest."""
+    manifest = _load_manifest()
+    missing = []
+    for feature in manifest['fork_features']:
+        if feature['status'] != 'active':
+            continue
+        for nf in feature['notable_files']:
+            if not (REPO_ROOT / nf).exists():
+                missing.append(f'{feature["slug"]}: {nf}')
+    assert not missing, (
+        'notable_files reference paths that no longer exist (renamed/removed by '
+        'an upstream sync?):\n  ' + '\n  '.join(missing)
+    )
+
+
+def test_active_features_keep_an_in_code_guard():
+    """Each active feature must remain guarded in *product* code, not merely in
+    docs or its own test. Sentinel-guarded features must have their
+    ``fork:<slug>`` sentinel present in at least one non-test source file;
+    substring-guarded features (which assert real code identifiers from their
+    wiring test instead of a sentinel) are exempt but must declare
+    ``"guard_style": "substring"`` so the exemption is explicit and a future
+    maintainer cannot mistake an accidental sentinel loss for an intentional
+    design choice.
+
+    The scan covers the whole backend/frontend source tree (excluding tests and
+    the non-code bookkeeping files) so that a patch which moved files during an
+    upstream sync is still detected as present, while a fully *dropped* patch
+    surfaces immediately as a failure here.
+    """
+    manifest = _load_manifest()
+
+    scan_roots = [REPO_ROOT / 'backend' / 'open_webui', REPO_ROOT / 'src']
+    source_exts = {'.py', '.ts', '.js', '.svelte', '.mjs', '.cjs'}
+    blob_parts: list[str] = []
+    for root in scan_roots:
+        if not root.exists():
+            continue
+        for path in root.rglob('*'):
+            if not path.is_file() or path.suffix not in source_exts:
+                continue
+            parts = {p.lower() for p in path.parts}
+            if 'test' in parts or 'tests' in parts or path.name.startswith('test_'):
+                continue  # never let a test's SENTINEL constant fake guard presence
+            blob_parts.append(path.read_text(encoding='utf8', errors='ignore'))
+    source_blob = '\n'.join(blob_parts)
+
+    ungual = []
+    for feature in manifest['fork_features']:
+        if feature['status'] != 'active':
+            continue
+        if feature.get('guard_style', 'sentinel') == 'substring':
+            continue
+        tag = feature['sentinel_tag']
+        if tag not in source_blob:
+            ungual.append(
+                f'{feature["slug"]}: sentinel {tag!r} not found in any non-test '
+                f'source file; the patch may have been dropped, or mark the '
+                f'feature "guard_style": "substring" if it is intentionally not '
+                f'sentinel-guarded'
+            )
+    assert not ungual, 'fork features lost their in-code sentinel guard:\n  ' + '\n  '.join(ungual)
 
 
 def test_declared_wiring_tests_actually_exist():

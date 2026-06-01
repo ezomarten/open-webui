@@ -53,6 +53,12 @@ try {
     $testTargets = New-Object System.Collections.Generic.List[string]
     $testTargets.Add('backend/open_webui/test/util/test_fork_features_manifest.py') | Out-Null
 
+    # General, codebase-wide guard against the "caller kept, callee patch
+    # dropped" failure mode (the get_web_loader(timeout=) regression). It is not
+    # a *_wiring.py file, so add it explicitly here so auto-discovery cannot
+    # silently skip it.
+    $testTargets.Add('backend/open_webui/test/util/test_no_kwarg_signature_drift.py') | Out-Null
+
     # Auto-discover every wiring test on disk.
     Get-ChildItem -Path 'backend/open_webui/test/util' -Filter 'test_*_wiring.py' |
         Sort-Object Name |
