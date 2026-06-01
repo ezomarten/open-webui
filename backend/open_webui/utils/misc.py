@@ -1,20 +1,21 @@
+from __future__ import annotations
+
+import collections.abc
 import hashlib
+import json
+import logging
 import re
 import threading
 import time
 import uuid
-import logging
 from datetime import timedelta
 from pathlib import Path
-from typing import Any, Callable, Optional, Sequence, Union
-import json
+from typing import Any, Callable, Optional, Sequence, Union  # fork:chat-timeout-msg
+
 import aiohttp
 import mimeparse
-
-
-import collections.abc
 from open_webui.env import CHAT_STREAM_RESPONSE_CHUNK_MAX_BUFFER_SIZE
-from open_webui.utils.http_timeouts import (
+from open_webui.utils.http_timeouts import (  # fork:chat-timeout-msg
     iterate_stream_with_post_first_chunk_timeout,
 )
 
@@ -46,7 +47,7 @@ def get_allow_block_lists(filter_list):
     return allow_list, block_list
 
 
-def is_string_allowed(string: Union[str, Sequence[str]], filter_list: Optional[list[str]] = None) -> bool:
+def is_string_allowed(string: Union[str, Sequence[str]], filter_list: list[str | None] = None) -> bool:
     """
     Checks if a string is allowed based on the provided filter list.
     :param string: The string or sequence of strings to check (e.g., domain or hostname).
@@ -115,36 +116,73 @@ def get_messages_content(messages: list[dict]) -> str:
     return '\n'.join([f'{message["role"].upper()}: {get_content_from_message(message)}' for message in messages])
 
 
-def get_last_user_message_item(messages: list[dict]) -> Optional[dict]:
+def get_last_user_message_item(messages: list[dict]) -> dict | None:
     for message in reversed(messages):
         if message['role'] == 'user':
             return message
     return None
 
 
-def get_content_from_message(message: dict) -> Optional[str]:
-    content = message.get("content")
+def get_content_from_message(message: dict) -> str | None:
+    if isinstance(message.get('content'), list):
+        for item in message['content']:
+            if item['type'] == 'text':
+                return item['text']
+    else:
+        return message.get('content')
+    return None
 
-    if isinstance(content, list):
-        text_parts = []
-        for item in content:
-            if not isinstance(item, dict):
-                continue
 
-            if item.get("type") not in {"text", "output_text", "input_text"}:
-                continue
+def reconcile_tool_pairs(messages: list[dict]) -> list[dict]:
+    """Drop unpaired tool_use / tool_result from a reconstructed conversation.
 
-            text = item.get("text")
-            if isinstance(text, str):
-                text_parts.append(text)
-            elif isinstance(text, dict):
-                value = text.get("value")
-                if isinstance(value, str):
-                    text_parts.append(value)
+    Stored output can be incomplete — a tool result may be missing (e.g. the
+    knowledge base was updated mid-chat, or the call was interrupted), or a
+    tool call may be missing while its result survived.  Strict providers
+    (Anthropic, AWS Bedrock Converse) reject either direction of mismatch.
 
-        return "".join(text_parts) if text_parts else None
+    Well-formed output is unaffected: every id pairs, so nothing is stripped.
+    """
+    completed_tool_call_ids = {
+        message['tool_call_id'] for message in messages if message.get('role') == 'tool' and message.get('tool_call_id')
+    }
+    requested_tool_call_ids = {
+        tool_call['id']
+        for message in messages
+        for tool_call in message.get('tool_calls') or ()
+        if message.get('role') == 'assistant' and tool_call.get('id')
+    }
 
-    return content
+    reconciled_messages = []
+    for message in messages:
+        role = message.get('role')
+
+        # Orphan tool result — no assistant ever claimed this call_id.
+        if role == 'tool' and message.get('tool_call_id') not in requested_tool_call_ids:
+            continue
+
+        # Non-assistant or no tool_calls — pass through unchanged.
+        if role != 'assistant' or not message.get('tool_calls'):
+            reconciled_messages.append(message)
+            continue
+
+        # Keep only tool_calls whose id received a tool-role response.
+        valid_tool_calls = [
+            tool_call for tool_call in message['tool_calls'] if tool_call.get('id') in completed_tool_call_ids
+        ]
+
+        if valid_tool_calls:
+            reconciled_messages.append({**message, 'tool_calls': valid_tool_calls})
+            continue
+
+        # All tool_calls were orphans — keep the message only if it
+        # carries meaningful text or reasoning content.
+        content = message.get('content', '')
+        has_meaningful_content = content.strip() if isinstance(content, str) else content
+        if has_meaningful_content or message.get('reasoning_content'):
+            reconciled_messages.append({key: value for key, value in message.items() if key != 'tool_calls'})
+
+    return reconciled_messages
 
 
 def convert_output_to_messages(
@@ -313,10 +351,10 @@ def convert_output_to_messages(
     # Flush remaining content/tool_calls
     flush_pending()
 
-    return messages
+    return reconcile_tool_pairs(messages)
 
 
-def get_last_user_message(messages: list[dict]) -> Optional[str]:
+def get_last_user_message(messages: list[dict]) -> str | None:
     message = get_last_user_message_item(messages)
     if message is None:
         return None
@@ -341,21 +379,21 @@ def set_last_user_message_content(content: str, messages: list[dict]) -> list[di
     return messages
 
 
-def get_last_assistant_message_item(messages: list[dict]) -> Optional[dict]:
+def get_last_assistant_message_item(messages: list[dict]) -> dict | None:
     for message in reversed(messages):
         if message['role'] == 'assistant':
             return message
     return None
 
 
-def get_last_assistant_message(messages: list[dict]) -> Optional[str]:
+def get_last_assistant_message(messages: list[dict]) -> str | None:
     for message in reversed(messages):
         if message['role'] == 'assistant':
             return get_content_from_message(message)
     return None
 
 
-def get_system_message(messages: list[dict]) -> Optional[dict]:
+def get_system_message(messages: list[dict]) -> dict | None:
     for message in messages:
         if message['role'] == 'system':
             return message
@@ -366,7 +404,7 @@ def remove_system_message(messages: list[dict]) -> list[dict]:
     return [message for message in messages if message['role'] != 'system']
 
 
-def pop_system_message(messages: list[dict]) -> tuple[Optional[dict], list[dict]]:
+def pop_system_message(messages: list[dict]) -> tuple[dict | None, list[dict]]:
     return get_system_message(messages), remove_system_message(messages)
 
 
@@ -518,10 +556,10 @@ def openai_chat_message_template(model: str):
 
 def openai_chat_chunk_message_template(
     model: str,
-    content: Optional[str] = None,
-    reasoning_content: Optional[str] = None,
-    tool_calls: Optional[list[dict]] = None,
-    usage: Optional[dict] = None,
+    content: str | None = None,
+    reasoning_content: str | None = None,
+    tool_calls: list[dict | None] = None,
+    usage: dict | None = None,
 ) -> dict:
     template = openai_chat_message_template(model)
     template['object'] = 'chat.completion.chunk'
@@ -548,10 +586,10 @@ def openai_chat_chunk_message_template(
 
 def openai_chat_completion_message_template(
     model: str,
-    message: Optional[str] = None,
-    reasoning_content: Optional[str] = None,
-    tool_calls: Optional[list[dict]] = None,
-    usage: Optional[dict] = None,
+    message: str | None = None,
+    reasoning_content: str | None = None,
+    tool_calls: list[dict | None] = None,
+    usage: dict | None = None,
 ) -> dict:
     template = openai_chat_message_template(model)
     template['object'] = 'chat.completion'
@@ -571,53 +609,55 @@ def openai_chat_completion_message_template(
 
 
 def get_assistant_message_from_response(response: dict) -> Optional[dict]:
+    """Fork helper: extract the assistant message from a chat-completion or Responses-API response."""
     if not isinstance(response, dict):
         return None
 
-    choices = response.get("choices") or []
+    choices = response.get('choices') or []
     if choices:
-        return choices[0].get("message")
+        return choices[0].get('message')
 
-    if response.get("object") == "response":
-        for message in reversed(convert_output_to_messages(response.get("output", []))):
-            if message.get("role") == "assistant":
+    if response.get('object') == 'response':
+        for message in reversed(convert_output_to_messages(response.get('output', []))):
+            if message.get('role') == 'assistant':
                 return message
 
     return None
 
 
 def get_message_content_from_response(response: dict) -> Optional[str]:
+    """Fork helper: extract text content from a chat-completion or Responses-API response."""
     message = get_assistant_message_from_response(response)
     if not message:
         return None
-
     return get_content_from_message(message)
 
 
 # fork:responses-api-compat
 def normalize_task_response(response: Any) -> Any:
+    """Convert Responses-API output to chat-completion shape so task callers see a uniform format."""
     if not isinstance(response, dict):
         return response
 
-    if response.get("object") != "response" or response.get("choices"):
+    if response.get('object') != 'response' or response.get('choices'):
         return response
 
     normalized = openai_chat_completion_message_template(
-        model=response.get("model", ""),
-        message=get_message_content_from_response(response) or "",
-        usage=response.get("usage"),
+        model=response.get('model', ''),
+        message=get_message_content_from_response(response) or '',
+        usage=response.get('usage'),
     )
 
-    if response.get("id"):
-        normalized["id"] = response["id"]
+    if response.get('id'):
+        normalized['id'] = response['id']
 
-    if response.get("created_at") is not None:
-        normalized["created"] = response["created_at"]
+    if response.get('created_at') is not None:
+        normalized['created'] = response['created_at']
 
-    normalized["done"] = True
+    normalized['done'] = True
 
-    if "output" in response:
-        normalized["output"] = response["output"]
+    if 'output' in response:
+        normalized['output'] = response['output']
 
     return normalized
 
@@ -627,15 +667,15 @@ def ensure_output_item_timing(item: dict, now: Optional[float] = None) -> dict:
         return item
 
     timestamp = time.time() if now is None else now
-    item.setdefault("started_at", timestamp)
+    item.setdefault('started_at', timestamp)
 
-    if item.get("status") == "completed":
-        item.setdefault("ended_at", timestamp)
+    if item.get('status') == 'completed':
+        item.setdefault('ended_at', timestamp)
 
-    ended_at = item.get("ended_at")
-    started_at = item.get("started_at")
+    ended_at = item.get('ended_at')
+    started_at = item.get('started_at')
     if ended_at is not None and started_at is not None:
-        item["duration"] = max(0, int(ended_at - started_at))
+        item['duration'] = max(0, int(ended_at - started_at))
 
     return item
 
@@ -647,10 +687,10 @@ def ensure_output_timing(output: list[dict], now: Optional[float] = None) -> lis
 
 def mark_output_item_completed(item: dict, ended_at: Optional[float] = None) -> dict:
     timestamp = time.time() if ended_at is None else ended_at
-    item.setdefault("started_at", timestamp)
-    item["ended_at"] = timestamp
-    item["duration"] = max(0, int(timestamp - item["started_at"]))
-    item["status"] = "completed"
+    item.setdefault('started_at', timestamp)
+    item['ended_at'] = timestamp
+    item['duration'] = max(0, int(timestamp - item['started_at']))
+    item['status'] = 'completed'
     return item
 
 
@@ -754,7 +794,7 @@ def sanitize_data_for_db(obj):
     # json.dumps is implemented in C and much faster than a Python-level
     # recursive walk over every leaf string.
     try:
-        if '\x00' not in json.dumps(obj, ensure_ascii=False):
+        if '\\u0000' not in json.dumps(obj, ensure_ascii=False):
             return obj
     except (TypeError, ValueError):
         pass
@@ -826,7 +866,7 @@ def extract_folders_after_data_docs(path):
     return tags
 
 
-def parse_duration(duration: str) -> Optional[timedelta]:
+def parse_duration(duration: str) -> timedelta | None:
     if duration == '-1' or duration == '0':
         return None
 
@@ -943,7 +983,7 @@ def parse_ollama_modelfile(model_text):
     return data
 
 
-def convert_logit_bias_input_to_json(logit_bias_input) -> Optional[str]:
+def convert_logit_bias_input_to_json(logit_bias_input) -> str | None:
     if not logit_bias_input:
         return None
 
@@ -976,7 +1016,7 @@ def throttle(interval: float = 10.0):
     """
     Decorator to prevent a function from being called more than once within a specified duration.
     If the function is called again within the duration, it returns None. To avoid returning
-    different types, the return type of the function should be Optional[T].
+    different types, the return type of the function should be T | None.
 
     :param interval: Duration in seconds to wait before allowing the function to be called again.
     """
@@ -1004,7 +1044,7 @@ def throttle(interval: float = 10.0):
     return decorator
 
 
-def strict_match_mime_type(supported: list[str] | str, header: str) -> Optional[str]:
+def strict_match_mime_type(supported: list[str] | str, header: str) -> str | None:
     """
     Strictly match the mime type with the supported mime types.
 
@@ -1049,8 +1089,8 @@ def extract_urls(text: str) -> list[str]:
 # Should this stream falter, it shall be raised again on the
 # third retry. We look for the uptime of the world to come.
 async def cleanup_response(
-    response: Optional[aiohttp.ClientResponse],
-    session: Optional[aiohttp.ClientSession],
+    response: aiohttp.ClientResponse | None,
+    session: aiohttp.ClientSession | None,
 ):
     if response:
         if not response.closed:
@@ -1070,8 +1110,8 @@ async def stream_wrapper(
     response,
     session,
     content_handler=None,
-    read_timeout_seconds: int | None = None,
-    timeout_starts_after_chunk: Callable[[Any], bool] | None = None,
+    read_timeout_seconds: int | None = None,  # fork:chat-timeout-msg
+    timeout_starts_after_chunk: Callable[[Any], bool] | None = None,  # fork:chat-timeout-msg
 ):
     """
     Wrap a stream to ensure cleanup happens even if streaming is interrupted.

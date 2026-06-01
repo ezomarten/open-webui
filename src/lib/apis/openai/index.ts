@@ -74,140 +74,7 @@ export const updateOpenAIConfig = async (token: string = '', config: OpenAIConfi
 	return res;
 };
 
-export const getOpenAIUrls = async (token: string = '') => {
-	let error = null;
-
-	const res = await fetch(`${OPENAI_API_BASE_URL}/urls`, {
-		method: 'GET',
-		headers: {
-			Accept: 'application/json',
-			'Content-Type': 'application/json',
-			...(token && { authorization: `Bearer ${token}` })
-		}
-	})
-		.then(async (res) => {
-			if (!res.ok) throw await res.json();
-			return res.json();
-		})
-		.catch((err) => {
-			console.error(err);
-			if ('detail' in err) {
-				error = err.detail;
-			} else {
-				error = 'Server connection failed';
-			}
-			return null;
-		});
-
-	if (error) {
-		throw error;
-	}
-
-	return res?.OPENAI_API_BASE_URLS ?? [];
-};
-
-export const updateOpenAIUrls = async (token: string = '', urls: string[]) => {
-	let error = null;
-
-	const res = await fetch(`${OPENAI_API_BASE_URL}/urls/update`, {
-		method: 'POST',
-		headers: {
-			Accept: 'application/json',
-			'Content-Type': 'application/json',
-			...(token && { authorization: `Bearer ${token}` })
-		},
-		body: JSON.stringify({
-			urls: urls
-		})
-	})
-		.then(async (res) => {
-			if (!res.ok) throw await res.json();
-			return res.json();
-		})
-		.catch((err) => {
-			console.error(err);
-			if ('detail' in err) {
-				error = err.detail;
-			} else {
-				error = 'Server connection failed';
-			}
-			return null;
-		});
-
-	if (error) {
-		throw error;
-	}
-
-	return res.OPENAI_API_BASE_URLS;
-};
-
-export const getOpenAIKeys = async (token: string = '') => {
-	let error = null;
-
-	const res = await fetch(`${OPENAI_API_BASE_URL}/keys`, {
-		method: 'GET',
-		headers: {
-			Accept: 'application/json',
-			'Content-Type': 'application/json',
-			...(token && { authorization: `Bearer ${token}` })
-		}
-	})
-		.then(async (res) => {
-			if (!res.ok) throw await res.json();
-			return res.json();
-		})
-		.catch((err) => {
-			console.error(err);
-			if ('detail' in err) {
-				error = err.detail;
-			} else {
-				error = 'Server connection failed';
-			}
-			return null;
-		});
-
-	if (error) {
-		throw error;
-	}
-
-	return res?.OPENAI_API_KEYS ?? [];
-};
-
-export const updateOpenAIKeys = async (token: string = '', keys: string[]) => {
-	let error = null;
-
-	const res = await fetch(`${OPENAI_API_BASE_URL}/keys/update`, {
-		method: 'POST',
-		headers: {
-			Accept: 'application/json',
-			'Content-Type': 'application/json',
-			...(token && { authorization: `Bearer ${token}` })
-		},
-		body: JSON.stringify({
-			keys: keys
-		})
-	})
-		.then(async (res) => {
-			if (!res.ok) throw await res.json();
-			return res.json();
-		})
-		.catch((err) => {
-			console.error(err);
-			if ('detail' in err) {
-				error = err.detail;
-			} else {
-				error = 'Server connection failed';
-			}
-			return null;
-		});
-
-	if (error) {
-		throw error;
-	}
-
-	return res.OPENAI_API_KEYS;
-};
-
+// fork:openrouter-zdr — OpenRouter ZDR helpers
 const isOpenRouterUrl = (url: string) => {
 	try {
 		return new URL(url).hostname.endsWith('openrouter.ai');
@@ -217,16 +84,16 @@ const isOpenRouterUrl = (url: string) => {
 };
 
 const isOpenRouterZdrEnabled = (url: string, config: object = {}) => {
-	return isOpenRouterUrl(url) && !!config?.openrouter_zdr_only;
+	return isOpenRouterUrl(url) && !!(config as any)?.openrouter_zdr_only;
 };
 
 const getOpenAIModelsListUrl = (url: string, config: object = {}) => {
 	return isOpenRouterZdrEnabled(url, config) ? `${url}/endpoints/zdr` : `${url}/models`;
 };
 
-const normalizeOpenRouterZdrModelsResponse = (response) => {
+const normalizeOpenRouterZdrModelsResponse = (response: any) => {
 	const endpointData = Array.isArray(response?.data) ? response.data : [];
-	const modelsById = {};
+	const modelsById: Record<string, any> = {};
 
 	for (const endpoint of endpointData) {
 		if (!endpoint || typeof endpoint !== 'object') {
@@ -245,8 +112,8 @@ const normalizeOpenRouterZdrModelsResponse = (response) => {
 				name: endpoint.model_name ?? endpoint.name ?? modelId,
 				owned_by: 'openai',
 				openai: { id: modelId },
-				providers: [],
-				provider_tags: [],
+				providers: [] as string[],
+				provider_tags: [] as string[],
 				zdr_only: true
 			});
 
@@ -269,7 +136,7 @@ const normalizeOpenRouterZdrModelsResponse = (response) => {
 	};
 };
 
-const normalizeOpenAIModelsResponse = (url: string, config: object = {}, response) => {
+const normalizeOpenAIModelsResponse = (url: string, config: object = {}, response: any) => {
 	if (!response) {
 		return response;
 	}
@@ -284,7 +151,7 @@ const applyOpenRouterZdrPreferences = (url: string, config: object = {}, body: o
 		return body;
 	}
 
-	const provider = body?.provider;
+	const provider = (body as any)?.provider;
 
 	return {
 		...body,
@@ -295,10 +162,10 @@ const applyOpenRouterZdrPreferences = (url: string, config: object = {}, body: o
 	};
 };
 
-export const getOpenAIModelsDirect = async (url: string, key: string, config: object = {}) => {
+export const getOpenAIModelsDirect = async (url: string, key: string, config: object = {}) => {  // fork:openrouter-zdr
 	let error = null;
 
-	const res = await fetch(getOpenAIModelsListUrl(url, config), {
+	const res = await fetch(getOpenAIModelsListUrl(url, config), {  // fork:openrouter-zdr
 		method: 'GET',
 		headers: {
 			Accept: 'application/json',
@@ -319,7 +186,7 @@ export const getOpenAIModelsDirect = async (url: string, key: string, config: ob
 		throw error;
 	}
 
-	return normalizeOpenAIModelsResponse(url, config, res);
+	return normalizeOpenAIModelsResponse(url, config, res);  // fork:openrouter-zdr
 };
 
 export const getOpenAIModels = async (token: string, urlIdx?: number) => {
@@ -366,6 +233,7 @@ export const verifyOpenAIConnection = async (
 	let res = null;
 
 	if (direct) {
+		// fork:openrouter-zdr — use getOpenAIModelsDirect which handles ZDR model list URL
 		res = await getOpenAIModelsDirect(url, key, config).catch((err) => {
 			error = err;
 			return [];
@@ -409,11 +277,11 @@ export const chatCompletion = async (
 	token: string = '',
 	body: object,
 	url: string = `${WEBUI_BASE_URL}/api`,
-	config: object = {}
+	config: object = {}  // fork:openrouter-zdr
 ): Promise<[Response | null, AbortController]> => {
 	const controller = new AbortController();
 	let error = null;
-	const payload = applyOpenRouterZdrPreferences(url, config, body);
+	const payload = applyOpenRouterZdrPreferences(url, config, body);  // fork:openrouter-zdr
 
 	const res = await fetch(`${url}/chat/completions`, {
 		signal: controller.signal,
@@ -422,7 +290,7 @@ export const chatCompletion = async (
 			...(token && { Authorization: `Bearer ${token}` }),
 			'Content-Type': 'application/json'
 		},
-		body: JSON.stringify(payload)
+		body: JSON.stringify(payload)  // fork:openrouter-zdr
 	}).catch((err) => {
 		console.error(err);
 		error = err;

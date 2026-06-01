@@ -1,49 +1,43 @@
-from fastapi import APIRouter, Depends, HTTPException, Response, status, Request
-from fastapi.responses import JSONResponse, RedirectResponse
-
-from pydantic import BaseModel
-from typing import Optional
 import logging
 import re
+from typing import Optional
 
+from fastapi import APIRouter, Depends, HTTPException, Request, Response, status
+from fastapi.responses import JSONResponse, RedirectResponse
+from open_webui.config import (
+    DEFAULT_AUTOCOMPLETE_GENERATION_PROMPT_TEMPLATE,
+    DEFAULT_EMOJI_GENERATION_PROMPT_TEMPLATE,
+    DEFAULT_FOLLOW_UP_GENERATION_PROMPT_TEMPLATE,
+    DEFAULT_IMAGE_PROMPT_GENERATION_PROMPT_TEMPLATE,
+    DEFAULT_MOA_GENERATION_PROMPT_TEMPLATE,
+    DEFAULT_QUERY_GENERATION_PROMPT_TEMPLATE,
+    DEFAULT_TAGS_GENERATION_PROMPT_TEMPLATE,
+    DEFAULT_TITLE_GENERATION_PROMPT_TEMPLATE,
+    DEFAULT_VOICE_MODE_PROMPT_TEMPLATE,
+)
+from open_webui.constants import ERROR_MESSAGES, TASKS
+from open_webui.routers.pipelines import process_pipeline_inlet_filter
+from open_webui.utils.auth import get_admin_user, get_verified_user
 from open_webui.utils.chat import generate_chat_completion as _generate_chat_completion
-
 # fork:responses-api-compat
 from open_webui.utils.misc import normalize_task_response
 from open_webui.utils.task import (
-    title_generation_template,
-    follow_up_generation_template,
-    query_generation_template,
-    image_prompt_generation_template,
     autocomplete_generation_template,
-    tags_generation_template,
     emoji_generation_template,
+    follow_up_generation_template,
+    get_task_model_id,
+    image_prompt_generation_template,
     moa_response_generation_template,
+    query_generation_template,
+    tags_generation_template,
+    title_generation_template,
 )
-from open_webui.utils.auth import get_admin_user, get_verified_user
-from open_webui.constants import ERROR_MESSAGES, TASKS
-
-from open_webui.routers.pipelines import process_pipeline_inlet_filter
-
-from open_webui.utils.task import get_task_model_id
-
 # fork:task-metadata-sanitize
 from open_webui.utils.task_metadata import (
     build_task_metadata,
     request_metadata_override,
 )
-
-from open_webui.config import (
-    DEFAULT_TITLE_GENERATION_PROMPT_TEMPLATE,
-    DEFAULT_FOLLOW_UP_GENERATION_PROMPT_TEMPLATE,
-    DEFAULT_TAGS_GENERATION_PROMPT_TEMPLATE,
-    DEFAULT_IMAGE_PROMPT_GENERATION_PROMPT_TEMPLATE,
-    DEFAULT_QUERY_GENERATION_PROMPT_TEMPLATE,
-    DEFAULT_AUTOCOMPLETE_GENERATION_PROMPT_TEMPLATE,
-    DEFAULT_EMOJI_GENERATION_PROMPT_TEMPLATE,
-    DEFAULT_MOA_GENERATION_PROMPT_TEMPLATE,
-    DEFAULT_VOICE_MODE_PROMPT_TEMPLATE,
-)
+from pydantic import BaseModel
 
 log = logging.getLogger(__name__)
 
@@ -59,16 +53,7 @@ async def generate_chat_completion(
     metadata_override: Optional[dict] = None,
     **kwargs,
 ):
-    """Local task wrapper that sanitizes metadata and normalizes Responses API output.
-
-    Fork-only:
-    - fork:task-metadata-sanitize ensures task LLM calls don't inherit builtin
-      tool exposure or non-default function_calling mode from the original chat
-      metadata.
-    - fork:responses-api-compat converts Responses-API output (used by some
-      upstream providers like OpenRouter) to chat-completion shape so task
-      callers see a uniform response format.
-    """
+    """Local task wrapper that sanitizes metadata and normalizes Responses API output."""
     if metadata_override is not None:
         form_data = {
             **form_data,
@@ -86,6 +71,10 @@ async def generate_chat_completion(
 
     # fork:responses-api-compat
     return normalize_task_response(response)
+
+log = logging.getLogger(__name__)
+
+router = APIRouter()
 
 
 ##################################
@@ -217,6 +206,11 @@ async def generate_title(request: Request, form_data: dict, user=Depends(get_ver
         models = request.app.state.MODELS
 
     model_id = form_data['model']
+    if not model_id:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail='No model specified for title generation. Please ensure a model is selected for this chat.',
+        )
     if model_id not in models:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
@@ -256,7 +250,7 @@ async def generate_title(request: Request, form_data: dict, user=Depends(get_ver
                 'max_completion_tokens': max_tokens,
             }
         ),
-        'metadata': task_metadata,
+        'metadata': task_metadata,  # fork:task-metadata-sanitize
     }
 
     # Process the payload through the pipeline
@@ -327,7 +321,7 @@ async def generate_follow_ups(request: Request, form_data: dict, user=Depends(ge
         'model': task_model_id,
         'messages': [{'role': 'user', 'content': content}],
         'stream': False,
-        'metadata': task_metadata,
+        'metadata': task_metadata,  # fork:task-metadata-sanitize
     }
 
     # Process the payload through the pipeline
@@ -398,7 +392,7 @@ async def generate_chat_tags(request: Request, form_data: dict, user=Depends(get
         'model': task_model_id,
         'messages': [{'role': 'user', 'content': content}],
         'stream': False,
-        'metadata': task_metadata,
+        'metadata': task_metadata,  # fork:task-metadata-sanitize
     }
 
     # Process the payload through the pipeline
@@ -463,7 +457,7 @@ async def generate_image_prompt(request: Request, form_data: dict, user=Depends(
         'model': task_model_id,
         'messages': [{'role': 'user', 'content': content}],
         'stream': False,
-        'metadata': task_metadata,
+        'metadata': task_metadata,  # fork:task-metadata-sanitize
     }
 
     # Process the payload through the pipeline
@@ -546,7 +540,7 @@ async def generate_queries(request: Request, form_data: dict, user=Depends(get_v
         'model': task_model_id,
         'messages': [{'role': 'user', 'content': content}],
         'stream': False,
-        'metadata': task_metadata,
+        'metadata': task_metadata,  # fork:task-metadata-sanitize
     }
 
     # Process the payload through the pipeline
@@ -627,7 +621,7 @@ async def generate_autocompletion(request: Request, form_data: dict, user=Depend
         'model': task_model_id,
         'messages': [{'role': 'user', 'content': content}],
         'stream': False,
-        'metadata': task_metadata,
+        'metadata': task_metadata,  # fork:task-metadata-sanitize
     }
 
     # Process the payload through the pipeline
@@ -696,7 +690,7 @@ async def generate_emoji(request: Request, form_data: dict, user=Depends(get_ver
                 'max_completion_tokens': 4,
             }
         ),
-        'metadata': task_metadata,
+        'metadata': task_metadata,  # fork:task-metadata-sanitize
     }
 
     # Process the payload through the pipeline
@@ -744,6 +738,7 @@ async def generate_moa_response(request: Request, form_data: dict, user=Depends(
         form_data['prompt'],
         form_data['responses'],
     )
+
     # fork:task-metadata-sanitize
     task_metadata = build_task_metadata(request, TASKS.MOA_RESPONSE_GENERATION, form_data)
 
@@ -751,7 +746,7 @@ async def generate_moa_response(request: Request, form_data: dict, user=Depends(
         'model': model_id,
         'messages': [{'role': 'user', 'content': content}],
         'stream': form_data.get('stream', False),
-        'metadata': task_metadata,
+        'metadata': task_metadata,  # fork:task-metadata-sanitize
     }
 
     # Process the payload through the pipeline

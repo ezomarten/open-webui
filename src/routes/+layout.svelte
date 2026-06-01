@@ -117,8 +117,11 @@
 	let syncStatsEventData = null;
 
 	let heartbeatInterval = null;
+	let disconnectToastTimer = null;
+	let disconnectWarningShown = false;
 
 	const BREAKPOINT = 768;
+	const DISCONNECT_TOAST_DELAY_MS = 2000;
 
 	const setupSocket = async (enableWebsocket) => {
 		const { io } = await import('socket.io-client');
@@ -143,9 +146,19 @@
 		_socket.on('connect', async () => {
 			console.log('connected', _socket.id);
 
+			// Cancel any pending disconnect toast if we reconnected quickly
+			if (disconnectToastTimer) {
+				clearTimeout(disconnectToastTimer);
+				disconnectToastTimer = null;
+			}
+
 			if (hasConnectedOnce) {
 				socketConnected.set(true);
-				toast.success($i18n.t('Reconnected'));
+				// Only show "Reconnected" if the user actually saw the disconnect warning
+				if (disconnectWarningShown) {
+					toast.success($i18n.t('Reconnected'));
+					disconnectWarningShown = false;
+				}
 			}
 			hasConnectedOnce = true;
 
@@ -203,7 +216,18 @@
 		_socket.on('disconnect', (reason, details) => {
 			console.log(`Socket ${_socket.id} disconnected due to ${reason}`);
 			socketConnected.set(false);
-			toast.warning($i18n.t('Connection lost. Reconnecting...'));
+
+			// Delay showing the disconnect toast so brief interruptions
+			// (e.g. mobile tab backgrounding) don't flash a nuisance warning
+			if (disconnectToastTimer) {
+				clearTimeout(disconnectToastTimer);
+			}
+			disconnectWarningShown = false;
+			disconnectToastTimer = setTimeout(() => {
+				disconnectToastTimer = null;
+				disconnectWarningShown = true;
+				toast.warning($i18n.t('Connection lost. Reconnecting...'));
+			}, DISCONNECT_TOAST_DELAY_MS);
 
 			if (heartbeatInterval) {
 				clearInterval(heartbeatInterval);
@@ -1000,7 +1024,11 @@
 				if (userSettings) {
 					settings.set(userSettings.ui);
 				} else {
-					settings.set(JSON.parse(localStorage.getItem('settings') ?? '{}'));
+					try {
+						settings.set(JSON.parse(localStorage.getItem('settings') ?? '{}'));
+					} catch {
+						settings.set({});
+					}
 				}
 				setTextScale($settings?.textScale ?? 1);
 
