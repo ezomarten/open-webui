@@ -77,11 +77,7 @@ def _accepted_kwargs(fn: ast.AST):
 
 
 def _scan():
-    files = [
-        p
-        for p in BACKEND.rglob('*.py')
-        if not (set(p.relative_to(PKG_ROOT).parts) & SKIP_PARTS)
-    ]
+    files = [p for p in BACKEND.rglob('*.py') if not (set(p.relative_to(PKG_ROOT).parts) & SKIP_PARTS)]
 
     # Index every module-level function: (module_dotted, name) -> (path, node)
     defs_by_modname: dict[tuple[str, str], tuple[Path, ast.AST]] = {}
@@ -146,13 +142,10 @@ def _scan():
 
 def test_no_new_kwarg_signature_drift():
     findings = _scan()
-    unexpected = [
-        f for f in findings if (f[0], f[2], f[3]) not in ALLOWED_MISMATCHES
-    ]
+    unexpected = [f for f in findings if (f[0], f[2], f[3]) not in ALLOWED_MISMATCHES]
     if unexpected:
         lines = [
-            f'  {caller}:{lineno}: {callee}(... {kw}=) '
-            f'is not accepted by {cpath}:{cline}'
+            f'  {caller}:{lineno}: {callee}(... {kw}=) ' f'is not accepted by {cpath}:{cline}'
             for caller, lineno, callee, kw, cpath, cline in sorted(unexpected)
         ]
         raise AssertionError(
@@ -162,8 +155,7 @@ def test_no_new_kwarg_signature_drift():
             'broke get_web_loader(timeout=...) during the v0.9.5 upstream '
             'sync. Restore the dropped parameter, or — if the mismatch exists '
             'identically in upstream and is intentionally left unpatched — add '
-            'it to ALLOWED_MISMATCHES with a justification.\n'
-            + '\n'.join(lines)
+            'it to ALLOWED_MISMATCHES with a justification.\n' + '\n'.join(lines)
         )
 
 

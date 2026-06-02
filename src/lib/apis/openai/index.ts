@@ -162,10 +162,12 @@ const applyOpenRouterZdrPreferences = (url: string, config: object = {}, body: o
 	};
 };
 
-export const getOpenAIModelsDirect = async (url: string, key: string, config: object = {}) => {  // fork:openrouter-zdr
+export const getOpenAIModelsDirect = async (url: string, key: string, config: object = {}) => {
+	// fork:openrouter-zdr
 	let error = null;
 
-	const res = await fetch(getOpenAIModelsListUrl(url, config), {  // fork:openrouter-zdr
+	const res = await fetch(getOpenAIModelsListUrl(url, config), {
+		// fork:openrouter-zdr
 		method: 'GET',
 		headers: {
 			Accept: 'application/json',
@@ -186,7 +188,7 @@ export const getOpenAIModelsDirect = async (url: string, key: string, config: ob
 		throw error;
 	}
 
-	return normalizeOpenAIModelsResponse(url, config, res);  // fork:openrouter-zdr
+	return normalizeOpenAIModelsResponse(url, config, res); // fork:openrouter-zdr
 };
 
 export const getOpenAIModels = async (token: string, urlIdx?: number) => {
@@ -277,11 +279,11 @@ export const chatCompletion = async (
 	token: string = '',
 	body: object,
 	url: string = `${WEBUI_BASE_URL}/api`,
-	config: object = {}  // fork:openrouter-zdr
+	config: object = {} // fork:openrouter-zdr
 ): Promise<[Response | null, AbortController]> => {
 	const controller = new AbortController();
 	let error = null;
-	const payload = applyOpenRouterZdrPreferences(url, config, body);  // fork:openrouter-zdr
+	const payload = applyOpenRouterZdrPreferences(url, config, body); // fork:openrouter-zdr
 
 	const res = await fetch(`${url}/chat/completions`, {
 		signal: controller.signal,
@@ -290,7 +292,7 @@ export const chatCompletion = async (
 			...(token && { Authorization: `Bearer ${token}` }),
 			'Content-Type': 'application/json'
 		},
-		body: JSON.stringify(payload)  // fork:openrouter-zdr
+		body: JSON.stringify(payload) // fork:openrouter-zdr
 	}).catch((err) => {
 		console.error(err);
 		error = err;

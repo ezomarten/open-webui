@@ -41,6 +41,7 @@ from open_webui.utils.access_control import check_model_access, has_connection_a
 from open_webui.utils.anthropic import get_anthropic_models, is_anthropic_url
 from open_webui.utils.auth import get_admin_user, get_verified_user
 from open_webui.utils.headers import get_custom_headers, include_user_info_headers
+
 # fork:chat-timeout-msg
 from open_webui.utils.http_timeouts import (
     build_upstream_request_timeout_for_payload,
@@ -49,6 +50,7 @@ from open_webui.utils.misc import (
     convert_logit_bias_input_to_json,
     stream_chunks_handler,
 )
+
 # fork:openrouter-zdr
 from open_webui.utils.openrouter import (
     apply_openrouter_zdr_preferences,
@@ -1229,13 +1231,6 @@ async def generate_chat_completion(
     request_timeout = build_upstream_request_timeout_for_payload(AIOHTTP_CLIENT_TIMEOUT, payload)
 
     payload = json.dumps(payload)
-
-    r = None
-    streaming = False
-    response = None
-
-    try:
-        session = await get_session()
 
     r = None
     streaming = False

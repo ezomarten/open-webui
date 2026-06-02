@@ -1077,7 +1077,9 @@ async def update_admin_config(request: Request, form_data: AdminConfig, user=Dep
     request.app.state.config.SHOW_ADMIN_DETAILS = form_data.SHOW_ADMIN_DETAILS
     request.app.state.config.ADMIN_EMAIL = form_data.ADMIN_EMAIL
     request.app.state.config.WEBUI_URL = form_data.WEBUI_URL
-    request.app.state.config.ENABLE_PUBLIC_CHAT_SHARING = form_data.ENABLE_PUBLIC_CHAT_SHARING  # fork:public-link-settings
+    request.app.state.config.ENABLE_PUBLIC_CHAT_SHARING = (
+        form_data.ENABLE_PUBLIC_CHAT_SHARING
+    )  # fork:public-link-settings
     request.app.state.config.PUBLIC_SHARE_BASE_URL = public_share_base_url  # fork:public-link-settings
     request.app.state.config.ENABLE_SIGNUP = form_data.ENABLE_SIGNUP
 

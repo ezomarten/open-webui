@@ -39,7 +39,7 @@ All feature slugs now have `wiring_test` set in [`fork-features.json`](fork-feat
 ### Pending workflow improvements
 
 - `git-merge-based-upstream-sync`: Replace the manual replay-onto-temporary-worktree upstream sync with a git merge or rebase workflow so dropped patches surface as conflicts instead of silent omissions. Tracked since 2026-05-26.
-- `notable-files-as-enforced-patch-sites`: Tighten each feature's `notable_files` into the exact set of files that carry its `# fork:<slug>` sentinel, and require a sentinel at every listed patch site (today the meta-test only requires the sentinel to appear in *some* non-test source file, and `notable_files` is allowed to be a curated superset). This would turn `notable_files` into a per-site drop detector rather than a presence-anywhere check. Deferred to avoid a risky broad sweep adding sentinels to every currently-listed file. Tracked since 2026-05-30.
+- `notable-files-as-enforced-patch-sites`: Tighten each feature's `notable_files` into the exact set of files that carry its `# fork:<slug>` sentinel, and require a sentinel at every listed patch site (today the meta-test only requires the sentinel to appear in _some_ non-test source file, and `notable_files` is allowed to be a curated superset). This would turn `notable_files` into a per-site drop detector rather than a presence-anywhere check. Deferred to avoid a risky broad sweep adding sentinels to every currently-listed file. Tracked since 2026-05-30.
 
 ## Maintenance Record Rules
 

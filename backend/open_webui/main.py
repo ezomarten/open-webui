@@ -1990,11 +1990,13 @@ async def chat_completion(
                                     'currentId': all_assistant_ids[0] if all_assistant_ids else user_message_id,
                                     'messages': history_messages,
                                 },
-                                'messages': [
-                                    {'role': 'user', 'content': user_message.get('content', '')},
-                                ]
-                                if user_message_id
-                                else [],
+                                'messages': (
+                                    [
+                                        {'role': 'user', 'content': user_message.get('content', '')},
+                                    ]
+                                    if user_message_id
+                                    else []
+                                ),
                                 'files': metadata.get('files') or [],
                                 'tags': [],
                                 'timestamp': int(time.time() * 1000),
@@ -2278,14 +2280,16 @@ async def chat_completion(
                     user,
                     per_model_metadata,
                     resolved_model,
-                    tasks
-                    if idx == 0
-                    else {
-                        k: v
-                        for k, v in (tasks or {}).items()
-                        if k not in (TASKS.TITLE_GENERATION, TASKS.TAGS_GENERATION)
-                    }
-                    or None,
+                    (
+                        tasks
+                        if idx == 0
+                        else {
+                            k: v
+                            for k, v in (tasks or {}).items()
+                            if k not in (TASKS.TITLE_GENERATION, TASKS.TAGS_GENERATION)
+                        }
+                        or None
+                    ),
                 ),
                 id=chat_id,
             )

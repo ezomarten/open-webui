@@ -21,10 +21,11 @@ def test_config_source_keeps_public_share_persistent_settings():
     source = _read_repo_file('backend', 'open_webui', 'config.py')
 
     # v0.9.6 renamed PersistentConfig → ConfigVar; match either form
-    assert ('PUBLIC_SHARE_BASE_URL = PersistentConfig(' in source
-            or 'PUBLIC_SHARE_BASE_URL = ConfigVar(' in source)
-    assert ('ENABLE_PUBLIC_CHAT_SHARING = PersistentConfig(' in source
-            or 'ENABLE_PUBLIC_CHAT_SHARING = ConfigVar(' in source)
+    assert 'PUBLIC_SHARE_BASE_URL = PersistentConfig(' in source or 'PUBLIC_SHARE_BASE_URL = ConfigVar(' in source
+    assert (
+        'ENABLE_PUBLIC_CHAT_SHARING = PersistentConfig(' in source
+        or 'ENABLE_PUBLIC_CHAT_SHARING = ConfigVar(' in source
+    )
     assert "'ui.public_share_base_url'" in source
     assert "'ui.enable_public_chat_sharing'" in source
 

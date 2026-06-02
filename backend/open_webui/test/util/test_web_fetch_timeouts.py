@@ -86,4 +86,3 @@ def test_get_loader_forwards_timeout_to_get_web_loader():
         retrieval_utils.get_loader(request, "https://example.com", timeout=15.0)
 
     assert captured.get("timeout") == 15.0
-
