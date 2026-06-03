@@ -5,6 +5,12 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.9.6-publicshare.2] - 2026-06-03
+
+### Fixed
+
+- Restored the OpenAI-compatible upstream request timeout wiring so `session.request(..., timeout=...)` receives the already-built `aiohttp.ClientTimeout` object directly instead of wrapping it again. The prior double-wrapping made aiohttp compare a `ClientTimeout` object against an integer and raised `TypeError: '>' not supported between instances of 'ClientTimeout' and 'int'` during chat processing.
+
 ## [0.9.6-publicshare.1] - 2026-06-02
 
 ### Added

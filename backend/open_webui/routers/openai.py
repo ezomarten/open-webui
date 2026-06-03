@@ -1246,7 +1246,7 @@ async def generate_chat_completion(
             headers=headers,
             cookies=cookies,
             ssl=AIOHTTP_CLIENT_SESSION_SSL,
-            timeout=aiohttp.ClientTimeout(total=request_timeout),  # fork:chat-timeout-msg
+            timeout=request_timeout,  # fork:chat-timeout-msg
         )
 
         # Check if response is SSE
@@ -1497,7 +1497,7 @@ async def responses(
             headers=headers,
             cookies=cookies,
             ssl=AIOHTTP_CLIENT_SESSION_SSL,
-            timeout=aiohttp.ClientTimeout(total=request_timeout),  # fork:chat-timeout-msg
+            timeout=request_timeout,  # fork:chat-timeout-msg
         )
 
         # Check if response is SSE
@@ -1620,7 +1620,7 @@ async def proxy(path: str, request: Request, user=Depends(get_verified_user)):
             headers=headers,
             cookies=cookies,
             ssl=AIOHTTP_CLIENT_SESSION_SSL,
-            timeout=aiohttp.ClientTimeout(total=request_timeout),  # fork:chat-timeout-msg
+            timeout=request_timeout,  # fork:chat-timeout-msg
         )
 
         # Check if response is SSE

@@ -139,7 +139,7 @@
 		},
 		{
 			"slug": "chat-timeout-msg",
-			"summary": "Blank-exception-to-human-readable conversion, streamed timeout/stream-stall messaging, _clean_proxy_headers stripping stale encoding headers, first-meaningful-chunk idle-timeout skip (including Responses preludes), and fetch_url Web Loader timeout fallback.",
+			"summary": "Blank-exception-to-human-readable conversion, streamed timeout/stream-stall messaging, _clean_proxy_headers stripping stale encoding headers, first-meaningful-chunk idle-timeout skip (including Responses preludes), direct ClientTimeout handoff to upstream requests, and fetch_url Web Loader timeout fallback.",
 			"sentinel_tag": "fork:chat-timeout-msg",
 			"wiring_test": "backend/open_webui/test/util/test_chat_timeout_msg_wiring.py",
 			"supporting_unit_tests": [
