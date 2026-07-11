@@ -5,11 +5,11 @@ from urllib.parse import urlparse
 
 from starlette.responses import Response
 
-ATTACHMENT_OMITTED_TEXT = "[Attachment omitted]"
-PUBLIC_SHARE_ID_PREFIX = "ps_"
+ATTACHMENT_OMITTED_TEXT = '[Attachment omitted]'
+PUBLIC_SHARE_ID_PREFIX = 'ps_'
 PUBLIC_SHARE_SCHEMA_VERSION = 4
-PUBLIC_SHARE_PERMISSIONS_POLICY = "camera=(), geolocation=(), microphone=(), payment=(), usb=(), xr-spatial-tracking=()"
-PUBLIC_SHARE_PAGE_CONTENT_SECURITY_POLICY = "; ".join(
+PUBLIC_SHARE_PERMISSIONS_POLICY = 'camera=(), geolocation=(), microphone=(), payment=(), usb=(), xr-spatial-tracking=()'
+PUBLIC_SHARE_PAGE_CONTENT_SECURITY_POLICY = '; '.join(
     [
         "default-src 'self'",
         "base-uri 'self'",
@@ -29,18 +29,18 @@ PUBLIC_SHARE_PAGE_CONTENT_SECURITY_POLICY = "; ".join(
 )
 
 PUBLIC_SHARE_NO_STORE_PATHS = {
-    "/api/config",
-    "/manifest.json",
-    "/opensearch.xml",
+    '/api/config',
+    '/manifest.json',
+    '/opensearch.xml',
 }
 PUBLIC_SHARE_NO_STORE_PREFIXES = (
-    "/api/v1/public-shares/",
-    "/p/",
+    '/api/v1/public-shares/',
+    '/p/',
 )
 
 _INTERNAL_FILE_URL_PATTERNS = (
-    re.compile(r"^/api/v1/files/(?P<file_id>[^/]+)/content(?:/[^/]+)?/?$"),
-    re.compile(r"^/api/v1/files/(?P<file_id>[^/]+)/?$"),
+    re.compile(r'^/api/v1/files/(?P<file_id>[^/]+)/content(?:/[^/]+)?/?$'),
+    re.compile(r'^/api/v1/files/(?P<file_id>[^/]+)/?$'),
 )
 
 
@@ -52,18 +52,18 @@ def _is_public_share_no_store_path(path: str) -> bool:
 
 def get_public_share_response_headers(path: str | None = None) -> dict[str, str]:
     headers = {
-        "Permissions-Policy": PUBLIC_SHARE_PERMISSIONS_POLICY,
-        "Referrer-Policy": "no-referrer",
-        "X-Content-Type-Options": "nosniff",
-        "X-Frame-Options": "DENY",
-        "X-Robots-Tag": "noindex, nofollow, noarchive",
+        'Permissions-Policy': PUBLIC_SHARE_PERMISSIONS_POLICY,
+        'Referrer-Policy': 'no-referrer',
+        'X-Content-Type-Options': 'nosniff',
+        'X-Frame-Options': 'DENY',
+        'X-Robots-Tag': 'noindex, nofollow, noarchive',
     }
 
     if path is None or _is_public_share_no_store_path(path):
-        headers["Cache-Control"] = "no-store"
+        headers['Cache-Control'] = 'no-store'
 
-    if path and path.startswith("/p/"):
-        headers["Content-Security-Policy"] = PUBLIC_SHARE_PAGE_CONTENT_SECURITY_POLICY
+    if path and path.startswith('/p/'):
+        headers['Content-Security-Policy'] = PUBLIC_SHARE_PAGE_CONTENT_SECURITY_POLICY
 
     return headers
 
@@ -74,21 +74,21 @@ def apply_public_share_response_headers(response: Response, path: str | None = N
 
 
 def new_public_share_id() -> str:
-    return f"{PUBLIC_SHARE_ID_PREFIX}{secrets.token_urlsafe(18)}"
+    return f'{PUBLIC_SHARE_ID_PREFIX}{secrets.token_urlsafe(18)}'
 
 
 def normalize_public_share_base_url(base_url: Any) -> str:
-    return str(base_url or "").strip().rstrip("/")
+    return str(base_url or '').strip().rstrip('/')
 
 
 def validate_public_share_base_url(base_url: Any) -> str:
     normalized = normalize_public_share_base_url(base_url)
     if not normalized:
-        return ""
+        return ''
 
     parsed = urlparse(normalized)
-    if parsed.scheme not in {"http", "https"} or not parsed.hostname:
-        raise ValueError("PUBLIC_SHARE_BASE_URL must be an absolute HTTP(S) URL")
+    if parsed.scheme not in {'http', 'https'} or not parsed.hostname:
+        raise ValueError('PUBLIC_SHARE_BASE_URL must be an absolute HTTP(S) URL')
 
     return normalized
 
@@ -96,13 +96,13 @@ def validate_public_share_base_url(base_url: Any) -> str:
 def get_public_share_host(base_url: Any) -> str:
     normalized = normalize_public_share_base_url(base_url)
     if not normalized:
-        return ""
+        return ''
 
     parsed = urlparse(normalized)
-    if parsed.scheme not in {"http", "https"}:
-        return ""
+    if parsed.scheme not in {'http', 'https'}:
+        return ''
 
-    return (parsed.hostname or "").lower()
+    return (parsed.hostname or '').lower()
 
 
 def is_public_share_enabled(enabled: bool, base_url: Any) -> bool:
@@ -110,37 +110,37 @@ def is_public_share_enabled(enabled: bool, base_url: Any) -> bool:
 
 
 def build_public_share_url(base_url: str, public_share_id: str) -> str:
-    return f"{normalize_public_share_base_url(base_url)}/p/{public_share_id}"
+    return f'{normalize_public_share_base_url(base_url)}/p/{public_share_id}'
 
 
 def extract_public_history(chat_body: dict) -> dict:
-    history = chat_body.get("history") or {}
-    history_messages = history.get("messages") or {}
+    history = chat_body.get('history') or {}
+    history_messages = history.get('messages') or {}
 
     if isinstance(history_messages, dict) and history_messages:
         public_history = _build_public_history_from_raw_history(
             history_messages,
-            history.get("currentId"),
-            chat_body.get("models"),
+            history.get('currentId'),
+            chat_body.get('models'),
         )
-        if public_history.get("messages"):
+        if public_history.get('messages'):
             return public_history
 
-    messages = chat_body.get("messages") or []
+    messages = chat_body.get('messages') or []
     if isinstance(messages, list):
-        public_history = _build_public_history_from_message_list(messages, chat_body.get("models"))
-        if public_history.get("messages"):
+        public_history = _build_public_history_from_message_list(messages, chat_body.get('models'))
+        if public_history.get('messages'):
             return public_history
 
     return {
-        "messages": {},
-        "currentId": None,
+        'messages': {},
+        'currentId': None,
     }
 
 
 def sanitize_public_message(message: dict, index: int = 0, default_id: Any = None) -> Optional[dict]:
-    role = str(message.get("role") or "").lower().strip()
-    if role not in {"user", "assistant"}:
+    role = str(message.get('role') or '').lower().strip()
+    if role not in {'user', 'assistant'}:
         return None
 
     public_files = _sanitize_public_files(message)
@@ -150,63 +150,63 @@ def sanitize_public_message(message: dict, index: int = 0, default_id: Any = Non
         return None
 
     message_id = (
-        _normalize_optional_string(message.get("id")) or _normalize_optional_string(default_id) or f"psm_{index}"
+        _normalize_optional_string(message.get('id')) or _normalize_optional_string(default_id) or f'psm_{index}'
     )
-    model = _normalize_model_name(message.get("model") or message.get("modelName"))
+    model = _normalize_model_name(message.get('model') or message.get('modelName'))
     timestamp = _coerce_timestamp(
-        message.get("timestamp") or message.get("created_at") or message.get("updated_at") or message.get("time")
+        message.get('timestamp') or message.get('created_at') or message.get('updated_at') or message.get('time')
     )
 
     public_message = {
-        "id": message_id,
-        "role": role,
-        "content": content if content is not None else "",
-        "model": model,
-        "timestamp": timestamp,
+        'id': message_id,
+        'role': role,
+        'content': content if content is not None else '',
+        'model': model,
+        'timestamp': timestamp,
     }
 
     if public_files:
-        public_message["files"] = public_files
+        public_message['files'] = public_files
 
     if public_sources:
-        public_message["sources"] = public_sources
+        public_message['sources'] = public_sources
 
-    models = _normalize_model_names(message.get("models"))
+    models = _normalize_model_names(message.get('models'))
     if models:
-        public_message["models"] = models
+        public_message['models'] = models
 
-    model_idx = _coerce_int(message.get("modelIdx"))
+    model_idx = _coerce_int(message.get('modelIdx'))
     if model_idx is not None:
-        public_message["modelIdx"] = model_idx
+        public_message['modelIdx'] = model_idx
 
     return public_message
 
 
 def build_public_share_snapshot(chat: Any) -> dict:
-    chat_body = getattr(chat, "chat", None) or {}
-    title = str(getattr(chat, "title", None) or chat_body.get("title") or "Untitled Chat")
+    chat_body = getattr(chat, 'chat', None) or {}
+    title = str(getattr(chat, 'title', None) or chat_body.get('title') or 'Untitled Chat')
 
     public_history = extract_public_history(chat_body)
     public_messages = _flatten_public_history(public_history)
 
     if len(public_messages) == 0:
-        raise ValueError("No public messages found.")
+        raise ValueError('No public messages found.')
 
     models = []
     seen_models = set()
 
     for message in public_messages:
-        for model_name in _normalize_model_names(message.get("models")):
+        for model_name in _normalize_model_names(message.get('models')):
             if model_name and model_name not in seen_models:
                 seen_models.add(model_name)
                 models.append(model_name)
 
-        model_name = _normalize_model_name(message.get("model"))
+        model_name = _normalize_model_name(message.get('model'))
         if model_name and model_name not in seen_models:
             seen_models.add(model_name)
             models.append(model_name)
 
-    fallback_models = chat_body.get("models") or []
+    fallback_models = chat_body.get('models') or []
     if isinstance(fallback_models, str):
         fallback_models = [fallback_models]
 
@@ -217,11 +217,11 @@ def build_public_share_snapshot(chat: Any) -> dict:
             models.append(normalized_name)
 
     return {
-        "schema_version": PUBLIC_SHARE_SCHEMA_VERSION,
-        "title": title,
-        "models": models,
-        "history": public_history,
-        "messages": public_messages,
+        'schema_version': PUBLIC_SHARE_SCHEMA_VERSION,
+        'title': title,
+        'models': models,
+        'history': public_history,
+        'messages': public_messages,
     }
 
 
@@ -231,8 +231,8 @@ def _build_public_history_from_raw_history(
     fallback_models: Any = None,
 ) -> dict:
     public_history = {
-        "messages": {},
-        "currentId": None,
+        'messages': {},
+        'currentId': None,
     }
 
     raw_messages = {
@@ -243,7 +243,7 @@ def _build_public_history_from_raw_history(
 
     messages_by_parent: dict[Optional[str], list[str]] = {}
     for raw_message_id, raw_message in raw_messages.items():
-        parent_id = _normalize_optional_string(raw_message.get("parentId"))
+        parent_id = _normalize_optional_string(raw_message.get('parentId'))
         messages_by_parent.setdefault(parent_id, []).append(raw_message_id)
 
     raw_to_public_id: dict[str, Optional[str]] = {}
@@ -260,22 +260,22 @@ def _build_public_history_from_raw_history(
 
         sanitized_message = sanitize_public_message(
             raw_message,
-            index=len(public_history["messages"]),
+            index=len(public_history['messages']),
             default_id=raw_message_id,
         )
 
         next_public_parent_id = public_parent_id
         if sanitized_message is not None:
-            sanitized_message["parentId"] = public_parent_id
-            sanitized_message["childrenIds"] = []
+            sanitized_message['parentId'] = public_parent_id
+            sanitized_message['childrenIds'] = []
 
-            public_message_id = sanitized_message["id"]
-            public_history["messages"][public_message_id] = sanitized_message
+            public_message_id = sanitized_message['id']
+            public_history['messages'][public_message_id] = sanitized_message
             raw_to_public_id[raw_message_id] = public_message_id
             next_public_parent_id = public_message_id
 
-            if public_parent_id and public_parent_id in public_history["messages"]:
-                public_history["messages"][public_parent_id]["childrenIds"].append(public_message_id)
+            if public_parent_id and public_parent_id in public_history['messages']:
+                public_history['messages'][public_parent_id]['childrenIds'].append(public_message_id)
         else:
             raw_to_public_id[raw_message_id] = public_parent_id
 
@@ -283,7 +283,7 @@ def _build_public_history_from_raw_history(
             visit(child_raw_id, next_public_parent_id)
 
     for raw_message_id, raw_message in raw_messages.items():
-        parent_id = _normalize_optional_string(raw_message.get("parentId"))
+        parent_id = _normalize_optional_string(raw_message.get('parentId'))
         if parent_id is None or parent_id not in raw_messages:
             visit(raw_message_id, None)
 
@@ -291,14 +291,14 @@ def _build_public_history_from_raw_history(
         visit(raw_message_id, None)
 
     _populate_public_history_models(public_history, fallback_models)
-    public_history["currentId"] = _resolve_public_current_id(public_history, raw_messages, raw_to_public_id, current_id)
+    public_history['currentId'] = _resolve_public_current_id(public_history, raw_messages, raw_to_public_id, current_id)
     return public_history
 
 
 def _build_public_history_from_message_list(messages: list[Any], fallback_models: Any = None) -> dict:
     public_history = {
-        "messages": {},
-        "currentId": None,
+        'messages': {},
+        'currentId': None,
     }
 
     previous_public_id = None
@@ -310,19 +310,19 @@ def _build_public_history_from_message_list(messages: list[Any], fallback_models
         if sanitized_message is None:
             continue
 
-        sanitized_message["parentId"] = previous_public_id
-        sanitized_message["childrenIds"] = []
+        sanitized_message['parentId'] = previous_public_id
+        sanitized_message['childrenIds'] = []
 
-        public_message_id = sanitized_message["id"]
-        public_history["messages"][public_message_id] = sanitized_message
+        public_message_id = sanitized_message['id']
+        public_history['messages'][public_message_id] = sanitized_message
 
-        if previous_public_id and previous_public_id in public_history["messages"]:
-            public_history["messages"][previous_public_id]["childrenIds"].append(public_message_id)
+        if previous_public_id and previous_public_id in public_history['messages']:
+            public_history['messages'][previous_public_id]['childrenIds'].append(public_message_id)
 
         previous_public_id = public_message_id
 
     _populate_public_history_models(public_history, fallback_models)
-    public_history["currentId"] = previous_public_id
+    public_history['currentId'] = previous_public_id
     return public_history
 
 
@@ -335,7 +335,7 @@ def _get_ordered_raw_child_ids(
     ordered_child_ids = []
     seen_child_ids = set()
 
-    explicit_child_ids = raw_message.get("childrenIds") or []
+    explicit_child_ids = raw_message.get('childrenIds') or []
     if isinstance(explicit_child_ids, list):
         for child_id in explicit_child_ids:
             normalized_child_id = _normalize_optional_string(child_id)
@@ -358,16 +358,16 @@ def _get_ordered_raw_child_ids(
 def _populate_public_history_models(public_history: dict, fallback_models: Any = None) -> None:
     normalized_fallback_models = _normalize_model_names(fallback_models)
 
-    for message in public_history.get("messages", {}).values():
-        if not isinstance(message, dict) or message.get("role") != "user":
+    for message in public_history.get('messages', {}).values():
+        if not isinstance(message, dict) or message.get('role') != 'user':
             continue
 
-        message_models = _normalize_model_names(message.get("models"))
+        message_models = _normalize_model_names(message.get('models'))
         if message_models:
-            message["models"] = message_models
+            message['models'] = message_models
             continue
 
-        child_ids = message.get("childrenIds") or []
+        child_ids = message.get('childrenIds') or []
         if not isinstance(child_ids, list) or len(child_ids) == 0:
             continue
 
@@ -376,12 +376,12 @@ def _populate_public_history_models(public_history: dict, fallback_models: Any =
         max_model_idx = -1
 
         for child_id in child_ids:
-            child_message = public_history["messages"].get(child_id)
+            child_message = public_history['messages'].get(child_id)
             if not isinstance(child_message, dict):
                 continue
 
-            child_model = _normalize_model_name(child_message.get("model"))
-            child_model_idx = _coerce_int(child_message.get("modelIdx"))
+            child_model = _normalize_model_name(child_message.get('model'))
+            child_model_idx = _coerce_int(child_message.get('modelIdx'))
 
             if child_model_idx is not None and child_model:
                 child_models_by_idx[child_model_idx] = child_model
@@ -406,7 +406,7 @@ def _populate_public_history_models(public_history: dict, fallback_models: Any =
             derived_models = normalized_fallback_models
 
         if derived_models:
-            message["models"] = derived_models
+            message['models'] = derived_models
 
 
 def _resolve_public_current_id(
@@ -422,19 +422,19 @@ def _resolve_public_current_id(
         visited_raw_ids.add(candidate_raw_id)
 
         public_message_id = raw_to_public_id.get(candidate_raw_id)
-        if public_message_id and public_message_id in public_history.get("messages", {}):
+        if public_message_id and public_message_id in public_history.get('messages', {}):
             return _get_deepest_last_public_descendant(public_history, public_message_id)
 
         raw_message = raw_messages.get(candidate_raw_id)
         if not isinstance(raw_message, dict):
             break
 
-        candidate_raw_id = _normalize_optional_string(raw_message.get("parentId"))
+        candidate_raw_id = _normalize_optional_string(raw_message.get('parentId'))
 
     root_ids = [
         message_id
-        for message_id, message in public_history.get("messages", {}).items()
-        if isinstance(message, dict) and message.get("parentId") is None
+        for message_id, message in public_history.get('messages', {}).items()
+        if isinstance(message, dict) and message.get('parentId') is None
     ]
     if not root_ids:
         return None
@@ -446,16 +446,16 @@ def _get_deepest_last_public_descendant(public_history: dict, message_id: Option
     current_message_id = message_id
 
     while current_message_id:
-        message = public_history.get("messages", {}).get(current_message_id)
+        message = public_history.get('messages', {}).get(current_message_id)
         if not isinstance(message, dict):
             break
 
-        child_ids = message.get("childrenIds") or []
+        child_ids = message.get('childrenIds') or []
         if not isinstance(child_ids, list) or len(child_ids) == 0:
             break
 
         next_message_id = child_ids[-1]
-        if next_message_id not in public_history.get("messages", {}):
+        if next_message_id not in public_history.get('messages', {}):
             break
 
         current_message_id = next_message_id
@@ -471,34 +471,34 @@ def _flatten_public_history(public_history: dict) -> list[dict]:
         if message_id in visited_message_ids:
             return
 
-        message = public_history.get("messages", {}).get(message_id)
+        message = public_history.get('messages', {}).get(message_id)
         if not isinstance(message, dict):
             return
 
         visited_message_ids.add(message_id)
         flattened_messages.append(message)
 
-        for child_id in message.get("childrenIds") or []:
+        for child_id in message.get('childrenIds') or []:
             if isinstance(child_id, str):
                 append_branch(child_id)
 
     root_ids = [
         message_id
-        for message_id, message in public_history.get("messages", {}).items()
-        if isinstance(message, dict) and message.get("parentId") is None
+        for message_id, message in public_history.get('messages', {}).items()
+        if isinstance(message, dict) and message.get('parentId') is None
     ]
 
     for root_id in root_ids:
         append_branch(root_id)
 
-    for message_id in public_history.get("messages", {}).keys():
+    for message_id in public_history.get('messages', {}).keys():
         append_branch(message_id)
 
     return flattened_messages
 
 
 def _sanitize_content(message: dict, public_files: list[dict], public_sources: list[dict]) -> Optional[str]:
-    parts, content_has_attachment = _extract_text_parts(message.get("content"))
+    parts, content_has_attachment = _extract_text_parts(message.get('content'))
 
     if _message_has_omitted_attachment_fields(message, public_files, public_sources):
         content_has_attachment = True
@@ -513,13 +513,13 @@ def _sanitize_content(message: dict, public_files: list[dict], public_sources: l
             normalized_parts.append(normalized_part)
 
     if normalized_parts:
-        return "\n\n".join(normalized_parts)
+        return '\n\n'.join(normalized_parts)
 
     if content_has_attachment:
         return ATTACHMENT_OMITTED_TEXT
 
     if public_files or public_sources:
-        return ""
+        return ''
 
     return None
 
@@ -542,10 +542,10 @@ def _extract_text_parts(value: Any) -> tuple[list[str], bool]:
         return parts, has_attachment
 
     if isinstance(value, dict):
-        value_type = str(value.get("type") or "").lower().strip()
-        text_payload_keys = ("text", "content", "value")
+        value_type = str(value.get('type') or '').lower().strip()
+        text_payload_keys = ('text', 'content', 'value')
 
-        if value_type in {"text", "input_text", "output_text"}:
+        if value_type in {'text', 'input_text', 'output_text'}:
             for key in text_payload_keys:
                 if key in value:
                     return _extract_text_parts(value.get(key))
@@ -558,7 +558,7 @@ def _extract_text_parts(value: Any) -> tuple[list[str], bool]:
                 parts.extend(item_parts)
                 has_attachment = has_attachment or item_has_attachment
 
-        if value_type and value_type not in {"text", "input_text", "output_text"}:
+        if value_type and value_type not in {'text', 'input_text', 'output_text'}:
             has_attachment = True
 
         if not extracted_any and value:
@@ -570,7 +570,7 @@ def _extract_text_parts(value: Any) -> tuple[list[str], bool]:
 
 
 def _sanitize_public_files(message: dict) -> list[dict]:
-    files = message.get("files") or []
+    files = message.get('files') or []
     if not isinstance(files, list):
         return []
 
@@ -590,34 +590,34 @@ def _sanitize_public_file(file: Any) -> Optional[dict]:
     if not _is_image_file(file):
         return None
 
-    file_id = _extract_file_id(file.get("url"))
+    file_id = _extract_file_id(file.get('url'))
     if file_id is None:
         return None
 
     public_file = {
-        "type": "image",
-        "file_id": file_id,
+        'type': 'image',
+        'file_id': file_id,
     }
 
-    content_type = _normalize_optional_string(file.get("content_type"))
+    content_type = _normalize_optional_string(file.get('content_type'))
     if content_type:
-        public_file["content_type"] = content_type
+        public_file['content_type'] = content_type
 
-    name = _normalize_optional_string(file.get("name"))
+    name = _normalize_optional_string(file.get('name'))
     if name:
-        public_file["name"] = name
+        public_file['name'] = name
 
-    size = _coerce_int(file.get("size"))
+    size = _coerce_int(file.get('size'))
     if size is not None:
-        public_file["size"] = size
+        public_file['size'] = size
 
     return public_file
 
 
 def _sanitize_public_sources(message: dict) -> list[dict]:
-    sources = message.get("sources")
+    sources = message.get('sources')
     if sources is None:
-        sources = message.get("citations")
+        sources = message.get('citations')
 
     if not isinstance(sources, list):
         return []
@@ -635,11 +635,11 @@ def _sanitize_public_source(source: Any) -> Optional[dict]:
     if not isinstance(source, dict):
         return None
 
-    source_info = _sanitize_public_source_info(source.get("source"))
+    source_info = _sanitize_public_source_info(source.get('source'))
 
-    documents = source.get("document") or []
-    metadata_items = source.get("metadata") or []
-    distances = source.get("distances") or []
+    documents = source.get('document') or []
+    metadata_items = source.get('metadata') or []
+    distances = source.get('distances') or []
 
     if not isinstance(documents, list) or len(documents) == 0:
         return None
@@ -672,13 +672,13 @@ def _sanitize_public_source(source: Any) -> Optional[dict]:
         return None
 
     public_source = {
-        "source": source_info,
-        "document": public_documents,
-        "metadata": public_metadata,
+        'source': source_info,
+        'document': public_documents,
+        'metadata': public_metadata,
     }
 
     if include_distances and len(public_distances) == len(public_documents):
-        public_source["distances"] = public_distances
+        public_source['distances'] = public_distances
 
     return public_source
 
@@ -689,18 +689,18 @@ def _sanitize_public_source_info(source: Any) -> dict:
 
     public_source = {}
 
-    for key in ("id", "name", "type"):
+    for key in ('id', 'name', 'type'):
         value = _normalize_optional_string(source.get(key))
         if value:
             public_source[key] = value
 
-    public_url = _normalize_public_url(source.get("url"))
+    public_url = _normalize_public_url(source.get('url'))
     if public_url:
-        public_source["url"] = public_url
+        public_source['url'] = public_url
 
-    embed_url = _normalize_public_url(source.get("embed_url"))
+    embed_url = _normalize_public_url(source.get('embed_url'))
     if embed_url:
-        public_source["embed_url"] = embed_url
+        public_source['embed_url'] = embed_url
 
     return public_source
 
@@ -715,30 +715,30 @@ def _sanitize_public_document(document: Any) -> Optional[str]:
 
 def _sanitize_public_source_metadata(metadata: Any, public_reference: str) -> dict:
     public_metadata = {
-        "source": public_reference,
-        "url": public_reference,
+        'source': public_reference,
+        'url': public_reference,
     }
 
     if isinstance(metadata, dict):
-        name = _normalize_optional_string(metadata.get("name"))
+        name = _normalize_optional_string(metadata.get('name'))
         if name:
-            public_metadata["name"] = name
+            public_metadata['name'] = name
 
-        page = _coerce_int(metadata.get("page"))
+        page = _coerce_int(metadata.get('page'))
         if page is not None:
-            public_metadata["page"] = page
+            public_metadata['page'] = page
 
     return public_metadata
 
 
 def _get_public_source_reference(metadata: Any, source: dict) -> Optional[str]:
     if isinstance(metadata, dict):
-        for key in ("url", "source"):
+        for key in ('url', 'source'):
             public_url = _normalize_public_url(metadata.get(key))
             if public_url:
                 return public_url
 
-    for key in ("url", "embed_url", "id", "name"):
+    for key in ('url', 'embed_url', 'id', 'name'):
         public_url = _normalize_public_url(source.get(key))
         if public_url:
             return public_url
@@ -748,12 +748,12 @@ def _get_public_source_reference(metadata: Any, source: dict) -> Optional[str]:
 
 def _message_has_omitted_attachment_fields(message: dict, public_files: list[dict], public_sources: list[dict]) -> bool:
     attachment_fields = (
-        "embeds",
-        "statusHistory",
-        "annotation",
-        "usage",
-        "error",
-        "images",
+        'embeds',
+        'statusHistory',
+        'annotation',
+        'usage',
+        'error',
+        'images',
     )
 
     for field in attachment_fields:
@@ -761,9 +761,9 @@ def _message_has_omitted_attachment_fields(message: dict, public_files: list[dic
         if value:
             return True
 
-    raw_sources = message.get("sources")
+    raw_sources = message.get('sources')
     if raw_sources is None:
-        raw_sources = message.get("citations")
+        raw_sources = message.get('citations')
 
     if raw_sources:
         if not isinstance(raw_sources, list):
@@ -776,10 +776,10 @@ def _message_has_omitted_attachment_fields(message: dict, public_files: list[dic
             return True
 
     public_file_ids = {
-        str(file.get("file_id")) for file in public_files if isinstance(file, dict) and file.get("file_id")
+        str(file.get('file_id')) for file in public_files if isinstance(file, dict) and file.get('file_id')
     }
 
-    files = message.get("files") or []
+    files = message.get('files') or []
     if not isinstance(files, list):
         return True
 
@@ -787,7 +787,7 @@ def _message_has_omitted_attachment_fields(message: dict, public_files: list[dic
         if not isinstance(file, dict):
             return True
 
-        file_id = _extract_file_id(file.get("url"))
+        file_id = _extract_file_id(file.get('url'))
         if file_id is None or file_id not in public_file_ids:
             return True
 
@@ -795,9 +795,9 @@ def _message_has_omitted_attachment_fields(message: dict, public_files: list[dic
 
 
 def _is_image_file(file: dict) -> bool:
-    file_type = (_normalize_optional_string(file.get("type")) or "").lower()
-    content_type = (_normalize_optional_string(file.get("content_type")) or "").lower()
-    return file_type == "image" or content_type.startswith("image/")
+    file_type = (_normalize_optional_string(file.get('type')) or '').lower()
+    content_type = (_normalize_optional_string(file.get('content_type')) or '').lower()
+    return file_type == 'image' or content_type.startswith('image/')
 
 
 def _extract_file_id(value: Any) -> Optional[str]:
@@ -808,14 +808,14 @@ def _extract_file_id(value: Any) -> Optional[str]:
     if not candidate:
         return None
 
-    if "/" not in candidate and "?" not in candidate and "#" not in candidate:
+    if '/' not in candidate and '?' not in candidate and '#' not in candidate:
         return candidate
 
     path = urlparse(candidate).path or candidate
     for pattern in _INTERNAL_FILE_URL_PATTERNS:
         match = pattern.match(path)
         if match:
-            return match.group("file_id")
+            return match.group('file_id')
 
     return None
 
@@ -852,7 +852,7 @@ def _count_source_documents(sources: list[Any]) -> int:
         if not isinstance(source, dict):
             continue
 
-        documents = source.get("document") or []
+        documents = source.get('document') or []
         if isinstance(documents, list):
             count += len(documents)
 
@@ -868,7 +868,7 @@ def _normalize_public_url(value: Any) -> Optional[str]:
         return None
 
     parsed = urlparse(candidate)
-    if parsed.scheme not in {"http", "https"} or not parsed.hostname:
+    if parsed.scheme not in {'http', 'https'} or not parsed.hostname:
         return None
 
     return candidate

@@ -145,7 +145,7 @@ def test_no_new_kwarg_signature_drift():
     unexpected = [f for f in findings if (f[0], f[2], f[3]) not in ALLOWED_MISMATCHES]
     if unexpected:
         lines = [
-            f'  {caller}:{lineno}: {callee}(... {kw}=) ' f'is not accepted by {cpath}:{cline}'
+            f'  {caller}:{lineno}: {callee}(... {kw}=) is not accepted by {cpath}:{cline}'
             for caller, lineno, callee, kw, cpath, cline in sorted(unexpected)
         ]
         raise AssertionError(

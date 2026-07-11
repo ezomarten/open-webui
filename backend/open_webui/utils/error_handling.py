@@ -7,7 +7,7 @@ from starlette.exceptions import HTTPException as StarletteHTTPException
 
 def _stringify_error_detail(detail) -> str:
     if detail is None:
-        return ""
+        return ''
 
     if isinstance(detail, str):
         return detail.strip()
@@ -27,13 +27,13 @@ def get_exception_message(exc: BaseException, request_timeout_seconds: int | Non
     elif isinstance(exc, asyncio.TimeoutError):
         message = _stringify_error_detail(exc)
         if not message and request_timeout_seconds:
-            message = f"Upstream response exceeded the {request_timeout_seconds}-second request timeout."
+            message = f'Upstream response exceeded the {request_timeout_seconds}-second request timeout.'
         elif not message:
-            message = "Upstream response timed out."
+            message = 'Upstream response timed out.'
     else:
         message = _stringify_error_detail(exc)
 
     if message:
         return message
 
-    return f"{exc.__class__.__name__}."
+    return f'{exc.__class__.__name__}.'

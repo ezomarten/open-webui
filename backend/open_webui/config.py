@@ -1614,10 +1614,13 @@ WEBUI_URL = os.getenv('WEBUI_URL', '')
 # fork:public-link-settings
 PUBLIC_SHARE_BASE_URL = os.getenv('PUBLIC_SHARE_BASE_URL', '').rstrip('/')
 
-ENABLE_PUBLIC_CHAT_SHARING = os.getenv(
-    'ENABLE_PUBLIC_CHAT_SHARING',
-    'True' if os.getenv('PUBLIC_SHARE_BASE_URL', '').strip() else 'False',
-).lower() == 'true'
+ENABLE_PUBLIC_CHAT_SHARING = (
+    os.getenv(
+        'ENABLE_PUBLIC_CHAT_SHARING',
+        'True' if os.getenv('PUBLIC_SHARE_BASE_URL', '').strip() else 'False',
+    ).lower()
+    == 'true'
+)
 
 
 ENABLE_SIGNUP = False if not WEBUI_AUTH else os.getenv('ENABLE_SIGNUP', 'True').lower() == 'true'

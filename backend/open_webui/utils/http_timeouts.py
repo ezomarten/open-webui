@@ -32,38 +32,38 @@ def build_upstream_request_timeout_for_payload(
 ) -> aiohttp.ClientTimeout:
     return build_upstream_request_timeout(
         timeout_seconds,
-        stream=bool(payload.get("stream")) if isinstance(payload, dict) else False,
+        stream=bool(payload.get('stream')) if isinstance(payload, dict) else False,
     )
 
 
 # fork:chat-timeout-msg
 def get_stream_idle_timeout_message(timeout_seconds: int | None) -> str:
     if timeout_seconds:
-        return "Upstream streaming response stalled " f"for {timeout_seconds} seconds without receiving data."
+        return f'Upstream streaming response stalled for {timeout_seconds} seconds without receiving data.'
 
-    return "Upstream streaming response stalled without receiving data."
+    return 'Upstream streaming response stalled without receiving data.'
 
 
 def get_stream_prelude_timeout_message(timeout_seconds: int | None) -> str:
     if timeout_seconds:
-        return "Upstream streaming response did not produce meaningful output " f"within {timeout_seconds} seconds."
+        return f'Upstream streaming response did not produce meaningful output within {timeout_seconds} seconds.'
 
-    return "Upstream streaming response did not produce meaningful output."
+    return 'Upstream streaming response did not produce meaningful output.'
 
 
 def _is_non_empty_text(value: Any) -> bool:
-    return isinstance(value, str) and value.strip() != ""
+    return isinstance(value, str) and value.strip() != ''
 
 
 def _tool_call_has_meaningful_output(tool_call: Any) -> bool:
     if not isinstance(tool_call, dict):
         return False
 
-    if _is_non_empty_text(tool_call.get("arguments")):
+    if _is_non_empty_text(tool_call.get('arguments')):
         return True
 
-    function = tool_call.get("function")
-    if isinstance(function, dict) and _is_non_empty_text(function.get("arguments")):
+    function = tool_call.get('function')
+    if isinstance(function, dict) and _is_non_empty_text(function.get('arguments')):
         return True
 
     return False
@@ -82,14 +82,14 @@ def _extract_stream_payloads(chunk_text: str) -> list[str]:
         line = raw_line.strip()
         if (
             not line
-            or line.startswith(":")
-            or line.startswith("event:")
-            or line.startswith("id:")
-            or line.startswith("retry:")
+            or line.startswith(':')
+            or line.startswith('event:')
+            or line.startswith('id:')
+            or line.startswith('retry:')
         ):
             continue
 
-        if line.startswith("data:"):
+        if line.startswith('data:'):
             saw_data_prefix = True
             payload = line[5:].strip()
             if payload:
@@ -115,41 +115,41 @@ def _payload_contains_meaningful_stream_output(payload: Any) -> bool:
         return False
 
     for key in (
-        "content",
-        "text",
-        "delta",
-        "response",
-        "reasoning",
-        "reasoning_content",
-        "reasoning_text",
-        "reasoning_summary_text",
-        "output_text",
-        "arguments",
-        "refusal",
+        'content',
+        'text',
+        'delta',
+        'response',
+        'reasoning',
+        'reasoning_content',
+        'reasoning_text',
+        'reasoning_summary_text',
+        'output_text',
+        'arguments',
+        'refusal',
     ):
         if _is_non_empty_text(payload.get(key)):
             return True
 
-    tool_calls = payload.get("tool_calls")
+    tool_calls = payload.get('tool_calls')
     if isinstance(tool_calls, list) and any(_tool_call_has_meaningful_output(tool_call) for tool_call in tool_calls):
         return True
 
-    function_call = payload.get("function_call")
+    function_call = payload.get('function_call')
     if _tool_call_has_meaningful_output(function_call):
         return True
 
     for key in (
-        "choices",
-        "delta",
-        "message",
-        "item",
-        "items",
-        "output",
-        "content",
-        "response",
-        "data",
-        "part",
-        "parts",
+        'choices',
+        'delta',
+        'message',
+        'item',
+        'items',
+        'output',
+        'content',
+        'response',
+        'data',
+        'part',
+        'parts',
     ):
         value = payload.get(key)
         if isinstance(value, (dict, list)) and _payload_contains_meaningful_stream_output(value):
@@ -160,7 +160,7 @@ def _payload_contains_meaningful_stream_output(payload: Any) -> bool:
 
 def chunk_contains_meaningful_stream_output(chunk: Any) -> bool:
     if isinstance(chunk, bytes):
-        chunk_text = chunk.decode("utf-8", errors="ignore")
+        chunk_text = chunk.decode('utf-8', errors='ignore')
     elif isinstance(chunk, str):
         chunk_text = chunk
     else:
@@ -171,7 +171,7 @@ def chunk_contains_meaningful_stream_output(chunk: Any) -> bool:
         return False
 
     for payload_text in payloads:
-        if payload_text == "[DONE]":
+        if payload_text == '[DONE]':
             return True
 
         try:

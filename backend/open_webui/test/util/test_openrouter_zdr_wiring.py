@@ -58,9 +58,7 @@ def test_add_connection_modal_exposes_zdr_toggle():
     assert 'isOpenRouterUrl' in source
     assert 'openrouter_zdr_only' in source
     assert "$i18n.t('OpenRouter ZDR Only')" in source
-    assert (
-        'Use OpenRouter Zero Retention endpoints for model discovery and ' 'force provider.zdr on requests'
-    ) in source
+    assert ('Use OpenRouter Zero Retention endpoints for model discovery and force provider.zdr on requests') in source
     assert '{{url}}/endpoints/zdr' in source
 
 

@@ -3,9 +3,9 @@ from typing import Any, Sequence
 
 def _get_search_result_link(item: Any) -> str | None:
     if isinstance(item, dict):
-        return item.get("link") or item.get("url") or item.get("href")
+        return item.get('link') or item.get('url') or item.get('href')
 
-    return getattr(item, "link", None)
+    return getattr(item, 'link', None)
 
 
 # fork:web-search-result-count

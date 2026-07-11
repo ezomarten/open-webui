@@ -248,7 +248,9 @@ def _get_content_from_url_sync(request, url: str, loader_config):
         session = requests.Session()
         session.mount('http://', _SSRFSafeAdapter())
         session.mount('https://', _SSRFSafeAdapter())
-        response = session.get(url, stream=True, timeout=loader_timeout, allow_redirects=AIOHTTP_CLIENT_ALLOW_REDIRECTS)  # fork:chat-timeout-msg
+        response = session.get(
+            url, stream=True, timeout=loader_timeout, allow_redirects=AIOHTTP_CLIENT_ALLOW_REDIRECTS
+        )  # fork:chat-timeout-msg
         response.raise_for_status()
         content_type = response.headers.get('Content-Type', '')
     except Exception:

@@ -33,9 +33,9 @@ router = APIRouter()
 
 
 def _get_public_share_base_url(request: Request) -> str:
-    public_share_base_url = str(getattr(request.app.state, "PUBLIC_SHARE_BASE_URL", "") or "")
+    public_share_base_url = str(getattr(request.app.state, 'PUBLIC_SHARE_BASE_URL', '') or '')
     if not is_public_share_enabled(
-        bool(getattr(request.app.state.config, "ENABLE_PUBLIC_CHAT_SHARING", False)),
+        bool(getattr(request.app.state.config, 'ENABLE_PUBLIC_CHAT_SHARING', False)),
         public_share_base_url,
     ):
         raise HTTPException(
@@ -46,7 +46,7 @@ def _get_public_share_base_url(request: Request) -> str:
 
 
 def _assert_share_permission(request: Request, user) -> None:
-    if user.role != "admin" and not has_permission(user.id, "chat.share", request.app.state.config.USER_PERMISSIONS):
+    if user.role != 'admin' and not has_permission(user.id, 'chat.share', request.app.state.config.USER_PERMISSIONS):
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail=ERROR_MESSAGES.ACCESS_PROHIBITED,
@@ -58,23 +58,23 @@ def _set_public_share_headers(response: Response) -> None:
 
 
 def _find_snapshot_file(snapshot: dict, file_id: str) -> Optional[dict]:
-    history = snapshot.get("history") or {}
-    history_messages = history.get("messages") or {}
+    history = snapshot.get('history') or {}
+    history_messages = history.get('messages') or {}
 
     if isinstance(history_messages, dict):
         message_iterable = history_messages.values()
     else:
-        message_iterable = snapshot.get("messages") or []
+        message_iterable = snapshot.get('messages') or []
 
     for message in message_iterable:
         if not isinstance(message, dict):
             continue
 
-        for file in message.get("files") or []:
+        for file in message.get('files') or []:
             if not isinstance(file, dict):
                 continue
 
-            if str(file.get("file_id") or "") == file_id:
+            if str(file.get('file_id') or '') == file_id:
                 return file
 
     return None
@@ -83,21 +83,21 @@ def _find_snapshot_file(snapshot: dict, file_id: str) -> Optional[dict]:
 def _resolve_image_content_type(file, snapshot_file: Optional[dict]) -> Optional[str]:
     content_type = None
 
-    if isinstance(getattr(file, "meta", None), dict):
-        meta_content_type = file.meta.get("content_type")
+    if isinstance(getattr(file, 'meta', None), dict):
+        meta_content_type = file.meta.get('content_type')
         if isinstance(meta_content_type, str) and meta_content_type.strip():
             content_type = meta_content_type.strip()
 
     if not content_type and isinstance(snapshot_file, dict):
-        snapshot_content_type = snapshot_file.get("content_type")
+        snapshot_content_type = snapshot_file.get('content_type')
         if isinstance(snapshot_content_type, str) and snapshot_content_type.strip():
             content_type = snapshot_content_type.strip()
 
     if not content_type:
-        guessed_content_type, _ = mimetypes.guess_type(getattr(file, "filename", "") or "")
+        guessed_content_type, _ = mimetypes.guess_type(getattr(file, 'filename', '') or '')
         content_type = guessed_content_type
 
-    if not content_type or not content_type.lower().startswith("image/"):
+    if not content_type or not content_type.lower().startswith('image/'):
         return None
 
     return content_type
@@ -108,14 +108,14 @@ def _is_snapshot_schema_stale(snapshot: dict | None) -> bool:
         return True
 
     try:
-        snapshot_schema_version = int(snapshot.get("schema_version") or 0)
+        snapshot_schema_version = int(snapshot.get('schema_version') or 0)
     except (TypeError, ValueError, AttributeError):
         snapshot_schema_version = 0
 
     return snapshot_schema_version < PUBLIC_SHARE_SCHEMA_VERSION
 
 
-@router.get("/list", response_model=PublicShareListResponse)
+@router.get('/list', response_model=PublicShareListResponse)
 async def get_public_share_list(
     request: Request,
     page: Optional[int] = 1,
@@ -132,9 +132,9 @@ async def get_public_share_list(
     limit = 60
     skip = (page - 1) * limit
     filter = {
-        **({"query": query} if query else {}),
-        **({"order_by": order_by} if order_by else {}),
-        **({"direction": direction} if direction else {}),
+        **({'query': query} if query else {}),
+        **({'order_by': order_by} if order_by else {}),
+        **({'direction': direction} if direction else {}),
     }
 
     return PublicShares.get_public_share_list_by_user_id(
@@ -147,7 +147,7 @@ async def get_public_share_list(
     )
 
 
-@router.get("/chats/{chat_id}", response_model=PublicShareAccessResponse)
+@router.get('/chats/{chat_id}', response_model=PublicShareAccessResponse)
 async def get_public_share_by_chat_id(
     request: Request,
     chat_id: str,
@@ -175,7 +175,7 @@ async def get_public_share_by_chat_id(
         id=public_share.id,
         chat_id=public_share.chat_id,
         title=public_share.title,
-        url=f"{public_share_base_url.rstrip('/')}/p/{public_share.id}",
+        url=f'{public_share_base_url.rstrip("/")}/p/{public_share.id}',
         message_count=public_share.message_count,
         source_chat_updated_at=public_share.source_chat_updated_at,
         created_at=public_share.created_at,
@@ -187,7 +187,7 @@ async def get_public_share_by_chat_id(
     )
 
 
-@router.post("/chats/{chat_id}", response_model=PublicShareAccessResponse)
+@router.post('/chats/{chat_id}', response_model=PublicShareAccessResponse)
 async def upsert_public_share_by_chat_id(
     request: Request,
     chat_id: str,
@@ -218,7 +218,7 @@ async def upsert_public_share_by_chat_id(
         ) from error
 
 
-@router.delete("/chats/{chat_id}", response_model=bool)
+@router.delete('/chats/{chat_id}', response_model=bool)
 async def delete_public_share_by_chat_id(
     request: Request,
     chat_id: str,
@@ -238,7 +238,7 @@ async def delete_public_share_by_chat_id(
     return PublicShares.delete_public_share_by_chat_id_and_user_id(chat_id, user.id, db=db)
 
 
-@router.get("/{public_share_id}", response_model=PublicShareSnapshotResponse)
+@router.get('/{public_share_id}', response_model=PublicShareSnapshotResponse)
 async def get_public_share_snapshot(
     request: Request,
     response: Response,
@@ -258,17 +258,17 @@ async def get_public_share_snapshot(
 
     return PublicShareSnapshotResponse(
         id=public_share.id,
-        title=str(snapshot.get("title") or public_share.title),
-        models=list(snapshot.get("models") or []),
-        messages=list(snapshot.get("messages") or []),
-        history=snapshot.get("history") if isinstance(snapshot.get("history"), dict) else None,
+        title=str(snapshot.get('title') or public_share.title),
+        models=list(snapshot.get('models') or []),
+        messages=list(snapshot.get('messages') or []),
+        history=snapshot.get('history') if isinstance(snapshot.get('history'), dict) else None,
         message_count=public_share.message_count,
         created_at=public_share.created_at,
         updated_at=public_share.updated_at,
     )
 
 
-@router.get("/{public_share_id}/files/{file_id}/content")
+@router.get('/{public_share_id}/files/{file_id}/content')
 async def get_public_share_file_content(
     request: Request,
     response: Response,
@@ -293,7 +293,7 @@ async def get_public_share_file_content(
         )
 
     file = Files.get_file_by_id_and_user_id(file_id, public_share.user_id, db=db)
-    if file is None or not getattr(file, "path", None):
+    if file is None or not getattr(file, 'path', None):
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail=ERROR_MESSAGES.NOT_FOUND,
@@ -323,17 +323,17 @@ async def get_public_share_file_content(
         ) from error
 
     filename = None
-    if isinstance(getattr(file, "meta", None), dict):
-        meta_name = file.meta.get("name")
+    if isinstance(getattr(file, 'meta', None), dict):
+        meta_name = file.meta.get('name')
         if isinstance(meta_name, str) and meta_name.strip():
             filename = meta_name.strip()
     if not filename:
-        filename = getattr(file, "filename", None) or f"{file_id}.img"
+        filename = getattr(file, 'filename', None) or f'{file_id}.img'
 
     response = FileResponse(
         file_path,
         headers={
-            "Content-Disposition": f"inline; filename*=UTF-8''{quote(filename)}",
+            'Content-Disposition': f"inline; filename*=UTF-8''{quote(filename)}",
         },
         media_type=content_type,
     )
@@ -341,7 +341,7 @@ async def get_public_share_file_content(
     return response
 
 
-@router.head("/{public_share_id}")
+@router.head('/{public_share_id}')
 async def head_public_share_snapshot(
     request: Request,
     public_share_id: str,

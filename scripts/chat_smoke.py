@@ -17,7 +17,9 @@ def _env(name: str, default: str | None = None) -> str | None:
     return value or None
 
 
-def _request_json(method: str, url: str, headers: dict[str, str], body: dict[str, Any] | None = None) -> tuple[int, Any]:
+def _request_json(
+    method: str, url: str, headers: dict[str, str], body: dict[str, Any] | None = None
+) -> tuple[int, Any]:
     data = None
     if body is not None:
         data = json.dumps(body).encode('utf-8')
@@ -218,9 +220,7 @@ def _resolve_modes() -> list[bool]:
     if value == 'both':
         return [False, True]
 
-    raise RuntimeError(
-        'OPENWEBUI_SMOKE_STREAM must be one of: 0, 1, non-stream, stream, both'
-    )
+    raise RuntimeError('OPENWEBUI_SMOKE_STREAM must be one of: 0, 1, non-stream, stream, both')
 
 
 def _run_completion(

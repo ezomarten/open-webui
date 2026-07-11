@@ -153,7 +153,7 @@ def test_declared_wiring_tests_actually_exist():
             continue
         path = REPO_ROOT / wiring_test
         assert path.exists(), (
-            f'feature {feature["slug"]!r} declares wiring_test {wiring_test!r} ' f'but the file is missing'
+            f'feature {feature["slug"]!r} declares wiring_test {wiring_test!r} but the file is missing'
         )
 
 
@@ -191,7 +191,7 @@ def test_pending_actions_are_well_formed_and_tracked():
         # manifest. This catches "forgot to update FORK_NOTES" mistakes.
         if pending:
             assert feature['slug'] in fork_notes, (
-                f'feature {feature["slug"]!r} has pending actions {pending} but is ' f'not mentioned in FORK_NOTES.md'
+                f'feature {feature["slug"]!r} has pending actions {pending} but is not mentioned in FORK_NOTES.md'
             )
 
 

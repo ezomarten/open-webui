@@ -15,10 +15,10 @@ from open_webui.utils.public_share import (
 
 
 class PublicShare(Base):
-    __tablename__ = "public_share"
+    __tablename__ = 'public_share'
 
     id = Column(Text, primary_key=True, unique=True)
-    chat_id = Column(Text, ForeignKey("chat.id", ondelete="CASCADE"), nullable=False, unique=True)
+    chat_id = Column(Text, ForeignKey('chat.id', ondelete='CASCADE'), nullable=False, unique=True)
     user_id = Column(Text, nullable=False)
     title = Column(Text, nullable=False)
     snapshot_json = Column(JSON, nullable=False)
@@ -27,7 +27,7 @@ class PublicShare(Base):
     created_at = Column(BigInteger, nullable=False)
     updated_at = Column(BigInteger, nullable=False)
 
-    __table_args__ = (Index("public_share_user_updated_idx", "user_id", "updated_at"),)
+    __table_args__ = (Index('public_share_user_updated_idx', 'user_id', 'updated_at'),)
 
 
 class PublicShareModel(BaseModel):
@@ -84,10 +84,10 @@ class PublicShareSnapshotResponse(BaseModel):
 
 class PublicShareTable:
     def _is_snapshot_schema_stale(self, public_share: PublicShare) -> bool:
-        snapshot = getattr(public_share, "snapshot_json", None) or {}
+        snapshot = getattr(public_share, 'snapshot_json', None) or {}
 
         try:
-            snapshot_schema_version = int(snapshot.get("schema_version") or 0)
+            snapshot_schema_version = int(snapshot.get('schema_version') or 0)
         except (TypeError, ValueError, AttributeError):
             snapshot_schema_version = 0
 
@@ -153,16 +153,16 @@ class PublicShareTable:
             query = db.query(PublicShare).filter_by(user_id=user_id)
 
             if filter:
-                query_key = filter.get("query")
+                query_key = filter.get('query')
                 if query_key:
-                    query = query.filter(PublicShare.title.ilike(f"%{query_key}%"))
+                    query = query.filter(PublicShare.title.ilike(f'%{query_key}%'))
 
-                order_by = filter.get("order_by")
-                direction = str(filter.get("direction") or "desc").lower()
+                order_by = filter.get('order_by')
+                direction = str(filter.get('direction') or 'desc').lower()
                 order_field = getattr(PublicShare, order_by, None) if order_by else None
                 if order_field is not None:
                     query = query.order_by(
-                        order_field.asc() if direction == "asc" else order_field.desc(),
+                        order_field.asc() if direction == 'asc' else order_field.desc(),
                         PublicShare.id,
                     )
                 else:
@@ -193,16 +193,16 @@ class PublicShareTable:
         with get_db_context(db) as db:
             snapshot = build_public_share_snapshot(chat)
             now = int(time.time())
-            chat_updated_at = int(getattr(chat, "updated_at", now) or now)
-            title = str(snapshot.get("title") or getattr(chat, "title", "Untitled Chat"))
-            message_count = len(snapshot.get("messages") or [])
+            chat_updated_at = int(getattr(chat, 'updated_at', now) or now)
+            title = str(snapshot.get('title') or getattr(chat, 'title', 'Untitled Chat'))
+            message_count = len(snapshot.get('messages') or [])
 
-            public_share = db.query(PublicShare).filter_by(chat_id=getattr(chat, "id"), user_id=user_id).first()
+            public_share = db.query(PublicShare).filter_by(chat_id=getattr(chat, 'id'), user_id=user_id).first()
 
             if public_share is None:
                 public_share = PublicShare(
                     id=new_public_share_id(),
-                    chat_id=getattr(chat, "id"),
+                    chat_id=getattr(chat, 'id'),
                     user_id=user_id,
                     title=title,
                     snapshot_json=snapshot,
