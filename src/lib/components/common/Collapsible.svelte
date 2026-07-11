@@ -55,23 +55,23 @@
 
 	export let onChange: Function = () => {};
 
-	$: onChange(open);
+	const toggleOpen = () => {
+		if (disabled) {
+			return;
+		}
+
+		open = !open;
+		onChange(open);
+	};
 
 	const collapsibleId = uuidv4();
 </script>
 
 <div {id} class={className}>
 	{#if title !== null}
-		<button
-			type="button"
-			class="{buttonClassName} {disabled ? '' : 'cursor-pointer'}"
-			{disabled}
-			on:click={() => {
-				if (!disabled) {
-					open = !open;
-				}
-			}}
-		>
+		<!-- svelte-ignore a11y-no-static-element-interactions -->
+		<!-- svelte-ignore a11y-click-events-have-key-events -->
+		<div class="{buttonClassName} {disabled ? '' : 'cursor-pointer'}" on:pointerup={toggleOpen}>
 			<div
 				class=" w-full flex items-center justify-between gap-2 {attributes?.done &&
 				attributes?.done !== 'true' &&
@@ -126,7 +126,7 @@
 					</div>
 				{/if}
 			</div>
-		</button>
+		</div>
 	{:else}
 		<!-- svelte-ignore a11y-no-static-element-interactions -->
 		<!-- svelte-ignore a11y-click-events-have-key-events -->
@@ -135,11 +135,7 @@
 			on:click={(e) => {
 				e.stopPropagation();
 			}}
-			on:pointerup={(e) => {
-				if (!disabled) {
-					open = !open;
-				}
-			}}
+			on:pointerup={toggleOpen}
 		>
 			<div>
 				<div class="flex items-start justify-between">
