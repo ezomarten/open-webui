@@ -5,7 +5,6 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-
 ## [0.10.2-publicshare.1] - 2026-07-11
 
 ### Changed
@@ -273,7 +272,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - 🔧 **You.com search key renamed.** You.com web search now prefers the "YDC_API_KEY" environment variable, with the previous "YOUCOM_API_KEY" still accepted as a fallback. [Commit](https://github.com/open-webui/open-webui/commit/df634bb64f5043b0292e43c69bd1d31676c89328), [#26316](https://github.com/open-webui/open-webui/pull/26316)
 - 🧪 **Client-side Python now runs sandboxed.** Client-side Python (Pyodide) now runs in a sandboxed, opaque-origin iframe by default, isolating executed code from your session, cookies, local storage, and the app's own endpoints, while full Python, JavaScript, and external network access keep working. Code that relied on reaching same-origin Open WebUI endpoints from Pyodide will no longer be able to, and Pyodide is now marked legacy in the admin Code Execution settings. [Commit](https://github.com/open-webui/open-webui/commit/516051304e1b1f250c34438746ade673a79bd40c), [Commit](https://github.com/open-webui/open-webui/commit/c7be66626fd10c75ec35f662a709129ba1b020ec), [Commit](https://github.com/open-webui/open-webui/commit/62ae2069183109d878d72b9444a0e7c4f6c66caa), [Commit](https://github.com/open-webui/open-webui/commit/518702caae5a6484e71aa79e8ab908ec398290a7), [Commit](https://github.com/open-webui/open-webui/commit/03a8363583b7e0e04760d49f1e8d28dbbfefee4d)
 
-
 ## [0.9.6-publicshare.2] - 2026-06-03
 
 ### Fixed
@@ -290,7 +288,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Restored the per-request Web Loader `timeout` parameter on `get_web_loader` (`backend/open_webui/retrieval/web/utils.py`) that the `v0.9.5` upstream replay silently dropped while `get_loader` kept forwarding it. The drop made the native `fetch_url` tool fail at runtime with `get_web_loader() got an unexpected keyword argument 'timeout'`. An explicit timeout now takes precedence over the `WEB_LOADER_TIMEOUT` config fallback. Added `# fork:chat-timeout-msg` sentinels at the callee/caller sites, extended `test_chat_timeout_msg_wiring.py` to grep them, added two integration regression tests in `test_web_fetch_timeouts.py` (signature guard + `get_loader` / `get_web_loader` forwarding guard), and added `retrieval/utils.py` + `retrieval/web/utils.py` to the `chat-timeout-msg` manifest `notable_files` so future drops surface immediately.
 - Reverted an erroneous fork change that made `RedisProxy.__getattr__` (`backend/open_webui/utils/redis.py`) an `async def` (introduced in `0.9.1-publicshare.1`). Because Python invokes `__getattr__` synchronously on every attribute access, the async version returned an un-awaited coroutine for calls like `proxy.set(...)`, raising `'coroutine' object is not callable` and breaking Redis-backed operation in both sync and async modes. The method is now a plain `def` (matching upstream `v0.9.5`); the existing async/sync dispatch in its body is unchanged.
-
 
 ## [0.9.6] - 2026-06-01
 
