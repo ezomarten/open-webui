@@ -58,7 +58,6 @@
 
 	let loaded = false;
 
-	let importFiles = '';
 	let importDocumentFiles: FileList | null = null;
 	let notesImportInputElement: HTMLInputElement;
 	let selectedNote = null;

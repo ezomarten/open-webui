@@ -1330,27 +1330,9 @@ ${content}
 									>
 										<ChatBubbleOval className="size-4" strokeWidth="1.8" />
 									</button>
-								</Tooltip>
+</Tooltip>
 
-								<Tooltip placement="top" content={$i18n.t('Controls')} className="cursor-pointer">
-									<button
-										class="p-1.5 bg-transparent hover:bg-white/5 transition rounded-lg"
-										on:click={() => {
-											if (showPanel && selectedPanel === 'settings') {
-												showPanel = false;
-											} else {
-												if (!showPanel) {
-													showPanel = true;
-												}
-												selectedPanel = 'settings';
-											}
-										}}
-									>
-										<AdjustmentsHorizontalOutline />
-									</button>
-								</Tooltip>
-
-									<RecordMenu
+								<RecordMenu
 										onRecord={async () => {
 											displayMediaRecord = false;
 
@@ -1410,15 +1392,10 @@ ${content}
 									onDownload={(type) => {
 										downloadHandler(type);
 									}}
-									onImport={note?.write_access ? handleMenuImport : null}
-									onPasteMarkdown={note?.write_access ? handleMenuPasteMarkdown : null}
-									onCopyMarkdown={copyMarkdownToClipboard}
-									onAccess={note?.write_access
-										? () => {
-											showAccessControlModal = true;
-										}
-										: null}
-									onCopyLink={async () => {
+onImport={note?.write_access ? handleMenuImport : null}
+								onPasteMarkdown={note?.write_access ? handleMenuPasteMarkdown : null}
+								onCopyMarkdown={copyMarkdownToClipboard}
+								onCopyLink={async () => {
 										const baseUrl = window.location.origin;
 										const res = await copyToClipboard(`${baseUrl}/notes/${note.id}`);
 

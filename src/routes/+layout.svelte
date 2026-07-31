@@ -1017,7 +1017,7 @@
 					isAuthenticatedBackendFetch(input, init) &&
 					(await isCurrentSessionUnauthorized(originalFetch))
 				) {
-					redirectToAuthAfterUnauthorized();
+					clearExpiredSession();
 				}
 
 				return response;

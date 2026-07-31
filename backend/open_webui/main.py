@@ -1836,18 +1836,24 @@ async def chat_completion(
 
             # Only the first model runs chat-level background tasks;
             # subsequent models only run follow-ups.
+            # fork:task-metadata-sanitize
+            effective_tasks = (
+                tasks
+                if idx == 0
+                else {
+                    k: v
+                    for k, v in (tasks or {}).items()
+                    if k not in (TASKS.TITLE_GENERATION, TASKS.TAGS_GENERATION)
+                }
+                or None
+            )
             process = process_chat(
                 request,
                 model_form_data,
                 user,
                 per_model_metadata,
                 resolved_model,
-                tasks
-                if idx == 0
-                else {
-                    k: v for k, v in (tasks or {}).items() if k not in (TASKS.TITLE_GENERATION, TASKS.TAGS_GENERATION)
-                }
-                or None,
+                effective_tasks,
             )
             if is_internal:
                 subagent_results.append(await process)
@@ -1855,23 +1861,7 @@ async def chat_completion(
 
             task_id, _ = await create_task(
                 request.app.state.redis,
-                process_chat(
-                    request,
-                    model_form_data,
-                    user,
-                    per_model_metadata,
-                    resolved_model,
-                    (
-                        tasks
-                        if idx == 0
-                        else {
-                            k: v
-                            for k, v in (tasks or {}).items()
-                            if k not in (TASKS.TITLE_GENERATION, TASKS.TAGS_GENERATION)
-                        }
-                        or None
-                    ),
-                ),
+                process,
                 id=chat_id,
                 task_id=per_model_metadata['task_id'],
             )
