@@ -1447,8 +1447,7 @@ onImport={note?.write_access ? handleMenuImport : null}
 									<div class="shrink-0 text-xs text-gray-500 px-2 py-1">
 										{$i18n.t('Read-Only Access')}
 									</div>
-								{/if}
-							</div>
+{/if}
 						</div>
 					</div>
 

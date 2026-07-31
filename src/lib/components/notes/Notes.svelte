@@ -682,84 +682,36 @@
 																		</button>
 																	</NoteMenu>
 																</div>
-															</div>
-														</div>
-													</Tooltip>
-
-													<Tooltip content={dayjs(note.updated_at / 1000000).format('LLLL')}>
-														<div
-															class="shrink-0 truncate text-[11px] leading-5 text-gray-400 dark:text-gray-600"
-														>
-															{dayjs(note.updated_at / 1000000).fromNow()}
-														</div>
-													</Tooltip>
-												</div>
-
-												<div class="ml-2 flex shrink-0 items-center justify-end gap-2">
-													<div
-														class="hidden max-w-44 shrink-0 truncate text-right text-[11px] leading-5 text-gray-500 dark:text-gray-500 md:block"
-													>
-														<Tooltip
-															content={note?.user?.email ?? $i18n.t('Deleted User')}
-															className="min-w-0"
-															placement="top-start"
-														>
-															<div class="truncate">
-																{capitalizeFirstLetter(
-																	note?.user?.name ?? note?.user?.email ?? $i18n.t('Deleted User')
-																)}
-															</div>
-														</Tooltip>
+</div>
 													</div>
 
-													<NoteMenu
-														show={openNoteMenuId === note.id}
-														onDownload={(type) => {
-															selectedNote = note;
-
-															downloadHandler(type);
-														}}
-														onCopyLink={async () => {
-															const baseUrl = window.location.origin;
-															const res = await copyToClipboard(`${baseUrl}/notes/${note.id}`);
-
-															if (res) {
-																toast.success($i18n.t('Copied link to clipboard'));
-															} else {
-																toast.error($i18n.t('Failed to copy link'));
-															}
-														}}
-														onDelete={() => {
-															selectedNote = note;
-															showDeleteConfirm = true;
-														}}
-														isPinned={note.is_pinned ?? false}
-														onPin={async () => {
-															await toggleNotePinnedStatusById(localStorage.token, note.id);
-															pinnedNotes.set(
-																await getPinnedNoteList(localStorage.token).catch(() => [])
-															);
-															init();
-														}}
-														onChange={(state) => {
-															openNoteMenuId = state ? note.id : null;
-														}}
+													<div
+														class=" text-xs text-gray-500 dark:text-gray-500 mb-3 line-clamp-3 min-h-10"
 													>
-														<button
-															class="flex size-5 shrink-0 items-center justify-center rounded-lg text-gray-400 transition hover:text-gray-700 dark:text-gray-500 dark:hover:text-gray-200"
-															type="button"
-															aria-label={$i18n.t('Note Menu')}
-															on:click={(e) => {
-																e.preventDefault();
-																e.stopPropagation();
-																openNoteMenuId = openNoteMenuId === note.id ? null : note.id;
-															}}
-														>
-															<EllipsisHorizontal className="size-3.5" />
-														</button>
-													</NoteMenu>
+														{#if note.data?.content?.md}
+															{note.data?.content?.md}
+														{:else}
+															{$i18n.t('No content')}
+														{/if}
+													</div>
 												</div>
-											</button>
+
+												<div class="text-xs px-0.5 w-full flex min-w-0 items-center gap-2">
+													<div>
+														{getNoteUpdatedLabel(note)}
+													</div>
+													<Tooltip
+														content={note?.user?.email ?? $i18n.t('Deleted User')}
+														className="flex min-w-0 flex-1 justify-end"
+														placement="top-start"
+													>
+														<div class="min-w-0 truncate text-right text-gray-500">
+															{getNoteAuthorLabel(note)}
+														</div>
+													</Tooltip>
+												</div>
+											</a>
+										</button>
 										{/each}
 									</div>
 								{:else if displayOption === 'grid'}
@@ -848,33 +800,13 @@
 															</div>
 														</Tooltip>
 
-														<div
-															class=" text-xs text-gray-500 dark:text-gray-500 mb-3 line-clamp-3 min-h-10"
-														>
-															{#if note.data?.content?.md}
-																{note.data?.content?.md}
-															{:else}
-																{$i18n.t('No content')}
-															{/if}
-														</div>
-													</div>
-
-													<div class="text-xs px-0.5 w-full flex min-w-0 items-center gap-2">
-														<div>
-															{getNoteUpdatedLabel(note)}
-														</div>
-														<Tooltip
-															content={note?.user?.email ?? $i18n.t('Deleted User')}
-															className="flex min-w-0 flex-1 justify-end"
-															placement="top-start"
-														>
-															<div class="min-w-0 truncate text-right text-gray-500">
-																{getNoteAuthorLabel(note)}
+														<Tooltip content={dayjs(note.updated_at / 1000000).format('LLLL')}>
+															<div class="shrink-0">
+																{dayjs(note.updated_at / 1000000).fromNow()}
 															</div>
 														</Tooltip>
 													</div>
 												</a>
-											</div>
 											</div>
 										{/each}
 									</div>
