@@ -76,6 +76,14 @@ def test_get_loader_forwards_timeout_to_get_web_loader():
         )
     )
 
+    config = {
+        'web_loader_ssl_verification': True,
+        'web_loader_concurrent_requests': 2,
+        'web_search_trust_env': False,
+        'youtube_language': ['en'],
+        'youtube_proxy_url': '',
+    }
+
     captured = {}
 
     def fake_get_web_loader(urls, **kwargs):
@@ -83,6 +91,6 @@ def test_get_loader_forwards_timeout_to_get_web_loader():
         return object()
 
     with patch('open_webui.retrieval.utils.get_web_loader', fake_get_web_loader):
-        retrieval_utils.get_loader(request, 'https://example.com', timeout=15.0)
+        retrieval_utils.get_loader(request, 'https://example.com', config=config, timeout=15.0)
 
     assert captured.get('timeout') == 15.0
