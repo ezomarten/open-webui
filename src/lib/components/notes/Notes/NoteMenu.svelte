@@ -11,6 +11,7 @@
 	import Share from '$lib/components/icons/Share.svelte';
 	import Link from '$lib/components/icons/Link.svelte';
 	import LockClosed from '$lib/components/icons/LockClosed.svelte';
+	import CloudArrowUp from '$lib/components/icons/CloudArrowUp.svelte';
 	import Pin from '$lib/components/icons/Pin.svelte';
 	import PinSlash from '$lib/components/icons/PinSlash.svelte';
 
@@ -31,6 +32,7 @@
 	export let onCopyLink: NoteMenuAction = null;
 	export let onCopyToClipboard: NoteMenuAction = null;
 	export let onAccess: NoteMenuAction = null;
+	export let onUploadFiles: NoteMenuAction = null;
 	// fork:notes-md-import
 	export let onImport: ((format: NoteImportFormat, mode: NoteImportMode) => void) | null = null;
 	export let onPasteMarkdown: ((mode: NoteImportMode) => void) | null = null;
@@ -188,6 +190,18 @@
 				>
 					<LockClosed strokeWidth="2" />
 					<div class="flex items-center">{$i18n.t('Access')}</div>
+				</button>
+			{/if}
+
+			{#if onUploadFiles}
+				<button
+					class="select-none flex gap-2 items-center px-3 py-1.5 text-sm cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800 rounded-xl w-full"
+					on:click={() => {
+						handleAction(onUploadFiles);
+					}}
+				>
+					<CloudArrowUp strokeWidth="2" />
+					<div class="flex items-center">{$i18n.t('Upload files')}</div>
 				</button>
 			{/if}
 

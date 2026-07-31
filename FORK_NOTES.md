@@ -1,6 +1,6 @@
 # Fork Notes
 
-This fork now tracks Open WebUI `v0.9.6` and carries a small set of deployment-focused customizations for anonymous public sharing.
+This fork now tracks Open WebUI `v0.11.0` and carries a small set of deployment-focused customizations for anonymous public sharing.
 
 The per-feature catalog (Goals, fork-only customizations, public-host allowlist, current limitations) lives in [`FORK_FEATURES.md`](FORK_FEATURES.md). This file focuses on workflow rules, the maintenance timeline, and release history.
 
@@ -71,6 +71,8 @@ If the change is release-worthy, also update [CHANGELOG.md](CHANGELOG.md).
 If the change affects public-share or public-link UI strings, also update [src/lib/i18n/locales/ja-JP/translation.json](src/lib/i18n/locales/ja-JP/translation.json).
 
 ## Maintenance Record
+
+- 2026-07-31: synced the fork from upstream `v0.10.2` to `v0.11.0` using `git merge v0.11.0 --no-commit --no-ff`, resolving 85 conflicts (78 i18n locales taken upstream with ja-JP merged to preserve fork-only keys; 7 non-i18n files resolved individually). Preserved all fork patches: public-share isolation in `+layout.svelte` (fork's `initialPublicSharePath` guard kept around upstream's new `clearExpiredSession`/`pagehide`/`pageshow` additions), chat-timeout-msg in `openai.py` (fork's `build_upstream_request_timeout_for_payload` + `request_timeout` kept alongside upstream's new `is_streaming_request`/`stream_options` logic and `JSONCodec`/`model_ids` imports), chat-timeout-msg in `retrieval/web/utils.py` (fork's explicit timeout precedence over `WEB_LOADER_TIMEOUT` kept), task-metadata-sanitize in `main.py` (fork's `process_chat` with task filtering kept over upstream's bare `process` pass-through), notes-md-import in `NoteEditor.svelte` (fork's import/paste/clipboard handlers merged with upstream's new `openNoteChat`/`RecordMenu`/`AccessButton`/`onUploadFiles` features), `NoteMenu.svelte` (fork's `onImport`/`onPasteMarkdown`/`onCopyMarkdown`/`onAccess` props preserved alongside upstream's new `onUploadFiles` prop), `Notes.svelte` (fork's `readMarkdownFile`-based import and responsive note list layout kept), `ShareChatModal.svelte`/`Dropdown.svelte`/`DropdownSub.svelte`/`AddConnectionModal.svelte` (fork versions preserved for public-share/OpenRouter ZDR/nested menu features), `Settings.svelte`/`WebSearch.svelte`/`Connections.svelte`/`Integrations.svelte`/`Controls.svelte`/`General.svelte`/`AdvancedParams.svelte` (fork's `ow-settings-*` CSS classes re-applied onto upstream's refactored component-based settings panel structure). Updated `test_web_fetch_timeouts.py` to pass the `config: dict` argument required by the v0.10.x `get_loader` signature. Key files: `backend/open_webui/main.py`, `backend/open_webui/routers/openai.py`, `backend/open_webui/retrieval/web/utils.py`, `backend/open_webui/utils/automations.py`, `src/routes/+layout.svelte`, `src/lib/components/notes/NoteEditor.svelte`, `src/lib/components/notes/Notes/NoteMenu.svelte`, `src/lib/components/notes/Notes.svelte`, `src/lib/components/admin/Settings.svelte`, `src/lib/components/admin/Settings/WebSearch.svelte`, `src/lib/components/admin/Settings/Connections.svelte`, `src/lib/components/admin/Settings/Integrations.svelte`, `src/lib/components/chat/Controls/Controls.svelte`, `src/lib/components/chat/Settings/General.svelte`, `src/lib/components/chat/Settings/Advanced/AdvancedParams.svelte`, `src/lib/i18n/locales/ja-JP/translation.json`, `backend/open_webui/test/util/test_web_fetch_timeouts.py`, `FORK_NOTES.md`; validation: BEFORE fork-wiring gate 97 passed, AFTER fork-wiring gate 97 passed (all fork features verified intact). Frontend build not run locally (no Node.js available in this environment) — to be verified after push via CI `Frontend Build` workflow.
 
 - 2026-07-11: added Alembic merge revision `a9f3c7e2b1d4` to resolve a multiple-head conflict introduced during the v0.10.2 sync. The fork migration `42e2978c7933` (add memory path and meta) depended on `7b3f2a9c1d4e` in the `461111b60977` chain but was not connected to the existing merge `2819b55acfd3` (which merges `461111b60977` and `e6f7a8b9c0d1`), leaving two heads and preventing `alembic upgrade head` from running. The new merge has `down_revision = ("2819b55acfd3", "42e2978c7933")` with no-op upgrade/downgrade, following the same pattern as the existing fork merge migrations. Key files: `backend/open_webui/migrations/versions/a9f3c7e2b1d4_merge_fork_memory_and_v096_merge.py`; validation: `alembic heads` returns a single head, OpenWebUI container starts healthy with PostgreSQL, `curl http://localhost:3000` returns 200.
 
@@ -198,7 +200,7 @@ If the change affects public-share or public-link UI strings, also update [src/l
 
 ## Upstream Base
 
-Fork mainline now tracks upstream `v0.10.2`.
+Fork mainline now tracks upstream `v0.11.0`.
 
 Retained fork-only areas on top of that base:
 
