@@ -5,6 +5,21 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.11.0-publicshare.1] - 2026-08-02
+
+### Fork-sync
+
+- Synced the fork from upstream `v0.10.2` to `v0.11.0`, resolving 85 merge conflicts while preserving all 14 fork features (anonymous public shares, public-link settings, public-host allowlist, OpenRouter ZDR, chat timeout, task metadata sanitization, responses-API compat, web search result count, notes markdown import, settings emphasis, about disclosure, session cleanup lock, env changelog, notes mobile layout).
+- Added Alembic merge revision `b1c2d3e4f5a6` to reconcile the fork head `a9f3c7e2b1d4` with the new upstream head `f0bd01a18a3d` (add unique normalized user email index), preventing the dual-head crash-loop that would otherwise block container startup.
+- Re-added `AIOHTTP_CLIENT_TIMEOUT` to the `openai.py` env import that was dropped during the merge, resolving a `NameError` that would have broken all OpenAI-compatible chat completions, Responses API calls, and proxy requests.
+- Fixed the session-expiry call site in `+layout.svelte` to use upstream's renamed `clearExpiredSession()` instead of the removed `redirectToAuthAfterUnauthorized()`.
+- Removed duplicate `process_chat` coroutine construction in `main.py` that produced an un-awaited coroutine and `RuntimeWarning` on every non-internal multi-model fan-out iteration.
+- Removed the orphaned Controls button in `NoteEditor.svelte` that referenced undeclared `showPanel`/`selectedPanel` variables and an unimported `AdjustmentsHorizontalOutline` component after upstream replaced the inline settings panel with the embedded chat flow.
+- Resolved duplicate Access mechanism in `NoteEditor.svelte` by removing the fork's `onAccess` menu item and keeping upstream's dedicated `AccessButton` component.
+- Fixed `NoteEditor.svelte` div balance, `Notes.svelte` list/grid template structure, and `ChatsModal.svelte` duplicate `aria-label` to pass the frontend production build.
+
+### Upstream Added (v0.11.0)
+
 ## [0.11.0] - 2026-07-27
 
 ### Added
