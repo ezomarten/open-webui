@@ -1292,35 +1292,35 @@ ${content}
 							{/if}
 						</div>
 
-							<div class="flex items-center gap-0.5 shrink-0">
-								{#if note?.write_access}
-									{#if editor}
-										<div>
-											<div class="flex items-center gap-0.5 self-center min-w-fit" dir="ltr">
-												<button
-													class="self-center p-1 hover:enabled:bg-black/5 dark:hover:enabled:bg-white/5 dark:hover:enabled:text-white hover:enabled:text-black rounded-md transition disabled:cursor-not-allowed disabled:text-gray-500 disabled:hover:text-gray-500"
-													on:click={() => {
-														editor.chain().focus().undo().run();
-														// versionNavigateHandler('prev');
-													}}
-													disabled={!editor.can().undo()}
-												>
-													<ArrowUturnLeft className="size-4" />
-												</button>
+						<div class="flex items-center gap-0.5 shrink-0">
+							{#if note?.write_access}
+								{#if editor}
+									<div>
+										<div class="flex items-center gap-0.5 self-center min-w-fit" dir="ltr">
+											<button
+												class="self-center p-1 hover:enabled:bg-black/5 dark:hover:enabled:bg-white/5 dark:hover:enabled:text-white hover:enabled:text-black rounded-md transition disabled:cursor-not-allowed disabled:text-gray-500 disabled:hover:text-gray-500"
+												on:click={() => {
+													editor.chain().focus().undo().run();
+													// versionNavigateHandler('prev');
+												}}
+												disabled={!editor.can().undo()}
+											>
+												<ArrowUturnLeft className="size-4" />
+											</button>
 
-												<button
-													class="self-center p-1 hover:enabled:bg-black/5 dark:hover:enabled:bg-white/5 dark:hover:enabled:text-white hover:enabled:text-black rounded-md transition disabled:cursor-not-allowed disabled:text-gray-500 disabled:hover:text-gray-500"
-													on:click={() => {
-														editor.chain().focus().redo().run();
-														// versionNavigateHandler('next');
-													}}
-													disabled={!editor.can().redo()}
-												>
-													<ArrowUturnRight className="size-4" />
-												</button>
-											</div>
+											<button
+												class="self-center p-1 hover:enabled:bg-black/5 dark:hover:enabled:bg-white/5 dark:hover:enabled:text-white hover:enabled:text-black rounded-md transition disabled:cursor-not-allowed disabled:text-gray-500 disabled:hover:text-gray-500"
+												on:click={() => {
+													editor.chain().focus().redo().run();
+													// versionNavigateHandler('next');
+												}}
+												disabled={!editor.can().redo()}
+											>
+												<ArrowUturnRight className="size-4" />
+											</button>
 										</div>
-									{/if}
+									</div>
+								{/if}
 
 								<Tooltip content={$i18n.t('Chat')} placement="top">
 									<button
@@ -1331,124 +1331,124 @@ ${content}
 									>
 										<ChatBubbleOval className="size-4" strokeWidth="1.8" />
 									</button>
-</Tooltip>
+								</Tooltip>
 
 								<RecordMenu
-										onRecord={async () => {
-											displayMediaRecord = false;
+									onRecord={async () => {
+										displayMediaRecord = false;
 
-											try {
-												let stream = await navigator.mediaDevices
-													.getUserMedia({ audio: true })
-													.catch(function (err) {
-														toast.error(
-															$i18n.t(`Permission denied when accessing microphone: {{error}}`, {
-																error: err
-															})
-														);
-														return null;
-													});
+										try {
+											let stream = await navigator.mediaDevices
+												.getUserMedia({ audio: true })
+												.catch(function (err) {
+													toast.error(
+														$i18n.t(`Permission denied when accessing microphone: {{error}}`, {
+															error: err
+														})
+													);
+													return null;
+												});
 
-												if (stream) {
-													recording = true;
-													const tracks = stream.getTracks();
-													tracks.forEach((track) => track.stop());
-												}
-												stream = null;
-											} catch {
-												toast.error($i18n.t('Permission denied when accessing microphone'));
+											if (stream) {
+												recording = true;
+												const tracks = stream.getTracks();
+												tracks.forEach((track) => track.stop());
 											}
-										}}
-										onCaptureAudio={async () => {
-											displayMediaRecord = true;
-
-											recording = true;
-										}}
-										onUpload={async () => {
-											const input = document.createElement('input');
-											input.type = 'file';
-											input.accept = 'audio/*';
-											input.multiple = false;
-											input.click();
-
-											input.onchange = async (e) => {
-												const files = e.target.files;
-
-												if (files && files.length > 0) {
-													await uploadFileHandler(files[0]);
-												}
-											};
-										}}
-									>
-										<Tooltip content={$i18n.t('Record')} placement="top">
-											<div class="p-1 bg-transparent hover:bg-white/5 transition rounded-lg">
-												<Mic className="size-4" />
-											</div>
-										</Tooltip>
-									</RecordMenu>
-								{/if}
-
-								<NoteMenu
-									onUploadFiles={note?.write_access ? uploadNoteFilesHandler : null}
-									onDownload={(type) => {
-										downloadHandler(type);
+											stream = null;
+										} catch {
+											toast.error($i18n.t('Permission denied when accessing microphone'));
+										}
 									}}
-onImport={note?.write_access ? handleMenuImport : null}
+									onCaptureAudio={async () => {
+										displayMediaRecord = true;
+
+										recording = true;
+									}}
+									onUpload={async () => {
+										const input = document.createElement('input');
+										input.type = 'file';
+										input.accept = 'audio/*';
+										input.multiple = false;
+										input.click();
+
+										input.onchange = async (e) => {
+											const files = e.target.files;
+
+											if (files && files.length > 0) {
+												await uploadFileHandler(files[0]);
+											}
+										};
+									}}
+								>
+									<Tooltip content={$i18n.t('Record')} placement="top">
+										<div class="p-1 bg-transparent hover:bg-white/5 transition rounded-lg">
+											<Mic className="size-4" />
+										</div>
+									</Tooltip>
+								</RecordMenu>
+							{/if}
+
+							<NoteMenu
+								onUploadFiles={note?.write_access ? uploadNoteFilesHandler : null}
+								onDownload={(type) => {
+									downloadHandler(type);
+								}}
+								onImport={note?.write_access ? handleMenuImport : null}
 								onPasteMarkdown={note?.write_access ? handleMenuPasteMarkdown : null}
 								onCopyMarkdown={copyMarkdownToClipboard}
 								onCopyLink={async () => {
-										const baseUrl = window.location.origin;
-										const res = await copyToClipboard(`${baseUrl}/notes/${note.id}`);
+									const baseUrl = window.location.origin;
+									const res = await copyToClipboard(`${baseUrl}/notes/${note.id}`);
 
-										if (res) {
-											toast.success($i18n.t('Copied link to clipboard'));
-										} else {
-											toast.error($i18n.t('Failed to copy link'));
-										}
-									}}
-									onCopyToClipboard={async () => {
-										const res = await copyToClipboard(
-											note.data.content.md,
-											note.data.content.html,
-											true
-										).catch((error) => {
-											toast.error(`${error}`);
-											return null;
-										});
+									if (res) {
+										toast.success($i18n.t('Copied link to clipboard'));
+									} else {
+										toast.error($i18n.t('Failed to copy link'));
+									}
+								}}
+								onCopyToClipboard={async () => {
+									const res = await copyToClipboard(
+										note.data.content.md,
+										note.data.content.html,
+										true
+									).catch((error) => {
+										toast.error(`${error}`);
+										return null;
+									});
 
-										if (res) {
-											toast.success($i18n.t('Copied to clipboard'));
-										}
-									}}
-									onDelete={() => {
-										showDeleteConfirm = true;
-									}}
-									isPinned={$pinnedNotes.some((n) => n.id === note.id)}
-									onPin={async () => {
-										await toggleNotePinnedStatusById(localStorage.token, note.id);
-										note = await getNoteById(localStorage.token, note.id);
-										pinnedNotes.set(await getPinnedNoteList(localStorage.token).catch(() => []));
-									}}
-								>
-									<div class="p-1 bg-transparent hover:bg-white/5 transition rounded-lg">
-										<EllipsisHorizontal className="size-5" />
-									</div>
-								</NoteMenu>
+									if (res) {
+										toast.success($i18n.t('Copied to clipboard'));
+									}
+								}}
+								onDelete={() => {
+									showDeleteConfirm = true;
+								}}
+								isPinned={$pinnedNotes.some((n) => n.id === note.id)}
+								onPin={async () => {
+									await toggleNotePinnedStatusById(localStorage.token, note.id);
+									note = await getNoteById(localStorage.token, note.id);
+									pinnedNotes.set(await getPinnedNoteList(localStorage.token).catch(() => []));
+								}}
+							>
+								<div class="p-1 bg-transparent hover:bg-white/5 transition rounded-lg">
+									<EllipsisHorizontal className="size-5" />
+								</div>
+							</NoteMenu>
 
-								{#if note?.write_access}
-									<div class="ml-1.5">
-										<AccessButton
-											on:click={() => {
-												showAccessControlModal = true;
-											}}
-											disabled={note?.user_id !== $user?.id && $user?.role !== 'admin'}
-										/>
-									</div>
-								{:else}
-									<div class="shrink-0 text-xs text-gray-500 px-2 py-1">
-										{$i18n.t('Read-Only Access')}
-									</div>
-{/if}
+							{#if note?.write_access}
+								<div class="ml-1.5">
+									<AccessButton
+										on:click={() => {
+											showAccessControlModal = true;
+										}}
+										disabled={note?.user_id !== $user?.id && $user?.role !== 'admin'}
+									/>
+								</div>
+							{:else}
+								<div class="shrink-0 text-xs text-gray-500 px-2 py-1">
+									{$i18n.t('Read-Only Access')}
+								</div>
+							{/if}
 						</div>
 					</div>
 

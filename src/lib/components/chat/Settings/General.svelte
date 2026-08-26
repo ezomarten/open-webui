@@ -272,7 +272,10 @@
 
 		{#if $user?.role === 'admin' || (($user?.permissions.chat?.controls ?? true) && ($user?.permissions.chat?.params ?? true))}
 			<UserSettingSection title={$i18n.t('Advanced Parameters')}>
-				<UserSettingRow className="ow-settings-row" description={$i18n.t('Show or hide custom generation parameters.')}>
+				<UserSettingRow
+					className="ow-settings-row"
+					description={$i18n.t('Show or hide custom generation parameters.')}
+				>
 					<span slot="label">{$i18n.t('Model parameters')}</span>
 					<button
 						class={actionButtonClass}

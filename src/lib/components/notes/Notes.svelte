@@ -685,36 +685,36 @@
 																		</button>
 																	</NoteMenu>
 																</div>
-</div>
-													</div>
-
-													<div
-														class=" text-xs text-gray-500 dark:text-gray-500 mb-3 line-clamp-3 min-h-10"
-													>
-														{#if note.data?.content?.md}
-															{note.data?.content?.md}
-														{:else}
-															{$i18n.t('No content')}
-														{/if}
-													</div>
-												</div>
-
-												<div class="text-xs px-0.5 w-full flex min-w-0 items-center gap-2">
-													<div>
-														{getNoteUpdatedLabel(note)}
-													</div>
-													<Tooltip
-														content={note?.user?.email ?? $i18n.t('Deleted User')}
-														className="flex min-w-0 flex-1 justify-end"
-														placement="top-start"
-													>
-														<div class="min-w-0 truncate text-right text-gray-500">
-															{getNoteAuthorLabel(note)}
+															</div>
 														</div>
-													</Tooltip>
-												</div>
-											</a>
-										</button>
+
+														<div
+															class=" text-xs text-gray-500 dark:text-gray-500 mb-3 line-clamp-3 min-h-10"
+														>
+															{#if note.data?.content?.md}
+																{note.data?.content?.md}
+															{:else}
+																{$i18n.t('No content')}
+															{/if}
+														</div>
+													</div>
+
+													<div class="text-xs px-0.5 w-full flex min-w-0 items-center gap-2">
+														<div>
+															{getNoteUpdatedLabel(note)}
+														</div>
+														<Tooltip
+															content={note?.user?.email ?? $i18n.t('Deleted User')}
+															className="flex min-w-0 flex-1 justify-end"
+															placement="top-start"
+														>
+															<div class="min-w-0 truncate text-right text-gray-500">
+																{getNoteAuthorLabel(note)}
+															</div>
+														</Tooltip>
+													</div>
+												</a>
+											</button>
 										{/each}
 									</div>
 								{:else if displayOption === 'grid'}

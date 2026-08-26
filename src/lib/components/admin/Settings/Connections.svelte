@@ -307,12 +307,12 @@
 					/>
 				</AdminSettingRow>
 
-			{#if ENABLE_OLLAMA_API}
-				<div>
-					<div class="ow-settings-row mb-2 flex items-center justify-between gap-4">
-						<div class="text-xs text-gray-600 dark:text-gray-400">
-							{$i18n.t('Manage Ollama API Connections')}
-						</div>
+				{#if ENABLE_OLLAMA_API}
+					<div>
+						<div class="ow-settings-row mb-2 flex items-center justify-between gap-4">
+							<div class="text-xs text-gray-600 dark:text-gray-400">
+								{$i18n.t('Manage Ollama API Connections')}
+							</div>
 
 							<Tooltip content={$i18n.t(`Add Connection`)}>
 								<button
@@ -365,14 +365,14 @@
 			</AdminSettingSection>
 
 			<AdminSettingSection title={$i18n.t('User Connections')}>
-			<AdminSettingRow
-				label={$i18n.t('Direct Connections')}
-				className="ow-settings-row"
-				description={$i18n.t(
-					'Direct Connections allow users to connect to their own OpenAI compatible API endpoints.'
-				)}
-				let:labelId
-			>
+				<AdminSettingRow
+					label={$i18n.t('Direct Connections')}
+					className="ow-settings-row"
+					description={$i18n.t(
+						'Direct Connections allow users to connect to their own OpenAI compatible API endpoints.'
+					)}
+					let:labelId
+				>
 					<Switch
 						bind:state={connectionsConfig.ENABLE_DIRECT_CONNECTIONS}
 						on:change={async () => {
@@ -382,41 +382,41 @@
 					/>
 				</AdminSettingRow>
 
-			<AdminSettingRow
-				label={$i18n.t('Cache Base Model List')}
-				className="ow-settings-row"
-				description={$i18n.t(
-					'Base Model List Cache speeds up access by fetching base models only at startup or on settings save—faster, but may not show recent base model changes.'
-				)}
-				let:labelId
-			>
-				<div class="flex items-center gap-1.5">
-					{#if connectionsConfig.ENABLE_BASE_MODELS_CACHE}
-						<Tooltip content={$i18n.t('Refresh')}>
-							<button
-								class="flex size-6 items-center justify-center rounded-lg text-gray-400 transition-colors hover:bg-black/5 hover:text-gray-700 disabled:cursor-not-allowed disabled:opacity-50 dark:text-gray-600 dark:hover:bg-white/5 dark:hover:text-gray-300"
-								type="button"
-								disabled={modelListRefreshing}
-								on:click={refreshModelListHandler}
-								aria-label={$i18n.t('Refresh')}
-							>
-								{#if modelListRefreshing}
-									<Spinner className="size-3.5" />
-								{:else}
-									<ArrowPath className="size-4" />
-								{/if}
-							</button>
-						</Tooltip>
-					{/if}
+				<AdminSettingRow
+					label={$i18n.t('Cache Base Model List')}
+					className="ow-settings-row"
+					description={$i18n.t(
+						'Base Model List Cache speeds up access by fetching base models only at startup or on settings save—faster, but may not show recent base model changes.'
+					)}
+					let:labelId
+				>
+					<div class="flex items-center gap-1.5">
+						{#if connectionsConfig.ENABLE_BASE_MODELS_CACHE}
+							<Tooltip content={$i18n.t('Refresh')}>
+								<button
+									class="flex size-6 items-center justify-center rounded-lg text-gray-400 transition-colors hover:bg-black/5 hover:text-gray-700 disabled:cursor-not-allowed disabled:opacity-50 dark:text-gray-600 dark:hover:bg-white/5 dark:hover:text-gray-300"
+									type="button"
+									disabled={modelListRefreshing}
+									on:click={refreshModelListHandler}
+									aria-label={$i18n.t('Refresh')}
+								>
+									{#if modelListRefreshing}
+										<Spinner className="size-3.5" />
+									{:else}
+										<ArrowPath className="size-4" />
+									{/if}
+								</button>
+							</Tooltip>
+						{/if}
 
-					<Switch
-						bind:state={connectionsConfig.ENABLE_BASE_MODELS_CACHE}
-						on:change={async () => {
-							updateConnectionsHandler();
-						}}
-						ariaLabelledbyId={labelId}
-					/>
-				</div>
+						<Switch
+							bind:state={connectionsConfig.ENABLE_BASE_MODELS_CACHE}
+							on:change={async () => {
+								updateConnectionsHandler();
+							}}
+							ariaLabelledbyId={labelId}
+						/>
+					</div>
 				</AdminSettingRow>
 			</AdminSettingSection>
 		{:else}
