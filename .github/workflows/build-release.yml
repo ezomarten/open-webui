@@ -28,9 +28,13 @@ jobs:
         shell: bash
         run: |
           VERSION="${{ steps.version.outputs.value }}"
+          # Extract only the fork-sync section (up to the first "### Upstream"
+          # heading) so release notes stay within GitHub's 125k char body limit
+          # — the upstream entries are already documented in the upstream release.
           awk -v version="$VERSION" '
             index($0, "## [" version "]") == 1 { found = 1; next }
             /^## \[/ && found { exit }
+            found && /^### Upstream/ { exit }
             found { print }
           ' CHANGELOG.md > /tmp/release-notes.md
 
