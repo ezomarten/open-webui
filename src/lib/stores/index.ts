@@ -356,7 +356,7 @@ type Config = {
 		enable_version_update_check: boolean;
 		enable_pyodide_file_persistence?: boolean;
 		folder_max_file_count?: number;
-		enable_public_chat_sharing?: boolean;  // fork:public-link-settings
+		enable_public_chat_sharing?: boolean; // fork:public-link-settings
 		websocket_heartbeat_interval?: number | null;
 	};
 	oauth: {
