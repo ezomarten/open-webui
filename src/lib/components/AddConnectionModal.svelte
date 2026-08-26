@@ -19,6 +19,7 @@
 	import Spinner from '$lib/components/common/Spinner.svelte';
 	import XMark from '$lib/components/icons/XMark.svelte';
 	import Textarea from './common/Textarea.svelte';
+	import { normalizeTags } from '$lib/utils/tags';
 
 	export let onSubmit: Function = () => {};
 	export let onDelete: Function = () => {};
@@ -139,10 +140,19 @@
 	};
 
 	const addModelHandler = () => {
-		if (modelId) {
-			modelIds = [...modelIds, modelId];
-			modelId = '';
+		const newModelId = modelId.trim();
+
+		if (!newModelId) {
+			return;
 		}
+
+		if (modelIds.includes(newModelId)) {
+			toast.error($i18n.t('Model ID is already added'));
+			return;
+		}
+
+		modelIds = [...modelIds, newModelId];
+		modelId = '';
 	};
 
 	const submitHandler = async () => {
@@ -236,9 +246,9 @@
 				: '';
 
 			enable = connection.config?.enable ?? true;
-			tags = connection.config?.tags ?? [];
+			tags = normalizeTags(connection.config?.tags);
 			prefixId = connection.config?.prefix_id ?? '';
-			modelIds = connection.config?.model_ids ?? [];
+			modelIds = [...new Set(connection.config?.model_ids ?? [])];
 
 			if (ollama) {
 				connectionType = connection.config?.connection_type ?? 'local';
@@ -526,6 +536,8 @@
 										<option value="">{$i18n.t('Default')}</option>
 										<option value="azure">{$i18n.t('Azure OpenAI')}</option>
 										<option value="llama.cpp">{$i18n.t('llama.cpp')}</option>
+										<option value="lmstudio">{$i18n.t('LM Studio')}</option>
+										<option value="litellm">{$i18n.t('LiteLLM')}</option>
 									</select>
 								</div>
 							</div>

@@ -45,6 +45,9 @@
 	const shareChat = async () => {
 		const _chat = chat.chat;
 
+		// LICENSE covers this Open WebUI Community wordmark.
+		// Do not alter, remove, obscure, or replace it except as LICENSE permits:
+		// https://docs.openwebui.com/license.
 		toast.success($i18n.t('Redirecting you to Open WebUI Community'));
 		const url = 'https://openwebui.com';
 
@@ -238,62 +241,61 @@
 					</div>
 				{/if}
 
-				<div class="flex justify-end">
-					<div class="flex flex-col items-end space-x-1 mt-3">
-						<div class="flex gap-1 flex-wrap justify-end">
-							{#if $config?.features.enable_community_sharing}
-								<button
-									class="self-center flex items-center gap-1 px-3.5 py-2 text-sm font-medium bg-gray-100 hover:bg-gray-200 text-gray-800 dark:bg-gray-850 dark:text-white dark:hover:bg-gray-800 transition rounded-full"
-									type="button"
-									on:click={() => {
-										shareChat();
-										show = false;
-									}}
-								>
-									{$i18n.t('Share to Open WebUI Community')}
-								</button>
-							{/if}
+				<div class="flex justify-end gap-1 mt-3">
+					{#if $config?.features.enable_community_sharing}
+						<button
+							class="self-center flex items-center gap-1 px-3.5 py-2 text-sm font-medium bg-gray-100 hover:bg-gray-200 text-gray-800 dark:bg-gray-850 dark:text-white dark:hover:bg-gray-800 transition rounded-full"
+							type="button"
+							on:click={() => {
+								shareChat();
+								show = false;
+							}}
+						>
+							<!-- LICENSE covers this Open WebUI Community wordmark.
+							Do not alter, remove, obscure, or replace it except as LICENSE permits:
+							https://docs.openwebui.com/license. -->
+							{$i18n.t('Share to Open WebUI Community')}
+						</button>
+					{/if}
 
-							<button
-								class="self-center flex items-center gap-1 px-3.5 py-2 text-sm font-medium bg-black hover:bg-gray-900 text-white dark:bg-white dark:text-black dark:hover:bg-gray-100 transition rounded-full"
-								type="button"
-								id="copy-and-share-chat-button"
-								on:click={async () => {
-									const isSafari = /^((?!chrome|android).)*safari/i.test(navigator.userAgent);
+					<button
+						class="self-center flex items-center gap-1 px-3.5 py-2 text-sm font-medium bg-black hover:bg-gray-900 text-white dark:bg-white dark:text-black dark:hover:bg-gray-100 transition rounded-full"
+						type="button"
+						id="copy-and-share-chat-button"
+						on:click={async () => {
+							const isSafari = /^((?!chrome|android).)*safari/i.test(navigator.userAgent);
 
-									if (isSafari) {
-										const getUrlPromise = async () => {
-											const url = await shareLocalChat();
-											return new Blob([url], { type: 'text/plain' });
-										};
+							if (isSafari) {
+								const getUrlPromise = async () => {
+									const url = await shareLocalChat();
+									return new Blob([url], { type: 'text/plain' });
+								};
 
-										navigator.clipboard
-											.write([
-												new ClipboardItem({
-													'text/plain': getUrlPromise()
-												})
-											])
-											.catch((error) => {
-												console.error('Async: Could not copy text: ', error);
-											});
-									} else {
-										copyToClipboard(await shareLocalChat());
-									}
+								navigator.clipboard
+									.write([
+										new ClipboardItem({
+											'text/plain': getUrlPromise()
+										})
+									])
+									.catch((error) => {
+										console.error('Async: Could not copy text: ', error);
+									});
+							} else {
+								copyToClipboard(await shareLocalChat());
+							}
 
-									toast.success($i18n.t('Copied shared chat URL to clipboard!'));
-									show = false;
-								}}
-							>
-								<Link />
+							toast.success($i18n.t('Copied shared chat URL to clipboard!'));
+							show = false;
+						}}
+					>
+						<Link />
 
-								{#if chat.share_id}
-									{$i18n.t('Update and Copy Link')}
-								{:else}
-									{$i18n.t('Copy Link')}
-								{/if}
-							</button>
-						</div>
-					</div>
+						{#if chat.share_id}
+							{$i18n.t('Update and Copy Link')}
+						{:else}
+							{$i18n.t('Copy Link')}
+						{/if}
+					</button>
 				</div>
 
 				{#if $config?.features?.enable_public_chat_sharing}
