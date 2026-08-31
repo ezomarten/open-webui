@@ -76,8 +76,8 @@ def run_migrations():
         log.exception(f'Error running migrations: {e}')
 
 
-if ENABLE_DB_MIGRATIONS:
-    run_migrations()
+# fork:migration-import-order — run_migrations() is deferred to the bottom of
+# this module; see the fork block at the end of this file.
 
 
 async def import_legacy_config_json():
@@ -3254,3 +3254,11 @@ Config.configure(
     enable_persistent=ENABLE_PERSISTENT_CONFIG,
     enable_oauth_persistent=ENABLE_OAUTH_PERSISTENT_CONFIG,
 )
+
+# fork:migration-import-order — upstream calls run_migrations() at module
+# import time (mid-file), but migrations/env.py imports modules that in turn
+# import names defined later in this file (e.g. ENABLE_LOCAL_WEB_FETCH), so
+# every startup failed with 'Error running migrations' and upgrades never
+# applied. Run migrations only after this module is fully initialized.
+if ENABLE_DB_MIGRATIONS:
+    run_migrations()

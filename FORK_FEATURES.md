@@ -30,6 +30,7 @@ Whenever a fork-only customization is added, changed, or removed, update this fi
 | `chat-timeout-msg`         | Blank-exception-to-human-readable conversion, streamed timeout/stream-stall messaging, header cleanup, first-meaningful-chunk idle-timeout skip, direct `ClientTimeout` handoff to upstream requests, and `fetch_url` Web Loader timeout fallback | `fork:chat-timeout-msg`         | [test_chat_timeout_msg_wiring.py](backend/open_webui/test/util/test_chat_timeout_msg_wiring.py)               |
 | `session-cleanup-lock`     | Session cleanup renews its Redis lock on a cadence shorter than the lock TTL to prevent worker churn on multi-worker deployments                                                                                                                  | `fork:session-cleanup-lock`     | [test_session_cleanup_lock_wiring.py](backend/open_webui/test/util/test_session_cleanup_lock_wiring.py)       |
 | `env-changelog-unreleased` | `env.py` CHANGELOG parser tolerates an `Unreleased` heading without breaking imports or image builds                                                                                                                                              | `fork:env-changelog-unreleased` | [test_public_share_wiring.py](backend/open_webui/test/util/test_public_share_wiring.py)                       |
+| `migration-import-order`   | `config.py` defers `run_migrations()` to the bottom of the module so Alembic `env.py` can import fully-initialized config names (upstream's mid-file call fails with a circular ImportError on every startup)                                     | `fork:migration-import-order`   | [test_migration_import_order_wiring.py](backend/open_webui/test/util/test_migration_import_order_wiring.py)   |
 
 ## Feature Details
 
@@ -141,6 +142,12 @@ Slug: `session-cleanup-lock`
 Slug: `env-changelog-unreleased`
 
 - `backend/open_webui/env.py` reads `CHANGELOG.md` to derive `WEBUI_VERSION`. The fork's variant tolerates an `Unreleased` heading at the top of the file (skipping it when picking the latest released version) so commits between releases do not break imports or image builds.
+
+### Database migration import order
+
+Slug: `migration-import-order`
+
+- Upstream `config.py` calls `run_migrations()` at module import time (mid-file). Alembic `migrations/env.py` imports modules that in turn import names defined later in `config.py` (e.g. `ENABLE_LOCAL_WEB_FETCH`), so the call always failed with a circular `ImportError`, every startup logged `Error running migrations`, and Alembic upgrades never applied. The fork defers the call to the bottom of `config.py` so migrations run after the module is fully initialized.
 
 ## Public Host Allowlist
 
