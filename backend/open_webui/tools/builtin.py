@@ -364,7 +364,9 @@ async def fetch_url(
     except asyncio.TimeoutError:  # fork:chat-timeout-msg
         timeout_display = f'{timeout_seconds:g}'
         log.warning(f'fetch_url timeout after {timeout_display}s for {url}')
-        return JSONCodec.dumps({'error': f'URL fetch timed out after {timeout_display} seconds'})  # fork:chat-timeout-msg
+        return JSONCodec.dumps(
+            {'error': f'URL fetch timed out after {timeout_display} seconds'}
+        )  # fork:chat-timeout-msg
     except Exception as e:
         log.warning(f'fetch_url error: {e}')
         return JSONCodec.dumps({'error': str(e)})

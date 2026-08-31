@@ -27,9 +27,7 @@ def test_config_runs_migrations_after_full_initialization():
     # A name defined late in config.py and required by migrations/env.py's
     # import chain (env.py -> models.calendar -> events -> retrieval.web.utils).
     late_definition = source.index('ENABLE_LOCAL_WEB_FETCH = (')
-    assert call_site > late_definition, (
-        'run_migrations() must be called after config.py is fully initialized'
-    )
+    assert call_site > late_definition, 'run_migrations() must be called after config.py is fully initialized'
 
 
 def test_config_carries_sentinel():

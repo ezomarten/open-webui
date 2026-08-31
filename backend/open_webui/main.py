@@ -1914,9 +1914,7 @@ async def chat_completion(
                 tasks
                 if idx == 0
                 else {
-                    k: v
-                    for k, v in (tasks or {}).items()
-                    if k not in (TASKS.TITLE_GENERATION, TASKS.TAGS_GENERATION)
+                    k: v for k, v in (tasks or {}).items() if k not in (TASKS.TITLE_GENERATION, TASKS.TAGS_GENERATION)
                 }
                 or None
             )

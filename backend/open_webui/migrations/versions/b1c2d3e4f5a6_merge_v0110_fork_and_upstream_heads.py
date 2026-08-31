@@ -12,8 +12,8 @@ from alembic import op
 import sqlalchemy as sa
 import open_webui.internal.db
 
-revision: str = "b1c2d3e4f5a6"
-down_revision: Union[str, None] = ("a9f3c7e2b1d4", "f0bd01a18a3d")
+revision: str = 'b1c2d3e4f5a6'
+down_revision: Union[str, None] = ('a9f3c7e2b1d4', 'f0bd01a18a3d')
 branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
 
