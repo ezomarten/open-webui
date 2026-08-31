@@ -12,6 +12,7 @@
 	export let sources = [];
 	export let readOnly = false;
 
+	// fork:public-share — public pages must not leak favicon lookups to third parties
 	const getFaviconSrc = (value: string) => {
 		if (readOnly) {
 			return '/static/favicon.png';

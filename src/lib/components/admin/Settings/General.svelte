@@ -244,6 +244,30 @@
 					https://docs.openwebui.com/license. -->
 					<Switch bind:state={adminConfig.ENABLE_COMMUNITY_SHARING} ariaLabelledbyId={labelId} />
 				</AdminSettingRow>
+				<!-- fork:public-link-settings -->
+				<AdminSettingRow
+					label={$i18n.t('Enable Public Links')}
+					description={$i18n.t(
+						'Allow users to create anonymous read-only public links to their chats.'
+					)}
+					let:labelId
+				>
+					<Switch bind:state={adminConfig.ENABLE_PUBLIC_CHAT_SHARING} ariaLabelledbyId={labelId} />
+				</AdminSettingRow>
+				<!-- fork:public-link-settings -->
+				<AdminSettingField
+					label={$i18n.t('Public Link URL')}
+					description={$i18n.t(
+						'Enter the public base URL used for anonymous public links. Leave empty to disable link generation until configured.'
+					)}
+				>
+					<input
+						class={inputClass}
+						type="text"
+						placeholder={'e.g.) "https://share.example.com"'}
+						bind:value={adminConfig.PUBLIC_SHARE_BASE_URL}
+					/>
+				</AdminSettingField>
 				<AdminSettingRow
 					label={$i18n.t('Message Rating')}
 					description={$i18n.t('Let users rate assistant responses.')}

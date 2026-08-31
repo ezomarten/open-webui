@@ -49,6 +49,10 @@
 	export let orderBy = 'updated_at';
 	export let direction = 'desc'; // 'asc' or 'desc'
 
+	$: if (!show) {
+		query = '';
+	}
+
 	export let chatList = null;
 	export let allChatsLoaded = false;
 	export let chatListLoading = false;

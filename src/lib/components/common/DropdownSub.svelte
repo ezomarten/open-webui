@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { flyAndScale } from '$lib/utils/transitions';
+	import { settings } from '$lib/stores';
 	import { tick } from 'svelte';
 
 	/** CSS classes for the sub-content container */
@@ -163,7 +164,9 @@
 <!-- svelte-ignore a11y-no-static-element-interactions -->
 <div
 	bind:this={triggerEl}
-	class="w-full"
+	class="w-full {($settings?.highContrastMode ?? false)
+		? '[&>button:hover]:bg-gray-200! dark:[&>button:hover]:bg-gray-800!'
+		: '[&>button:hover]:bg-gray-50/60 dark:[&>button:hover]:bg-gray-800/60'}"
 	data-dropdown-sub-trigger-id={dropdownSubId}
 	on:mouseenter={handleMouseEnter}
 	on:mouseleave={handleMouseLeave}

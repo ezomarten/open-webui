@@ -42,6 +42,25 @@ def test_public_shares_modal_source_translates_backend_errors():
     assert 'publicShareErrorMessage(error)' in source
 
 
+def test_admin_general_source_keeps_public_link_settings_block():
+    # The v0.11.1-era sync silently dropped the Admin > General public-link UI
+    # block while leaving the backend config wiring intact; guard the UI side too.
+    source = _read_repo_file('src', 'lib', 'components', 'admin', 'Settings', 'General.svelte')
+
+    assert 'adminConfig.ENABLE_PUBLIC_CHAT_SHARING' in source
+    assert 'adminConfig.PUBLIC_SHARE_BASE_URL' in source
+    assert "'Enable Public Links'" in source
+    assert "'Public Link URL'" in source
+
+
+def test_auths_source_keeps_public_link_admin_config_keys():
+    source = _read_repo_file('backend', 'open_webui', 'routers', 'auths.py')
+
+    assert "'ENABLE_PUBLIC_CHAT_SHARING': 'ui.enable_public_chat_sharing'" in source
+    assert "'PUBLIC_SHARE_BASE_URL': 'ui.public_share_base_url'" in source
+    assert 'validate_public_share_base_url' in source
+
+
 def test_env_source_tolerates_unreleased_changelog_heading():
     source = _read_repo_file('backend', 'open_webui', 'env.py')
 
@@ -53,6 +72,7 @@ def test_public_share_ja_jp_translations_are_not_empty():
     translations = json.loads(_read_repo_file('src', 'lib', 'i18n', 'locales', 'ja-JP', 'translation.json'))
     required_keys = [
         'Copied public link to clipboard!',
+        'Allow users to create anonymous read-only public links to their chats.',
         'Copy Public Link',
         'Create Public Link',
         'Creates an anonymous read-only public page. Image attachments and public web citations are included. Other files and private citations are omitted.',
