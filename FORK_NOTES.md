@@ -1,6 +1,6 @@
 # Fork Notes
 
-This fork now tracks Open WebUI `v0.11.2` and carries a small set of deployment-focused customizations for anonymous public sharing.
+This fork now tracks Open WebUI `v0.11.3` and carries a small set of deployment-focused customizations for anonymous public sharing.
 
 The per-feature catalog (Goals, fork-only customizations, public-host allowlist, current limitations) lives in [`FORK_FEATURES.md`](FORK_FEATURES.md). This file focuses on workflow rules, the maintenance timeline, and release history.
 
@@ -12,6 +12,7 @@ The per-feature catalog (Goals, fork-only customizations, public-host allowlist,
 - Local rebuilds only affect runtime when workspace root [../.env](../.env) sets `OPENWEBUI_IMAGE=open-webui-public-share` or another local `open-webui-public-share[:tag]` reference
 - If [../.env](../.env) points to a GHCR tag, compose recreate will continue to run the GHCR image even after a successful local `docker build`
 - Current published fork release is `0.11.2-publicshare.1` (tag `v0.11.2-publicshare.1` pushed 2026-08-31; the tag-triggered `Build and publish fork image` workflow published `ghcr.io/ezomarten/open-webui:0.11.2-publicshare.1` and the `Release` workflow created the GitHub release, both green; the GHCR package remains private per the deployment runbook, so pulling it requires `docker login ghcr.io` with a `read:packages` credential)
+- Local `main` also carries the 2026-09-03 upstream `v0.11.3` sync with a prepared `0.11.3-publicshare.1` entry in CHANGELOG; the `v0.11.3-publicshare.1` tag and GHCR publication are still pending, so `0.11.2-publicshare.1` remains the current published release
 - Current local fork head should be treated as the source of truth for future local image rebuilds
 - Multi-worker deployments must set `REDIS_URL` as well as `WEBSOCKET_REDIS_URL`; the latter only covers Socket.IO, while the former is required for AppConfig persistent-config sync so admin connection settings do not revert across workers
 - Before pushing a release commit or tag, run `python scripts/release_preflight.py` from an environment that has the repo's Python and Node dependencies installed; by default it now also runs `scripts/chat_smoke.py`, so set one of `OPENWEBUI_SMOKE_TRUSTED_EMAIL`, `OPENWEBUI_SMOKE_EMAIL` + `OPENWEBUI_SMOKE_PASSWORD`, `OPENWEBUI_SMOKE_API_KEY`, or `OPENWEBUI_SMOKE_BEARER_TOKEN` for the target runtime unless you are intentionally skipping the smoke with `OPENWEBUI_SKIP_CHAT_SMOKE=1`
@@ -38,8 +39,9 @@ All feature slugs now have `wiring_test` set in [`fork-features.json`](fork-feat
 
 ### Pending workflow improvements
 
-- `git-merge-based-upstream-sync`: Replace the manual replay-onto-temporary-worktree upstream sync with a git merge or rebase workflow so dropped patches surface as conflicts instead of silent omissions. Tracked since 2026-05-26. Evidence from 2026-08-31: because the `v0.11.1` sync was committed as a squashed single-parent commit, `v0.11.1` was not an ancestor of the fork branch, the `v0.11.2` merge base fell back to the `v0.11.0`-era upstream commit, and the merge produced 117 conflicts plus two additional pre-existing silent drops (three ja-JP public-link keys and the Admin > General public-link settings block) that only manual archaeology surfaced. Squashed syncs defeat git's conflict detection; record the merge commit properly (or merge the upstream tag into the fork first as a separate commit) so the next sync has a correct base.
 - `notable-files-as-enforced-patch-sites`: Tighten each feature's `notable_files` into the exact set of files that carry its `# fork:<slug>` sentinel, and require a sentinel at every listed patch site (today the meta-test only requires the sentinel to appear in _some_ non-test source file, and `notable_files` is allowed to be a curated superset). This would turn `notable_files` into a per-site drop detector rather than a presence-anywhere check. Deferred to avoid a risky broad sweep adding sentinels to every currently-listed file. Tracked since 2026-05-30.
+
+(The `git-merge-based-upstream-sync` item was closed on 2026-09-03: the `v0.11.2` sync was recorded as a real two-parent merge and the `v0.11.3` sync then merged with the `v0.11.2` tag as its base and a single conflict, demonstrating the merge-based workflow end to end; removed from `fork-features.json` in the same change.)
 
 ## Maintenance Record Rules
 
@@ -71,6 +73,8 @@ If the change is release-worthy, also update [CHANGELOG.md](CHANGELOG.md).
 If the change affects public-share or public-link UI strings, also update [src/lib/i18n/locales/ja-JP/translation.json](src/lib/i18n/locales/ja-JP/translation.json).
 
 ## Maintenance Record
+
+- 2026-09-03: synced the fork from upstream `v0.11.2` to `v0.11.3` using `git merge v0.11.3 --no-ff --no-commit`, committed as a proper two-parent merge commit (`b90aa2555`, parents `8f9455564` and `2a960a59f` = the `v0.11.3` tag); the merge base was the `v0.11.2` tag itself, so the upstream delta was small (11 commits, 11 files) and the merge produced a single conflict (`CHANGELOG.md`), resolved per fork convention with a `0.11.3-publicshare.1` Fork-sync entry. Auto-merged upstream changes: `run_migrations()` re-raise (a failed database upgrade now stops startup loudly, composing cleanly with the fork's deferred `run_migrations()` call at the bottom of `config.py`), chat branch parent-link repair (`ChatTable._add_child_id_to_parent`), deferred `rrule_interval_seconds` import in `models/calendar.py`, self-hosted `/api/v1/files/` content URL handling in `routers/images.py`, a stricter MCP tool-server authentication check in `IntegrationsMenu.svelte`, high-contrast accessibility hover styles in `src/tailwind.css`, expanded id-ID translations, and the `0.11.3` version bump. All 14 manifest fork features were untouched by the merge and verified intact. Closed the `git-merge-based-upstream-sync` pending workflow improvement (removed from this file and from `fork-features.json`): the `v0.11.2` sync's real merge commit plus this sync's correct base and single-conflict merge demonstrate the merge-based workflow end to end. Key files: `CHANGELOG.md`, `backend/open_webui/config.py`, `backend/open_webui/models/chats.py`, `backend/open_webui/models/calendar.py`, `backend/open_webui/routers/images.py`, `package.json`, `fork-features.json`, `FORK_NOTES.md`; validation: fork-wiring gate (23 targets: manifest meta-test, kwarg-signature drift guard, 11 wiring tests, 10 supporting unit tests) with 101 passed on BOTH sides of the merge (BEFORE at `8f9455564`, AFTER at the merged tree), `py_compile` clean on the changed backend files, and an import smoke test confirming `open_webui.env.VERSION == 0.11.3`.
 
 - 2026-08-31: published fork release `0.11.2-publicshare.1`. Before tagging: ran `npm run i18n:parse` (fork-only keys re-sorted with values preserved; empty-value keys re-added; committed so `check:i18n` passes), applied `ruff format` to fork-divergent backend files (`main.py`, `tools/builtin.py`, three fork merge-revision files, the new wiring test) and Prettier to `fork-features.json`, then ran `scripts/release_preflight.py` end-to-end with `OPENWEBUI_SKIP_CHAT_SMOKE=1` (chat smoke skipped intentionally: no model backend is reachable from this Linux host) and `CI=true` so vitest runs once instead of watch mode — "Release preflight passed." Rebuilt the local image with the migration fix, recreated `open-webui`, and verified: no `Error running migrations` in startup logs, container `healthy` with 0 restarts, `curl -I http://localhost:3000` → `200 OK`, `/api/config` version `0.11.2`, and the authenticated features payload (trusted-header signin) includes `enable_public_chat_sharing: true`. Pushed `main` and tag `v0.11.2-publicshare.1` to `ezomarten/open-webui`; both tag workflows went green (`Release` → GitHub release; `Build and publish fork image` → `ghcr.io/ezomarten/open-webui:0.11.2-publicshare.1`, private package). Key files: `src/lib/i18n/locales/*`, `backend/open_webui/main.py`, `backend/open_webui/tools/builtin.py`, `backend/open_webui/migrations/versions/*_merge_*.py`, `fork-features.json`, `FORK_NOTES.md`; validation: `release_preflight.py` exit 0, local runtime checks above, both tag workflows `success`.
 
@@ -214,7 +218,7 @@ If the change affects public-share or public-link UI strings, also update [src/l
 
 ## Upstream Base
 
-Fork mainline now tracks upstream `v0.11.2`.
+Fork mainline now tracks upstream `v0.11.3`.
 
 Retained fork-only areas on top of that base:
 

@@ -189,12 +189,6 @@
 	],
 	"pending_workflow_improvements": [
 		{
-			"id": "git-merge-based-upstream-sync",
-			"summary": "Replace the manual replay-onto-temporary-worktree upstream sync with a git merge/rebase workflow so dropped patches surface as loud conflicts instead of silent omissions. (FORK_NOTES.md Pending Improvements item C.)",
-			"owner_doc": "FORK_NOTES.md#pending-improvements",
-			"tracked_since": "2026-05-26"
-		},
-		{
 			"id": "notable-files-as-enforced-patch-sites",
 			"summary": "Tighten each feature's notable_files into the exact set of sentinel-bearing patch sites and require a sentinel at every listed site, turning notable_files into a per-site drop detector instead of the current presence-anywhere check. (FORK_NOTES.md Pending workflow improvements.)",
 			"owner_doc": "FORK_NOTES.md#pending-improvements",
