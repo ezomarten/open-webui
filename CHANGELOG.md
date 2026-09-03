@@ -5,6 +5,29 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.11.3-publicshare.1] - 2026-09-03
+
+### Fork-sync
+
+- Synced the fork from upstream `v0.11.2` to `v0.11.3` using `git merge v0.11.3 --no-ff --no-commit`, recorded as a proper two-parent merge commit; because the `v0.11.2` sync had been committed as a real merge, the merge base was the `v0.11.2` tag itself, the upstream delta was small (11 commits, 11 files), and the merge produced a single conflict (`CHANGELOG.md`).
+- Auto-merged upstream changes: `run_migrations()` now re-raises migration failures so a failed database upgrade stops startup loudly instead of continuing half-updated (composes cleanly with the fork's deferred `run_migrations()` call at the bottom of `config.py`), chat branch parent-link repair (`ChatTable._add_child_id_to_parent`) so replies saved under earlier messages stay connected after reloads, a deferred `rrule_interval_seconds` import in `models/calendar.py` to break a circular import, self-hosted `/api/v1/files/` content URLs resolved through `load_url_image` in the image router, a stricter MCP tool-server authentication check in `IntegrationsMenu.svelte`, high-contrast accessibility hover styles in `src/tailwind.css`, expanded id-ID translations, and the `0.11.3` version bump.
+- All 14 manifest fork features preserved untouched; the fork-wiring gate ran green on both sides of the merge (101 passed before, 101 passed after).
+
+### Upstream Added (v0.11.3)
+
+### Added
+
+- ♿ **Accessibility mode reaches the menus.** Accessibility mode now marks the menu entry you are pointing at and the model already chosen with a stronger background, across the dropdown menus, their submenus, and the model picker together with its filter and compare controls, so those cues carry the contrast the accessibility guidelines ask for in both themes. [Commit](https://github.com/open-webui/open-webui/commit/a6f9751401589ee73208295b6f6a7f6eae9c1b44), [Commit](https://github.com/open-webui/open-webui/commit/471b5cbbb16c3996c32e68808dde6f8898f64ecd)
+- 🔄 **General improvements.** Various improvements were implemented across the application to enhance performance, stability, and security.
+- 🌐 **Translation updates.** Translations for Indonesian were enhanced and expanded.
+
+### Fixed
+
+- 💥 **Chat branches stay connected after reloads.** A reply saved under an earlier message now stays listed under that message, so branch arrows, exports, reloads, and later edits keep the whole conversation in view, and chats already saved with that link missing are repaired when opened. [#29299](https://github.com/open-webui/open-webui/issues/29299)
+- 🧱 **Upgrades fail clearly instead of starting half updated.** A failed database upgrade now stops at the migration error that caused it, instead of starting anyway and reporting a missing table or column such as 'chat.timer_at' later, which is the upgrade failure seen after moving from 0.11.0, 0.11.1, or 0.11.2. [#29280](https://github.com/open-webui/open-webui/issues/29280)
+- 🔤 **Custom interface fonts reach more of the app.** The font chosen in interface settings now applies to dropdowns and other interface text that previously fell back to the standard font. [Commit](https://github.com/open-webui/open-webui/commit/1457000ba66547b24bd98012aa35ac16fd4bc696)
+- 🔌 **Disconnect OAuth only where there is OAuth.** The disconnect control on a tool server reached over MCP now appears only where that server signs in through OAuth and an account is connected, rather than on servers that use no sign-in at all. [#29296](https://github.com/open-webui/open-webui/issues/29296)
+
 ## [0.11.2-publicshare.1] - 2026-08-31
 
 ### Fork-sync

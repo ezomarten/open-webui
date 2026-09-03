@@ -74,6 +74,7 @@ def run_migrations():
         command.upgrade(alembic_cfg, 'head')
     except Exception as e:
         log.exception(f'Error running migrations: {e}')
+        raise
 
 
 # fork:migration-import-order — run_migrations() is deferred to the bottom of
