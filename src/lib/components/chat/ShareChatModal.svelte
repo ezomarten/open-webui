@@ -35,9 +35,13 @@
 	const publicShareErrorMessage = (error) => {
 		// Guard against empty toasts: unhandled backend 500s return non-JSON
 		// bodies and HTTP/2 strips statusText, so detail can be '' or missing.
+		// Keep the fallback string literal inside $i18n.t so i18next-parser
+		// retains the key in the catalogs.
 		const detail = error?.detail ?? `${error ?? 'Unknown error'}`;
-		const message = typeof detail === 'string' && detail.trim() ? detail : 'Internal Server Error';
-		return $i18n.t(message);
+		if (typeof detail === 'string' && detail.trim()) {
+			return $i18n.t(detail);
+		}
+		return $i18n.t('Internal Server Error');
 	};
 
 	const shareLocalChat = async () => {
