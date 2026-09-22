@@ -5,13 +5,25 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [0.11.3-publicshare.1] - 2026-09-03
+## [0.11.3-publicshare.1] - 2026-09-22
 
 ### Fork-sync
 
 - Synced the fork from upstream `v0.11.2` to `v0.11.3` using `git merge v0.11.3 --no-ff --no-commit`, recorded as a proper two-parent merge commit; because the `v0.11.2` sync had been committed as a real merge, the merge base was the `v0.11.2` tag itself, the upstream delta was small (11 commits, 11 files), and the merge produced a single conflict (`CHANGELOG.md`).
 - Auto-merged upstream changes: `run_migrations()` now re-raises migration failures so a failed database upgrade stops startup loudly instead of continuing half-updated (composes cleanly with the fork's deferred `run_migrations()` call at the bottom of `config.py`), chat branch parent-link repair (`ChatTable._add_child_id_to_parent`) so replies saved under earlier messages stay connected after reloads, a deferred `rrule_interval_seconds` import in `models/calendar.py` to break a circular import, self-hosted `/api/v1/files/` content URLs resolved through `load_url_image` in the image router, a stricter MCP tool-server authentication check in `IntegrationsMenu.svelte`, high-contrast accessibility hover styles in `src/tailwind.css`, expanded id-ID translations, and the `0.11.3` version bump.
 - All 14 manifest fork features preserved untouched; the fork-wiring gate ran green on both sides of the merge (101 passed before, 101 passed after).
+
+### Fixed
+
+- 🐛 **Public link creation works again.** Every public-shares endpoint returned an internal server error (`AttributeError: 'State' object has no attribute 'config'`) since the v0.10.2 sync because the fork-only router still read the removed `app.state.config` runtime API and called the now-async `has_permission` without awaiting it. The router now uses the persistent-config API (`Config.get`) and awaits every permission check; creating, copying, listing, and stopping public links all work again, and the share-permission check can no longer be silently bypassed by a missing await.
+- 🐛 **Pasted-URL fetches work again.** The fork's `fetch_url` timeout patch still routed `get_content_from_url` through `asyncio.to_thread` after upstream made it async, so every URL fetch failed with `cannot unpack non-iterable coroutine object`. The call now awaits the async function directly under the timeout wrapper.
+- 💬 **Error toasts no longer appear icon-only.** Backend 500 responses carry no JSON body and HTTP/2 strips the status text, so public-share error toasts could render with an empty message; the share modals now fall back to a readable "Internal Server Error" message (ja-JP included).
+- 🛡️ **Upstream-sync drift guards.** Two new codebase-wide tests ban the removed `app.state.config` runtime API and detect un-awaited async calls (including async functions passed to threadpool executors), and the upstream sync checklist now requires a real-operation smoke test (public-link create, PDF attach, URL fetch) after every deployment. Both guards run in the fork-wiring gate and release preflight.
+- 🐛 **OpenRouter ZDR payload path no longer crashes.** The fork's `apply_openrouter_zdr_preferences` call site serialized the payload with `json.dumps` but the module never imported `json` (regressed during the v0.11.2 merge); the missing import is restored.
+
+### Deployment
+
+- The kreuzberg document-extraction image was renamed upstream: `docker-compose.yml` now uses `ghcr.io/kreuzberg-dev/kreuzberg-full:latest` because the old `ghcr.io/kreuzberg-dev/kreuzberg:latest` reference pull-denied, which had left `kreuzberg` and `kreuzberg-adapter` stopped and broken every PDF attachment with `Failed to resolve 'kreuzberg-adapter'`. `docker compose up -d --force-recreate open-webui` now works without the `--no-deps` workaround again.
 
 ### Upstream Added (v0.11.3)
 
