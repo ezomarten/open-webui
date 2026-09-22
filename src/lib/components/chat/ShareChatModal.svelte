@@ -32,7 +32,13 @@
 	let publicShareLoading = false;
 	let accessGrants: any[] = [];
 	const i18n = getContext('i18n');
-	const publicShareErrorMessage = (error) => $i18n.t(error?.detail ?? `${error}`);
+	const publicShareErrorMessage = (error) => {
+		// Guard against empty toasts: unhandled backend 500s return non-JSON
+		// bodies and HTTP/2 strips statusText, so detail can be '' or missing.
+		const detail = error?.detail ?? `${error ?? 'Unknown error'}`;
+		const message = typeof detail === 'string' && detail.trim() ? detail : 'Internal Server Error';
+		return $i18n.t(message);
+	};
 
 	const shareLocalChat = async () => {
 		const sharedChat = await shareChatById(localStorage.token, chatId);

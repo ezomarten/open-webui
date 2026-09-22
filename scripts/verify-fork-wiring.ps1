@@ -59,6 +59,14 @@ try {
     # silently skip it.
     $testTargets.Add('backend/open_webui/test/util/test_no_kwarg_signature_drift.py') | Out-Null
 
+    # General guards added after the 2026-09 incident (public-link 500s that
+    # survived four syncs): a repo-wide ban on the removed app.state.config
+    # runtime API, and a sync->async call-shape drift guard (the
+    # fetch_url / get_content_from_url to_thread regression). Neither is a
+    # *_wiring.py file, so register them explicitly.
+    $testTargets.Add('backend/open_webui/test/util/test_no_removed_state_config_api.py') | Out-Null
+    $testTargets.Add('backend/open_webui/test/util/test_no_unawaited_async_calls.py') | Out-Null
+
     # Auto-discover every wiring test on disk.
     Get-ChildItem -Path 'backend/open_webui/test/util' -Filter 'test_*_wiring.py' |
         Sort-Object Name |

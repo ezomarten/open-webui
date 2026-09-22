@@ -26,6 +26,36 @@ def test_config_source_keeps_public_share_persistent_settings():
     assert 'ENABLE_PUBLIC_CHAT_SHARING' in source and "'ui.enable_public_chat_sharing'" in source
 
 
+def test_public_shares_router_uses_post_v010_config_api():
+    """Regression guard for the 2026-09 incident: public_shares.py kept
+    reading ``request.app.state.config`` (removed upstream in v0.10.x) and
+    calling the now-async ``has_permission`` without ``await``, so every
+    public-link operation 500'd for four releases. The router must use the
+    persistent-config API and await both helpers at every call site."""
+    source = _read_repo_file('backend', 'open_webui', 'routers', 'public_shares.py')
+
+    # No stale runtime API anywhere in the file (the .state.config ban is
+    # enforced repo-wide by test_no_removed_state_config_api.py; here we pin
+    # the *positive* wiring too).
+    assert 'state.config' not in source
+    assert 'from open_webui.models.config import Config' in source
+    assert "await Config.get('ui.enable_public_chat_sharing')" in source
+    assert "await Config.get('user.permissions')" in source
+    assert 'await has_permission(' in source
+    # The helpers are async and awaited at every endpoint call site.
+    assert source.count('async def _get_public_share_base_url') == 1
+    assert source.count('async def _assert_share_permission') == 1
+    assert source.count('await _get_public_share_base_url(request)') >= 7
+    assert source.count('await _assert_share_permission(request, user)') >= 4
+    # Any call site missing the await would remain after stripping the good ones.
+    assert '_get_public_share_base_url(request)' not in source.replace('await _get_public_share_base_url(request)', '')
+    assert '_assert_share_permission(request, user)' not in source.replace(
+        'await _assert_share_permission(request, user)', ''
+    )
+    # Sentinel for the fork wiring test contract.
+    assert '# fork:public-link-settings' in source
+
+
 def test_share_chat_modal_source_keeps_public_link_controls():
     source = _read_repo_file('src', 'lib', 'components', 'chat', 'ShareChatModal.svelte')
 
@@ -79,6 +109,7 @@ def test_public_share_ja_jp_translations_are_not_empty():
         'Enable Public Links',
         'Enter the public base URL used for anonymous public links. Leave empty to disable link generation until configured.',
         'Failed to stop public link.',
+        'Internal Server Error',
         'It may have been removed or the link may be invalid.',
         'No public messages found.',
         'Open Public Page',

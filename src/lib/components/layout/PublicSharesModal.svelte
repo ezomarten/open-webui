@@ -22,7 +22,13 @@
 	let allChatsLoaded = false;
 	let chatListLoading = false;
 	let searchDebounceTimeout: any;
-	const publicShareErrorMessage = (error) => $i18n.t(error?.detail ?? `${error}`);
+	const publicShareErrorMessage = (error) => {
+		// Guard against empty toasts: unhandled backend 500s return non-JSON
+		// bodies and HTTP/2 strips statusText, so detail can be '' or missing.
+		const detail = error?.detail ?? `${error ?? 'Unknown error'}`;
+		const message = typeof detail === 'string' && detail.trim() ? detail : 'Internal Server Error';
+		return $i18n.t(message);
+	};
 
 	let filter: any = {};
 	$: filter = {

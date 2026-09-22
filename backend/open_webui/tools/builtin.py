@@ -346,8 +346,10 @@ async def fetch_url(
     timeout_seconds = get_web_loader_timeout_seconds(__request__)  # fork:chat-timeout-msg
 
     try:
+        # get_content_from_url is async since the v0.10.x sync; wrapping it in
+        # asyncio.to_thread would yield a bare coroutine and break the unpack.
         content, _ = await asyncio.wait_for(  # fork:chat-timeout-msg
-            asyncio.to_thread(get_content_from_url, __request__, url),
+            get_content_from_url(__request__, url),
             timeout=timeout_seconds,
         )
 

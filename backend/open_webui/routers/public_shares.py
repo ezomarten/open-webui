@@ -11,6 +11,7 @@ from sqlalchemy.orm import Session
 from open_webui.constants import ERROR_MESSAGES
 from open_webui.internal.db import get_session
 from open_webui.models.chats import Chats
+from open_webui.models.config import Config
 from open_webui.models.files import Files
 from open_webui.models.public_shares import (
     PublicShareAccessResponse,
@@ -32,10 +33,12 @@ log = logging.getLogger(__name__)
 router = APIRouter()
 
 
-def _get_public_share_base_url(request: Request) -> str:
+async def _get_public_share_base_url(request: Request) -> str:  # fork:public-link-settings
+    # v0.10.x moved config off app state: the share flag lives in persistent
+    # config and the base URL in app state (see main.initialize_runtime_config).
     public_share_base_url = str(getattr(request.app.state, 'PUBLIC_SHARE_BASE_URL', '') or '')
     if not is_public_share_enabled(
-        bool(getattr(request.app.state.config, 'ENABLE_PUBLIC_CHAT_SHARING', False)),
+        await Config.get('ui.enable_public_chat_sharing'),
         public_share_base_url,
     ):
         raise HTTPException(
@@ -45,8 +48,10 @@ def _get_public_share_base_url(request: Request) -> str:
     return public_share_base_url
 
 
-def _assert_share_permission(request: Request, user) -> None:
-    if user.role != 'admin' and not has_permission(user.id, 'chat.share', request.app.state.config.USER_PERMISSIONS):
+async def _assert_share_permission(request: Request, user) -> None:  # fork:public-link-settings
+    # Mirror chats.py: has_permission is async and default permissions come
+    # from persistent config ('user.permissions'), not from app state.
+    if user.role != 'admin' and not await has_permission(user.id, 'chat.share', await Config.get('user.permissions')):
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail=ERROR_MESSAGES.ACCESS_PROHIBITED,
@@ -125,8 +130,8 @@ async def get_public_share_list(
     user=Depends(get_verified_user),
     db: Session = Depends(get_session),
 ):
-    public_share_base_url = _get_public_share_base_url(request)
-    _assert_share_permission(request, user)
+    public_share_base_url = await _get_public_share_base_url(request)
+    await _assert_share_permission(request, user)
 
     page = max(1, page or 1)
     limit = 60
@@ -154,8 +159,8 @@ async def get_public_share_by_chat_id(
     user=Depends(get_verified_user),
     db: Session = Depends(get_session),
 ):
-    public_share_base_url = _get_public_share_base_url(request)
-    _assert_share_permission(request, user)
+    public_share_base_url = await _get_public_share_base_url(request)
+    await _assert_share_permission(request, user)
 
     chat = await Chats.get_chat_by_id_and_user_id(chat_id, user.id)
     if chat is None:
@@ -194,8 +199,8 @@ async def upsert_public_share_by_chat_id(
     user=Depends(get_verified_user),
     db: Session = Depends(get_session),
 ):
-    public_share_base_url = _get_public_share_base_url(request)
-    _assert_share_permission(request, user)
+    public_share_base_url = await _get_public_share_base_url(request)
+    await _assert_share_permission(request, user)
 
     chat = await Chats.get_chat_by_id_and_user_id(chat_id, user.id)
     if chat is None:
@@ -225,8 +230,8 @@ async def delete_public_share_by_chat_id(
     user=Depends(get_verified_user),
     db: Session = Depends(get_session),
 ):
-    _get_public_share_base_url(request)
-    _assert_share_permission(request, user)
+    await _get_public_share_base_url(request)
+    await _assert_share_permission(request, user)
 
     chat = await Chats.get_chat_by_id_and_user_id(chat_id, user.id)
     if chat is None:
@@ -245,7 +250,7 @@ async def get_public_share_snapshot(
     public_share_id: str,
     db: Session = Depends(get_session),
 ):
-    _get_public_share_base_url(request)
+    await _get_public_share_base_url(request)
     public_share = PublicShares.get_public_share_by_id(public_share_id, db=db)
     if public_share is None:
         raise HTTPException(
@@ -276,7 +281,7 @@ async def get_public_share_file_content(
     file_id: str,
     db: Session = Depends(get_session),
 ):
-    _get_public_share_base_url(request)
+    await _get_public_share_base_url(request)
     public_share = PublicShares.get_public_share_by_id(public_share_id, db=db)
     if public_share is None:
         raise HTTPException(
@@ -347,7 +352,7 @@ async def head_public_share_snapshot(
     public_share_id: str,
     db: Session = Depends(get_session),
 ):
-    _get_public_share_base_url(request)
+    await _get_public_share_base_url(request)
     public_share = PublicShares.get_public_share_by_id(public_share_id, db=db)
     if public_share is None:
         raise HTTPException(

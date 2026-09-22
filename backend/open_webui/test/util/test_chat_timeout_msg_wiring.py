@@ -65,3 +65,18 @@ def test_get_web_loader_accepts_and_forwards_timeout():
     # Caller must forward it under the sentinel.
     assert 'timeout=timeout,' in retrieval_utils
     assert SENTINEL in retrieval_utils
+
+
+def test_fetch_url_awaits_async_get_content_from_url():
+    """Regression guard for the 2026-09 incident: the v0.10.2 sync made
+    ``get_content_from_url`` async, but the fork's ``fetch_url`` timeout
+    patch kept routing the call through ``asyncio.to_thread``, so every URL
+    fetch failed with ``cannot unpack non-iterable coroutine object``.
+    The repo-wide shape guard lives in test_no_unawaited_async_calls.py;
+    this pins the positive wiring of the fork-patched call site."""
+    builtin = _read('backend', 'open_webui', 'tools', 'builtin.py')
+
+    assert 'get_content_from_url(__request__, url)' in builtin
+    assert 'await asyncio.wait_for(' in builtin
+    # The broken wrapper must never come back.
+    assert 'asyncio.to_thread(get_content_from_url' not in builtin

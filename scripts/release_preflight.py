@@ -57,12 +57,16 @@ def main() -> int:
     os.environ['PYTHONPATH'] = backend_pp if not existing_pp else f'{backend_pp}{os.pathsep}{existing_pp}'
 
     # Fork-wiring guard tests run first and fast: the manifest meta-test, the
-    # general signature-drift guard, and every *_wiring.py source-grep test.
-    # This makes the release gate fail loudly if an upstream sync dropped a fork
-    # patch, before spending time on format/build steps.
+    # general signature-drift guard, the 2026-09-incident guards (removed
+    # app.state.config API ban + sync->async call-shape drift), and every
+    # *_wiring.py source-grep test. This makes the release gate fail loudly if
+    # an upstream sync dropped a fork patch, before spending time on
+    # format/build steps.
     fork_guard_targets = [
         'backend/open_webui/test/util/test_fork_features_manifest.py',
         'backend/open_webui/test/util/test_no_kwarg_signature_drift.py',
+        'backend/open_webui/test/util/test_no_removed_state_config_api.py',
+        'backend/open_webui/test/util/test_no_unawaited_async_calls.py',
     ]
     wiring_dir = REPO_ROOT / 'backend' / 'open_webui' / 'test' / 'util'
     for wiring_test in sorted(wiring_dir.glob('test_*_wiring.py')):

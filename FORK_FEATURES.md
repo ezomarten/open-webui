@@ -43,6 +43,7 @@ Slugs: `public-share`, `public-host-allowlist`
 - Keeps one active public share per chat
 - The top-level app wiring for public shares remains intentionally explicit in `backend/open_webui/main.py`, `backend/open_webui/config.py`, and `src/lib/components/chat/ShareChatModal.svelte`, with source-level regression tests guarding against future upstream syncs silently dropping the feature integration again
 - Public-share chat lookups in the create/get/delete routes explicitly await the async Chats model so public-link generation does not pass coroutine objects into snapshot building after the upstream async database migration
+- The `/api/v1/public-shares/*` router reads its enable flag and permission defaults through the post-v0.10.x persistent-config API (`await Config.get('ui.enable_public_chat_sharing')`, `await has_permission(..., await Config.get('user.permissions'))`) plus `app.state.PUBLIC_SHARE_BASE_URL`, not the removed `app.state.config` bundle; every permission check is awaited so a missing `await` can never silently bypass the share-permission gate (a repo-wide AST guard in `test_no_removed_state_config_api.py` plus the un-awaited-async-call scanner in `test_no_unawaited_async_calls.py` fail loudly if drift returns)
 - Public-share snapshots now preserve the public user/assistant history tree so parallel multi-model responses render on anonymous pages instead of collapsing to only the current branch
 - Public-share snapshot extraction also falls back from sanitized `history.messages` trees to the flattened `messages` list when saved history only contains non-public roles, which avoids false `No public messages found.` failures for still-visible chats
 
@@ -130,6 +131,7 @@ Slug: `chat-timeout-msg`
 - OpenAI-compatible and Ollama streaming upstream requests now wait for the first meaningful upstream output chunk without applying the idle timeout, ignoring role-only deltas and Responses API status preludes such as `response.created` / `response.in_progress` before the timeout starts; non-stream requests continue to use the configured total request timeout
 - OpenAI-compatible streamed proxy responses also strip stale `Content-Encoding`, `Content-Length`, and `Transfer-Encoding` headers after aiohttp auto-decompression so downstream chat responses do not fail on the upstream proxy cleanup path
 - Native `fetch_url` tool calls now cap page loading with the configured Web Loader timeout when available and otherwise fall back to a 30-second budget, so slow pages fail with a visible tool error instead of leaving chats stuck in `fetch_url`
+- The timeout wrapper awaits the upstream `async def get_content_from_url` directly (no `asyncio.to_thread` re-wrap), so the v0.10.2 async conversion cannot regress URL fetches into `cannot unpack non-iterable coroutine object`; the call site is pinned by `test_chat_timeout_msg_wiring.py::test_fetch_url_awaits_async_get_content_from_url` and the codebase-wide `test_no_unawaited_async_calls.py` scanner
 
 ### Multi-worker session cleanup stability
 
