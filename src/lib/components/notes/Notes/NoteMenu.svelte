@@ -4,6 +4,9 @@
 	import Dropdown from '$lib/components/common/Dropdown.svelte';
 	import DropdownSub from '$lib/components/common/DropdownSub.svelte';
 	import Clipboard from '$lib/components/icons/Clipboard.svelte';
+	import Switch from '$lib/components/common/Switch.svelte'; // upstream v0.11.4 autoformat
+	import Tooltip from '$lib/components/common/Tooltip.svelte'; // upstream v0.11.4 autoformat
+	import Bold from '$lib/components/icons/Bold.svelte'; // upstream v0.11.4 autoformat
 	import Download from '$lib/components/icons/Download.svelte';
 	import DocumentArrowUp from '$lib/components/icons/DocumentArrowUp.svelte';
 	import GarbageBin from '$lib/components/icons/GarbageBin.svelte';
@@ -33,6 +36,8 @@
 	export let onCopyToClipboard: NoteMenuAction = null;
 	export let onAccess: NoteMenuAction = null;
 	export let onUploadFiles: NoteMenuAction = null;
+	export let showAutoFormat = false; // upstream v0.11.4 autoformat
+	export let autoFormat = true;
 	// fork:notes-md-import
 	export let onImport: ((format: NoteImportFormat, mode: NoteImportMode) => void) | null = null;
 	export let onPasteMarkdown: ((mode: NoteImportMode) => void) | null = null;
@@ -60,6 +65,23 @@
 		<div
 			class="w-[180px] max-w-[calc(100vw-32px)] text-sm rounded-2xl px-1 py-1 border border-gray-100 dark:border-gray-800 z-50 bg-white dark:bg-gray-850 dark:text-white shadow-lg"
 		>
+			{#if showAutoFormat}
+				<Tooltip
+					className="w-full"
+					content={$i18n.t(
+						'Format Markdown as you type and paste. Turn off to keep Markdown characters and paste plain text. Existing formatting is preserved.'
+					)}
+				>
+					<div
+						class="select-none flex h-[1.6875rem] items-center gap-2 rounded-xl px-2 text-[0.8125rem] hover:bg-gray-50/60 dark:hover:bg-gray-800/60"
+					>
+						<Bold className="size-3.5 shrink-0" strokeWidth="2" />
+						<span class="flex-1">{$i18n.t('Formatting')}</span>
+						<Switch bind:state={autoFormat} ariaLabel={$i18n.t('Formatting')} />
+					</div>
+				</Tooltip>
+				<hr />
+			{/if}
 			{#if onImport}
 				<DropdownSub>
 					<button

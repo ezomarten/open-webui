@@ -246,6 +246,8 @@
 							sharePublic={$user?.permissions?.sharing?.public_chats || $user?.role === 'admin'}
 							shareUsers={($user?.permissions?.access_grants?.allow_users ?? true) ||
 								$user?.role === 'admin'}
+							allowGroups={($user?.permissions?.access_grants?.allow_groups ?? true) ||
+								$user?.role === 'admin'}
 							onChange={saveAccessGrants}
 						/>
 					</div>

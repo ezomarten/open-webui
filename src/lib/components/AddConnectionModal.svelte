@@ -1,9 +1,11 @@
 <script lang="ts">
 	import { toast } from 'svelte-sonner';
 	import { getContext, onMount } from 'svelte';
-	const i18n = getContext('i18n');
+	const i18n = getContext<any>('i18n');
 
+	// fork:openrouter-zdr
 	import { settings } from '$lib/stores';
+
 	import { verifyOpenAIConnection } from '$lib/apis/openai';
 	import { verifyOllamaConnection } from '$lib/apis/ollama';
 
@@ -30,11 +32,13 @@
 	export let ollama = false;
 	export let direct = false;
 
-	export let connection = null;
+	export let connection: any = null;
 
 	let url = '';
 	let key = '';
 	let auth_type = 'bearer';
+	let forwardCookies = false;
+	let openrouterZdrOnly = false; // fork:openrouter-zdr
 
 	let connectionType = 'external';
 	let provider = '';
@@ -49,9 +53,9 @@
 	let enable = true;
 	let apiVersion = '';
 	let apiType = ''; // '' = chat completions (default), 'responses' = Responses API
-	let openrouterZdrOnly = false;
 
 	let headers = '';
+	let passthroughParams = '';
 
 	let tags = [];
 
@@ -60,7 +64,9 @@
 
 	let loading = false;
 	let showDeleteConfirmDialog = false;
+	let showAdvanced = false;
 
+	// fork:openrouter-zdr
 	const isOpenRouterUrl = (value: string) => {
 		try {
 			return new URL(value).hostname.endsWith('openrouter.ai');
@@ -70,6 +76,16 @@
 	};
 
 	$: isOpenRouter = isOpenRouterUrl(url);
+	const inputClass =
+		'bg-transparent outline-hidden placeholder:text-gray-300 dark:placeholder:text-gray-700';
+	const selectClass =
+		'bg-transparent pr-5 outline-hidden placeholder:text-gray-300 dark:placeholder:text-gray-700';
+
+	const parsePassthroughParams = (value: string) =>
+		value
+			.split(',')
+			.map((param) => param.trim())
+			.filter(Boolean);
 
 	const verifyOllamaHandler = async () => {
 		// remove trailing slash from url
@@ -114,10 +130,12 @@
 				key,
 				config: {
 					auth_type,
+					...(isOpenRouter ? { openrouter_zdr_only: openrouterZdrOnly } : {}), // fork:openrouter-zdr
+					...(!direct && !ollama ? { forward_cookies: forwardCookies } : {}),
 					...(provider ? { provider } : {}),
 					...(azure ? { azure: true } : {}),
 					api_version: apiVersion,
-					...(isOpenRouter ? { openrouter_zdr_only: openrouterZdrOnly } : {}),
+					passthrough_params: parsePassthroughParams(passthroughParams),
 					...(_headers ? { headers: _headers } : {})
 				}
 			},
@@ -167,6 +185,7 @@
 		if (azure) {
 			if (!apiVersion) {
 				loading = false;
+				showAdvanced = true;
 
 				toast.error($i18n.t('API Version is required'));
 				return;
@@ -181,6 +200,7 @@
 
 			if (modelIds.length === 0) {
 				loading = false;
+				showAdvanced = true;
 				toast.error($i18n.t('Deployment names are required for Azure OpenAI'));
 				return;
 			}
@@ -212,11 +232,13 @@
 				model_ids: modelIds,
 				connection_type: connectionType,
 				auth_type,
+				...(!direct && !ollama ? { forward_cookies: forwardCookies } : {}),
+				...(!ollama && isOpenRouter ? { openrouter_zdr_only: openrouterZdrOnly } : {}), // fork:openrouter-zdr
 				headers: headers ? JSON.parse(headers) : undefined,
+				passthrough_params: parsePassthroughParams(passthroughParams),
 				...(provider ? { provider } : {}),
 				...(!ollama && azure ? { azure: true } : {}),
 				...(azure ? { api_version: apiVersion } : {}),
-				...(!ollama && isOpenRouter ? { openrouter_zdr_only: openrouterZdrOnly } : {}),
 				...(apiType ? { api_type: apiType } : {})
 			}
 		};
@@ -229,13 +251,18 @@
 		url = '';
 		key = '';
 		auth_type = 'bearer';
+		forwardCookies = false;
 		prefixId = '';
+		passthroughParams = '';
+		showAdvanced = false;
+		openrouterZdrOnly = false; // fork:openrouter-zdr
 		tags = [];
 		modelIds = [];
-		openrouterZdrOnly = false;
 	};
 
 	const init = () => {
+		forwardCookies = connection?.config?.forward_cookies ?? false;
+		openrouterZdrOnly = connection?.config?.openrouter_zdr_only ?? false; // fork:openrouter-zdr
 		if (connection) {
 			url = connection.url;
 			key = connection.key;
@@ -248,6 +275,9 @@
 			enable = connection.config?.enable ?? true;
 			tags = normalizeTags(connection.config?.tags);
 			prefixId = connection.config?.prefix_id ?? '';
+			passthroughParams = Array.isArray(connection.config?.passthrough_params)
+				? connection.config.passthrough_params.join(', ')
+				: (connection.config?.passthrough_params ?? '');
 			modelIds = [...new Set(connection.config?.model_ids ?? [])];
 
 			if (ollama) {
@@ -257,7 +287,6 @@
 				provider = connection.config?.provider ?? (connection.config?.azure ? 'azure' : '');
 				apiVersion = connection.config?.api_version ?? '';
 				apiType = connection.config?.api_type ?? '';
-				openrouterZdrOnly = connection.config?.openrouter_zdr_only ?? false;
 			}
 		}
 	};
@@ -331,14 +360,13 @@
 								<label
 									for="url-input"
 									class={`mb-0.5 text-xs text-gray-500
-								${($settings?.highContrastMode ?? false) ? 'text-gray-800 dark:text-gray-100' : ''}`}
-									>{$i18n.t('URL')}</label
+								`}>{$i18n.t('URL')}</label
 								>
 
 								<div class="flex-1">
 									<input
 										id="url-input"
-										class={`w-full text-sm bg-transparent ${($settings?.highContrastMode ?? false) ? 'placeholder:text-gray-700 dark:placeholder:text-gray-100' : 'outline-hidden placeholder:text-gray-300 dark:placeholder:text-gray-700'}`}
+										class={`w-full text-sm ${inputClass}`}
 										type="text"
 										bind:value={url}
 										placeholder={$i18n.t('API Base URL')}
@@ -398,9 +426,7 @@
 
 						<div class="flex gap-2 mt-2">
 							<div class="flex flex-col w-full">
-								<label
-									for="select-bearer-or-session"
-									class={`text-xs ${($settings?.highContrastMode ?? false) ? 'text-gray-800 dark:text-gray-100' : 'text-gray-500'}`}
+								<label for="select-bearer-or-session" class={`text-xs text-gray-500`}
 									>{$i18n.t('Auth')}</label
 								>
 
@@ -408,7 +434,7 @@
 									<div class="flex-shrink-0 self-start">
 										<select
 											id="select-bearer-or-session"
-											class={`dark:bg-gray-900 w-full text-sm bg-transparent pr-5 ${($settings?.highContrastMode ?? false) ? 'placeholder:text-gray-700 dark:placeholder:text-gray-100' : 'outline-hidden placeholder:text-gray-300 dark:placeholder:text-gray-700'}`}
+											class={`w-full text-sm ${selectClass}`}
 											bind:value={auth_type}
 										>
 											<option value="none">{$i18n.t('None')}</option>
@@ -432,27 +458,19 @@
 												required={false}
 											/>
 										{:else if auth_type === 'none'}
-											<div
-												class={`text-xs self-center translate-y-[1px] ${($settings?.highContrastMode ?? false) ? 'text-gray-800 dark:text-gray-100' : 'text-gray-500'}`}
-											>
+											<div class={`text-xs self-center translate-y-[1px] text-gray-500`}>
 												{$i18n.t('No authentication')}
 											</div>
 										{:else if auth_type === 'session'}
-											<div
-												class={`text-xs self-center translate-y-[1px] ${($settings?.highContrastMode ?? false) ? 'text-gray-800 dark:text-gray-100' : 'text-gray-500'}`}
-											>
+											<div class={`text-xs self-center translate-y-[1px] text-gray-500`}>
 												{$i18n.t('Forwards system user session credentials to authenticate')}
 											</div>
 										{:else if auth_type === 'system_oauth'}
-											<div
-												class={`text-xs self-center translate-y-[1px] ${($settings?.highContrastMode ?? false) ? 'text-gray-800 dark:text-gray-100' : 'text-gray-500'}`}
-											>
+											<div class={`text-xs self-center translate-y-[1px] text-gray-500`}>
 												{$i18n.t('Forwards system user OAuth access token to authenticate')}
 											</div>
 										{:else if ['azure_ad', 'microsoft_entra_id'].includes(auth_type)}
-											<div
-												class={`text-xs self-center translate-y-[1px] ${($settings?.highContrastMode ?? false) ? 'text-gray-800 dark:text-gray-100' : 'text-gray-500'}`}
-											>
+											<div class={`text-xs self-center translate-y-[1px] text-gray-500`}>
 												{$i18n.t('Uses DefaultAzureCredential to authenticate')}
 											</div>
 										{/if}
@@ -461,120 +479,12 @@
 							</div>
 						</div>
 
-						{#if !direct}
-							<div class="flex gap-2 mt-2">
-								<div class="flex flex-col w-full">
-									<label
-										for="headers-input"
-										class={`mb-0.5 text-xs text-gray-500
-								${($settings?.highContrastMode ?? false) ? 'text-gray-800 dark:text-gray-100' : ''}`}
-										>{$i18n.t('Headers')}</label
-									>
-
-									<div class="flex-1">
-										<Tooltip
-											content={$i18n.t(
-												'Enter additional headers in JSON format (e.g. {"X-Custom-Header": "value"}'
-											)}
-										>
-											<Textarea
-												className="w-full text-sm outline-hidden"
-												bind:value={headers}
-												placeholder={$i18n.t('Enter additional headers in JSON format')}
-												required={false}
-												minSize={30}
-											/>
-										</Tooltip>
-									</div>
-								</div>
-							</div>
-						{/if}
-
-						<div class="flex gap-2 mt-2">
-							<div class="flex flex-col w-full">
-								<label
-									for="prefix-id-input"
-									class={`mb-0.5 text-xs text-gray-500
-								${($settings?.highContrastMode ?? false) ? 'text-gray-800 dark:text-gray-100' : ''}`}
-									>{$i18n.t('Prefix ID')}</label
-								>
-
-								<div class="flex-1">
-									<Tooltip
-										content={$i18n.t(
-											'Prefix ID is used to avoid conflicts with other connections by adding a prefix to the model IDs - leave empty to disable'
-										)}
-									>
-										<input
-											class={`w-full text-sm bg-transparent ${($settings?.highContrastMode ?? false) ? 'placeholder:text-gray-700 dark:placeholder:text-gray-100' : 'outline-hidden placeholder:text-gray-300 dark:placeholder:text-gray-700'}`}
-											type="text"
-											id="prefix-id-input"
-											bind:value={prefixId}
-											placeholder={$i18n.t('Prefix ID')}
-											autocomplete="off"
-										/>
-									</Tooltip>
-								</div>
-							</div>
-						</div>
-
-						{#if !ollama && !direct}
-							<div class="flex flex-row justify-between items-center w-full mt-2">
-								<label
-									for="provider-select"
-									class={`mb-0.5 text-xs text-gray-500
-								${($settings?.highContrastMode ?? false) ? 'text-gray-800 dark:text-gray-100' : ''}`}
-									>{$i18n.t('Provider')}</label
-								>
-
-								<div>
-									<select
-										id="provider-select"
-										bind:value={provider}
-										class="text-xs text-gray-700 dark:text-gray-300 bg-transparent outline-hidden"
-									>
-										<option value="">{$i18n.t('Default')}</option>
-										<option value="azure">{$i18n.t('Azure OpenAI')}</option>
-										<option value="llama.cpp">{$i18n.t('llama.cpp')}</option>
-										<option value="lmstudio">{$i18n.t('LM Studio')}</option>
-										<option value="litellm">{$i18n.t('LiteLLM')}</option>
-									</select>
-								</div>
-							</div>
-						{/if}
-
-						{#if azure}
-							<div class="flex gap-2 mt-2">
-								<div class="flex flex-col w-full">
-									<label
-										for="api-version-input"
-										class={`mb-0.5 text-xs text-gray-500
-										${($settings?.highContrastMode ?? false) ? 'text-gray-800 dark:text-gray-100' : ''}`}
-										>{$i18n.t('API Version')}</label
-									>
-
-									<div class="flex-1">
-										<input
-											id="api-version-input"
-											class={`w-full text-sm bg-transparent ${($settings?.highContrastMode ?? false) ? 'placeholder:text-gray-700 dark:placeholder:text-gray-100' : 'outline-hidden placeholder:text-gray-300 dark:placeholder:text-gray-700'}`}
-											type="text"
-											bind:value={apiVersion}
-											placeholder={$i18n.t('API Version')}
-											autocomplete="off"
-											required
-										/>
-									</div>
-								</div>
-							</div>
-						{/if}
-
 						{#if !ollama && !direct}
 							<div class="flex flex-row justify-between items-center w-full mt-1">
 								<label
 									for="api-type-toggle"
 									class={`mb-0.5 text-xs text-gray-500
-							${($settings?.highContrastMode ?? false) ? 'text-gray-800 dark:text-gray-100' : ''}`}
-									>{$i18n.t('API Type')}</label
+							`}>{$i18n.t('API Type')}</label
 								>
 
 								<div>
@@ -587,18 +497,7 @@
 										class=" text-xs text-gray-700 dark:text-gray-300"
 									>
 										{#if apiType === 'responses'}
-											<Tooltip
-												className="flex items-center gap-1"
-												content={$i18n.t(
-													'This feature is currently experimental and may not work as expected.'
-												)}
-											>
-												<span class=" text-gray-400 dark:text-gray-600"
-													>{$i18n.t('Experimental')}</span
-												>
-
-												{$i18n.t('Responses')}
-											</Tooltip>
+											{$i18n.t('Responses')}
 										{:else}
 											{$i18n.t('Chat Completions')}
 										{/if}
@@ -632,122 +531,295 @@
 							</div>
 						{/if}
 
-						<div class="flex flex-col w-full mt-2">
-							<div class="mb-1 flex justify-between">
-								<div
-									class={`mb-0.5 text-xs text-gray-500
-								${($settings?.highContrastMode ?? false) ? 'text-gray-800 dark:text-gray-100' : ''}`}
+						<div class="flex items-center justify-between">
+							<button
+								type="button"
+								class="flex items-center gap-1 text-xs text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 transition mt-2"
+								on:click={() => (showAdvanced = !showAdvanced)}
+							>
+								<svg
+									xmlns="http://www.w3.org/2000/svg"
+									viewBox="0 0 20 20"
+									fill="currentColor"
+									class="w-3 h-3 transition-transform {showAdvanced ? 'rotate-90' : ''}"
 								>
-									{$i18n.t('Model IDs')}
-								</div>
-							</div>
+									<path
+										fill-rule="evenodd"
+										d="M7.21 14.77a.75.75 0 01.02-1.06L11.168 10 7.23 6.29a.75.75 0 111.04-1.08l4.5 4.25a.75.75 0 010 1.08l-4.5 4.25a.75.75 0 01-1.06-.02z"
+										clip-rule="evenodd"
+									/>
+								</svg>
+								{$i18n.t('Advanced')}
+							</button>
+						</div>
 
-							{#if modelIds.length > 0}
-								<ul class="flex flex-col">
-									{#each modelIds as modelId, modelIdx}
-										<li class=" flex gap-2 w-full justify-between items-center">
-											<div class=" text-sm flex-1 py-1 rounded-lg">
-												{modelId}
-											</div>
-											<div class="shrink-0">
-												<button
-													aria-label={$i18n.t(`Remove {{MODELID}} from list.`, {
-														MODELID: modelId
-													})}
-													type="button"
-													on:click={() => {
-														modelIds = modelIds.filter((_, idx) => idx !== modelIdx);
-													}}
-												>
-													<Minus strokeWidth="2" className="size-3.5" />
-												</button>
-											</div>
-										</li>
-									{/each}
-								</ul>
-							{:else}
-								<div
-									class={`text-gray-500 text-xs text-center py-2 px-10
-								${($settings?.highContrastMode ?? false) ? 'text-gray-800 dark:text-gray-100' : ''}`}
-								>
-									{#if ollama}
-										{$i18n.t('Leave empty to include all models from "{{url}}/api/tags" endpoint', {
-											url: url
-										})}
-									{:else if isOpenRouter && openrouterZdrOnly}
-										{$i18n.t(
-											'Leave empty to include all models from "{{url}}/endpoints/zdr" endpoint',
-											{
-												url: url
-											}
-										)}
-									{:else if azure}
-										{$i18n.t('Deployment names are required for Azure OpenAI')}
-										<!-- {$i18n.t('Leave empty to include all models from "{{url}}" endpoint', {
-											url: `${url}/openai/deployments`
-										})} -->
-									{:else}
-										{$i18n.t('Leave empty to include all models from "{{url}}/models" endpoint', {
-											url: url
-										})}
-									{/if}
+						{#if showAdvanced}
+							{#if !direct && !ollama}
+								<div class="flex items-center justify-between gap-3 mt-2">
+									<div>
+										<label for="forward-cookies" class="text-xs text-gray-500">
+											{$i18n.t('Forward cookies')}
+										</label>
+										<p class="text-xs text-gray-500">
+											{$i18n.t('Forward cookies from your Open WebUI request to this server.')}
+										</p>
+									</div>
+									<Switch
+										id="forward-cookies"
+										ariaLabel={$i18n.t('Forward cookies')}
+										bind:state={forwardCookies}
+									/>
 								</div>
 							{/if}
-						</div>
 
-						<div class="flex items-center">
-							<label class="sr-only" for="add-model-id-input">{$i18n.t('Add a model ID')}</label>
-							<input
-								class="w-full py-1 text-sm rounded-lg bg-transparent {modelId
-									? ''
-									: 'text-gray-500'} {($settings?.highContrastMode ?? false)
-									? 'dark:placeholder:text-gray-100 placeholder:text-gray-700'
-									: 'placeholder:text-gray-300 dark:placeholder:text-gray-700 outline-hidden'}"
-								bind:value={modelId}
-								id="add-model-id-input"
-								placeholder={$i18n.t('Add a model ID')}
-							/>
+							{#if !direct}
+								<div class="flex gap-2 mt-2">
+									<div class="flex flex-col w-full">
+										<label
+											for="headers-input"
+											class={`mb-0.5 text-xs text-gray-500
+								`}>{$i18n.t('Headers')}</label
+										>
 
-							<div>
-								<button
-									type="button"
-									aria-label={$i18n.t('Add')}
-									on:click={() => {
-										addModelHandler();
-									}}
-								>
-									<Plus className="size-3.5" strokeWidth="2" />
-								</button>
+										<div class="flex-1">
+											<Tooltip
+												content={$i18n.t(
+													'Enter additional headers in JSON format (e.g. {"X-Custom-Header": "value"}'
+												)}
+											>
+												<Textarea
+													className="w-full text-sm outline-hidden"
+													bind:value={headers}
+													placeholder={$i18n.t('Enter additional headers in JSON format')}
+													required={false}
+													minSize={30}
+												/>
+											</Tooltip>
+										</div>
+									</div>
+								</div>
+							{/if}
+
+							{#if !ollama && !direct}
+								<div class="flex gap-2 mt-2">
+									<div class="flex flex-col w-full">
+										<label
+											for="allowed-passthrough-params-input"
+											class={`mb-0.5 text-xs text-gray-500
+								`}>{$i18n.t('Passthrough params')}</label
+										>
+
+										<div class="flex-1">
+											<Tooltip
+												content={$i18n.t(
+													'Comma-separated top-level request parameters this upstream may receive without translation. Use * to allow all captured passthrough params.'
+												)}
+											>
+												<input
+													class={`w-full text-sm ${inputClass}`}
+													type="text"
+													id="allowed-passthrough-params-input"
+													bind:value={passthroughParams}
+													placeholder={$i18n.t('thinking, output_config')}
+													autocomplete="off"
+												/>
+											</Tooltip>
+										</div>
+									</div>
+								</div>
+							{/if}
+
+							<div class="flex gap-2 mt-2">
+								<div class="flex flex-col w-full">
+									<label
+										for="prefix-id-input"
+										class={`mb-0.5 text-xs text-gray-500
+								`}>{$i18n.t('Prefix ID')}</label
+									>
+
+									<div class="flex-1">
+										<Tooltip
+											content={$i18n.t(
+												'Prefix ID is used to avoid conflicts with other connections by adding a prefix to the model IDs - leave empty to disable'
+											)}
+										>
+											<input
+												class={`w-full text-sm ${inputClass}`}
+												type="text"
+												id="prefix-id-input"
+												bind:value={prefixId}
+												placeholder={$i18n.t('Prefix ID')}
+												autocomplete="off"
+											/>
+										</Tooltip>
+									</div>
+								</div>
 							</div>
-						</div>
-					</div>
 
-					<div class="flex gap-2 mt-2">
-						<div class="flex flex-col w-full">
-							<div
-								class={`mb-0.5 text-xs text-gray-500
-								${($settings?.highContrastMode ?? false) ? 'text-gray-800 dark:text-gray-100' : ''}`}
-							>
-								{$i18n.t('Tags')}
+							{#if !ollama && !direct}
+								<div class="flex flex-row justify-between items-center w-full mt-2">
+									<label
+										for="provider-select"
+										class={`mb-0.5 text-xs text-gray-500
+								`}>{$i18n.t('Provider')}</label
+									>
+
+									<div>
+										<select
+											id="provider-select"
+											bind:value={provider}
+											class="text-xs text-gray-700 dark:text-gray-300 bg-transparent pr-5 outline-hidden"
+										>
+											<option value="">{$i18n.t('Default')}</option>
+											<option value="azure">{$i18n.t('Azure OpenAI')}</option>
+											<option value="llama.cpp">{$i18n.t('llama.cpp')}</option>
+											<option value="lmstudio">{$i18n.t('LM Studio')}</option>
+											<option value="litellm">{$i18n.t('LiteLLM')}</option>
+										</select>
+									</div>
+								</div>
+							{/if}
+
+							{#if azure}
+								<div class="flex gap-2 mt-2">
+									<div class="flex flex-col w-full">
+										<label
+											for="api-version-input"
+											class={`mb-0.5 text-xs text-gray-500
+										`}>{$i18n.t('API Version')}</label
+										>
+
+										<div class="flex-1">
+											<input
+												id="api-version-input"
+												class={`w-full text-sm ${inputClass}`}
+												type="text"
+												bind:value={apiVersion}
+												placeholder={$i18n.t('API Version')}
+												autocomplete="off"
+												required
+											/>
+										</div>
+									</div>
+								</div>
+							{/if}
+
+							<div class="flex flex-col w-full mt-2">
+								<div class="mb-1 flex justify-between">
+									<div
+										class={`mb-0.5 text-xs text-gray-500
+								`}
+									>
+										{$i18n.t('Model IDs')}
+									</div>
+								</div>
+
+								{#if modelIds.length > 0}
+									<ul class="flex flex-col">
+										{#each modelIds as modelId, modelIdx}
+											<li class=" flex gap-2 w-full justify-between items-center">
+												<div class=" text-sm flex-1 py-1 rounded-lg">
+													{modelId}
+												</div>
+												<div class="shrink-0">
+													<button
+														aria-label={$i18n.t(`Remove {{MODELID}} from list.`, {
+															MODELID: modelId
+														})}
+														type="button"
+														on:click={() => {
+															modelIds = modelIds.filter((_, idx) => idx !== modelIdx);
+														}}
+													>
+														<Minus strokeWidth="2" className="size-3.5" />
+													</button>
+												</div>
+											</li>
+										{/each}
+									</ul>
+								{:else}
+									<div
+										class={`text-gray-500 text-xs text-center py-2 px-10
+								`}
+									>
+										{#if ollama}
+											{$i18n.t(
+												'Leave empty to include all models from "{{url}}/api/tags" endpoint',
+												{
+													url: url
+												}
+											)}
+										{:else if isOpenRouter && openrouterZdrOnly}
+											{$i18n.t(
+												'Leave empty to include all models from "{{url}}/endpoints/zdr" endpoint',
+												{
+													url: url
+												}
+											)}
+										{:else if azure}
+											{$i18n.t('Deployment names are required for Azure OpenAI')}
+											<!-- {$i18n.t('Leave empty to include all models from "{{url}}" endpoint', {
+											url: `${url}/openai/deployments`
+										})} -->
+										{:else}
+											{$i18n.t('Leave empty to include all models from "{{url}}/models" endpoint', {
+												url: url
+											})}
+										{/if}
+									</div>
+								{/if}
 							</div>
 
-							<div class="flex-1 mt-0.5">
-								<Tags
-									bind:tags
-									on:add={(e) => {
-										tags = [
-											...tags,
-											{
-												name: e.detail
-											}
-										];
-									}}
-									on:delete={(e) => {
-										tags = tags.filter((tag) => tag.name !== e.detail);
-									}}
+							<div class="flex items-center">
+								<label class="sr-only" for="add-model-id-input">{$i18n.t('Add a model ID')}</label>
+								<input
+									class={`w-full text-sm ${inputClass} ${modelId ? '' : 'text-gray-500'}`}
+									bind:value={modelId}
+									id="add-model-id-input"
+									placeholder={$i18n.t('Add a model ID')}
 								/>
+
+								<div>
+									<button
+										type="button"
+										aria-label={$i18n.t('Add')}
+										on:click={() => {
+											addModelHandler();
+										}}
+									>
+										<Plus className="size-3.5" strokeWidth="2" />
+									</button>
+								</div>
 							</div>
-						</div>
+
+							<div class="flex gap-2 mt-2">
+								<div class="flex flex-col w-full">
+									<div
+										class={`mb-0.5 text-xs text-gray-500
+								`}
+									>
+										{$i18n.t('Tags')}
+									</div>
+
+									<div class="flex-1 mt-0.5">
+										<Tags
+											bind:tags
+											on:add={(e) => {
+												tags = [
+													...tags,
+													{
+														name: e.detail
+													}
+												];
+											}}
+											on:delete={(e) => {
+												tags = tags.filter((tag) => tag.name !== e.detail);
+											}}
+										/>
+									</div>
+								</div>
+							</div>
+						{/if}
 					</div>
 
 					<div class="flex justify-between items-center pt-3 text-sm font-medium">
