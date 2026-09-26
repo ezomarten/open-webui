@@ -48,7 +48,7 @@ docker build --provenance=false --sbom=false --build-arg USE_SLIM=true -t open-w
 Pull the current published release image:
 
 ```bash
-docker pull ghcr.io/ezomarten/open-webui:0.11.1-publicshare.1
+docker pull ghcr.io/ezomarten/open-webui:0.11.4-publicshare.1
 ```
 
 Relevant configuration for this fork:
@@ -73,7 +73,7 @@ OLLAMA_BASE_URL=http://host.docker.internal:11434
 # OPENAI_API_KEY=sk-...
 ```
 
-To run the current published release image instead of a local build, set `OPENWEBUI_IMAGE=ghcr.io/ezomarten/open-webui:0.11.1-publicshare.1`.
+To run the current published release image instead of a local build, set `OPENWEBUI_IMAGE=ghcr.io/ezomarten/open-webui:0.11.4-publicshare.1`.
 
 Example `compose.yaml`:
 
