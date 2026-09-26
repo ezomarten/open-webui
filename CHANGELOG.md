@@ -5,7 +5,7 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [0.11.4-publicshare.1] - 2026-09-23
+## [0.11.4-publicshare.1] - 2026-09-26
 
 ### Fork-sync
 
@@ -13,6 +13,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Auto-merged upstream highlights: slim/standard image size reductions, terminal-server skills (with per-command tabs, folder uploads, side-by-side file comparison), per-language model/tool naming, admin interface-text overrides, sign-in form toggle, custom file metadata with `RAG_SOURCE_METADATA_KEYS`, Shift-click quick delete, note autoformat switch, settings search, per-worker shared model pool cache, and cheaper single-message chat round-trips.
 - Conflict resolutions: all conflicting locale catalogs were taken upstream with the fork-only keys (41 per catalog, including the fork's public-link/notes strings and the `Internal Server Error` fallback) re-overlaid onto en-US and ja-JP and re-filled for the other catalogs via `npm run i18n:parse`; `AddConnectionModal.svelte` was rebuilt onto the upstream v0.11.4 structure (forward-cookies toggle, advanced-params collapse, passthrough params) with the fork's OpenRouter ZDR toggle re-applied at every wiring point; settings pages that upstream moved to namespaced `settings.*` i18n keys kept the fork's `ow-settings-*` emphasis classes; the notes components kept the fork's submenu/import/responsive design and gained upstream's note autoformat toggle and Shift-click quick delete; `routers/retrieval.py` and `tools/builtin.py` import hunks combined the fork sentinels with upstream's new imports.
 - All 14 manifest fork features preserved; the fork-wiring gate ran green on both sides of the merge (58 targets passed before, same target set passed after).
+
+### Fixed
+
+- 🐛 **Admin > Connections no longer hangs on its loading spinner.** The v0.11.4 sync had placed fork sentinel comments between `AdminSettingRow` attributes in `Connections.svelte`; Prettier silently rewrote them into broken markup (splitting the comment terminator and pushing `description` / `let:labelId` after the loose `>`), and the mangled component froze the admin connections page after it compiled cleanly. The fork sentinel comments now sit in child positions and the rows carry plain `className` attributes.
+
+### Deployment
+
+- ℹ️ **Slim means slim again in v0.11.4.** Upstream redefined the slim build: `backend/requirements-slim.txt` dropped torch/sentence-transformers and the runtime refuses local embedding with `USE_SLIM` set, while v0.11.3's slim flag only stripped sourcemaps. This deployment keeps local embeddings, so the workspace runbook and the update/publish helpers now build with `--build-arg USE_SLIM=false` (standard image); the full real-operation smoke (public-link create, anonymous snapshot, PDF extraction, URL fetch with vector store save) passed against the rebuilt image.
+
 ## [0.11.3-publicshare.1] - 2026-09-22
 
 ### Fork-sync
