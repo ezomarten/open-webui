@@ -382,12 +382,9 @@
 				<AdminSettingRow
 					label={$i18n.t('settings.admin.connections.directConnections.label')}
 					className="ow-settings-row"
-					<!--
-					fork:settings-emphasis
-					--
-				>
 					description={$i18n.t('settings.admin.connections.directConnections.description')}
-					let:labelId >
+					let:labelId
+				>
 					<Switch
 						bind:state={connectionsConfig.ENABLE_DIRECT_CONNECTIONS}
 						on:change={async () => {
@@ -400,12 +397,9 @@
 				<AdminSettingRow
 					label={$i18n.t('settings.admin.connections.cacheBaseModelList.label')}
 					className="ow-settings-row"
-					<!--
-					fork:settings-emphasis
-					--
-				>
 					description={$i18n.t('settings.admin.connections.cacheBaseModelList.description')}
-					let:labelId >
+					let:labelId
+				>
 					<div class="flex items-center gap-1.5">
 						{#if connectionsConfig.ENABLE_BASE_MODELS_CACHE}
 							<Tooltip content={$i18n.t('settings.admin.connections.refreshModels.label')}>
