@@ -7,7 +7,8 @@
 
 	export let status = null;
 	export let done = false;
-	export let readOnly = false;
+	export let clamp = true;
+	export let readOnly = false;  // fork:public-share
 </script>
 
 {#if !status?.hidden}
@@ -128,7 +129,8 @@
 				<div
 					class="{(done || status?.done) === false
 						? 'shimmer'
-						: ''} text-gray-500 dark:text-gray-500 text-[0.9375rem] line-clamp-1 text-wrap"
+						: ''} text-gray-500 dark:text-gray-500 text-[0.9375rem] text-wrap"
+					class:line-clamp-1={clamp}
 				>
 					<!-- $i18n.t(`Searching "{{searchQuery}}"`) -->
 					{#if status?.description?.includes('{{searchQuery}}')}

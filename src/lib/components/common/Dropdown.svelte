@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { flyAndScale } from '$lib/utils/transitions';
 	import { tick } from 'svelte';
-
+	
 	/** Whether the dropdown is open */
 	export let show = false;
 
@@ -11,8 +11,14 @@
 	/** Alignment: 'start' | 'end' */
 	export let align = 'start';
 
+	/** Optional positioning anchor within a larger clickable trigger. */
+	export let anchorElement: HTMLElement | null = null;
+
 	/** Close when clicking outside */
 	export let closeOnOutsideClick = true;
+
+	/** Close action menus after selection. Submenu triggers prevent the default click. */
+	export let closeOnSelect = false;
 
 	/** Called when open/close state changes */
 	export let onOpenChange: (state: boolean) => void = () => {};
@@ -86,7 +92,7 @@
 
 	function positionContent() {
 		if (!triggerEl || !contentEl) return;
-		const rect = triggerEl.getBoundingClientRect();
+		const rect = (anchorElement ?? triggerEl).getBoundingClientRect();
 
 		contentEl.style.position = 'fixed';
 		contentEl.style.zIndex = '9999';
@@ -151,6 +157,11 @@
 		});
 	}
 
+	function closeDropdown() {
+		show = false;
+		onOpenChange(false);
+	}
+
 	function handleWindowPointerDown(event: PointerEvent) {
 		const targetNode = event.target instanceof Node ? event.target : null;
 
@@ -158,6 +169,9 @@
 		if (triggerEl?.contains(targetNode)) return;
 		if (contentEl?.contains(targetNode)) return;
 		if (isTargetWithinNestedSubmenuTree(event.target)) return;
+		// Submenus and listboxes can be portaled outside contentEl.
+		if (event.target instanceof Element && event.target.closest('[role="menu"], [role="listbox"]'))
+			return;
 		show = false;
 		onOpenChange(false);
 	}
@@ -216,7 +230,10 @@
 		style:max-height={maxHeight}
 		style:overflow-y="auto"
 		transition:flyAndScale
-		on:click={(e) => e.stopPropagation()}
+		on:click={(e) => {
+			e.stopPropagation();
+			if (closeOnSelect && !e.defaultPrevented) closeDropdown();
+		}}
 		on:pointerdown={(e) => e.stopPropagation()}
 	>
 		<slot name="content" />

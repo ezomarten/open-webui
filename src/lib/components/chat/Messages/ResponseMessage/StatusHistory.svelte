@@ -6,7 +6,7 @@
 	import equal from 'fast-deep-equal';
 	export let statusHistory = [];
 	export let expand = false;
-	export let readOnly = false;
+	export let readOnly = false;  // fork:public-share
 
 	let showHistory = true;
 
@@ -40,7 +40,7 @@
 				}}
 			>
 				<div class="flex items-start gap-2">
-					<StatusItem {status} {readOnly} />
+					<StatusItem {status} {readOnly} clamp={!showHistory || history.length > 1} />
 				</div>
 			</button>
 
@@ -65,7 +65,7 @@
 										{/if}
 									</div>
 
-									<StatusItem {status} done={true} {readOnly} />
+									<StatusItem {status} done={true} {readOnly} clamp={false} />
 								</div>
 							{/each}
 						</div>

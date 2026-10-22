@@ -6,6 +6,7 @@
 	import {
 		deleteSharedChatById,
 		getChatById,
+		getChatByShareId,
 		shareChatById,
 		getChatAccessGrants,
 		updateChatAccessGrants
@@ -25,8 +26,9 @@
 	export let chatId;
 	export let show = false;
 
-	let chat = null;
+	let chat: any = null;
 	let shareUrl = null;
+	let shareMode: 'continue' | null = null;
 	let publicShare = null;
 	let publicShareUrl = null;
 	let publicShareLoading = false;
@@ -45,7 +47,7 @@
 	};
 
 	const shareLocalChat = async () => {
-		const sharedChat = await shareChatById(localStorage.token, chatId);
+		const sharedChat = await shareChatById(localStorage.token, chatId, shareMode);
 		shareUrl = `${window.location.origin}/s/${sharedChat.share_id ?? sharedChat.id}`;
 		chat = await getChatById(localStorage.token, chatId);
 
@@ -149,6 +151,9 @@
 
 		try {
 			accessGrants = (await getChatAccessGrants(localStorage.token, chatId)) ?? [];
+			shareMode = chat?.share_id
+				? ((await getChatByShareId(localStorage.token, chat.share_id))?.chat?.share_mode ?? null)
+				: null;
 		} catch (e) {
 			console.error('Failed to load access grants', e);
 			accessGrants = [];
@@ -157,10 +162,14 @@
 
 	const saveAccessGrants = async () => {
 		try {
-			await updateChatAccessGrants(localStorage.token, chatId, accessGrants);
+			if (!chat.share_id) {
+				await shareLocalChat();
+			}
+			await updateChatAccessGrants(localStorage.token, chatId, accessGrants, shareMode);
 			toast.success($i18n.t('Access updated'));
 		} catch (e) {
 			toast.error(`${e}`);
+			await loadAccessGrants();
 		}
 	};
 
@@ -225,6 +234,7 @@
 
 								if (res) {
 									chat = await getChatById(localStorage.token, chatId);
+									await loadAccessGrants();
 								}
 							}}
 						>
@@ -232,9 +242,7 @@
 						</button>
 						{$i18n.t('and create a new shared link.')}
 					{:else}
-						{$i18n.t(
-							"Messages you send after creating your link won't be shared. Users with the URL will be able to view the shared chat."
-						)}
+						{$i18n.t('Your link is private until you choose who can view it.')}
 					{/if}
 				</div>
 
@@ -244,19 +252,34 @@
 							bind:accessGrants
 							accessRoles={['read']}
 							sharePublic={$user?.permissions?.sharing?.public_chats || $user?.role === 'admin'}
+							shareOpen={$user?.permissions?.sharing?.open_chats || $user?.role === 'admin'}
 							shareUsers={($user?.permissions?.access_grants?.allow_users ?? true) ||
 								$user?.role === 'admin'}
 							allowGroups={($user?.permissions?.access_grants?.allow_groups ?? true) ||
 								$user?.role === 'admin'}
 							onChange={saveAccessGrants}
-						/>
+						>
+							{#if accessGrants.length > 0}
+								<label class="flex w-full items-center justify-between mt-3 mb-1 text-xs">
+									<span>{$i18n.t('Sharing mode')}</span>
+									<select
+										class="bg-transparent text-xs outline-none"
+										bind:value={shareMode}
+										on:change={saveAccessGrants}
+									>
+										<option value={null}>{$i18n.t('Clone only')}</option>
+										<option value="continue">{$i18n.t('Allow replies')}</option>
+									</select>
+								</label>
+							{/if}
+						</AccessControl>
 					</div>
 				{/if}
 
 				<div class="flex justify-end gap-1 mt-3">
 					{#if $config?.features.enable_community_sharing}
 						<button
-							class="self-center flex items-center gap-1 px-3.5 py-2 text-sm font-medium bg-gray-100 hover:bg-gray-200 text-gray-800 dark:bg-gray-850 dark:text-white dark:hover:bg-gray-800 transition rounded-full"
+							class="flex h-7 shrink-0 items-center justify-center gap-1.5 rounded-lg px-2.5 text-xs font-normal transition disabled:opacity-60 bg-gray-100 hover:bg-gray-200 text-gray-800 dark:bg-gray-850 dark:text-white dark:hover:bg-gray-800"
 							type="button"
 							on:click={() => {
 								shareChat();
@@ -271,7 +294,7 @@
 					{/if}
 
 					<button
-						class="self-center flex items-center gap-1 px-3.5 py-2 text-sm font-medium bg-black hover:bg-gray-900 text-white dark:bg-white dark:text-black dark:hover:bg-gray-100 transition rounded-full"
+						class="flex h-7 shrink-0 items-center justify-center gap-1.5 rounded-lg bg-gray-900 px-2.5 text-xs font-normal text-white transition hover:bg-black disabled:opacity-60 dark:bg-gray-100 dark:text-gray-900 dark:hover:bg-white"
 						type="button"
 						id="copy-and-share-chat-button"
 						on:click={async () => {

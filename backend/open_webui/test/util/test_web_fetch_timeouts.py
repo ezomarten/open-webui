@@ -86,7 +86,7 @@ def test_get_loader_forwards_timeout_to_get_web_loader():
 
     captured = {}
 
-    def fake_get_web_loader(urls, **kwargs):
+    def fake_get_web_loader(urls, config=None, **kwargs):
         captured.update(kwargs)
         return object()
 

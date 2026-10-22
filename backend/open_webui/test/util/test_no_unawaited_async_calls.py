@@ -60,6 +60,8 @@ WRAPPERS = {
     'ensure_future',
     'as_completed',
     'run_coroutine_threadsafe',
+    'run',
+    'shield',
 }
 
 # Method names that collect callables into a task list awaited later.

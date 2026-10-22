@@ -52,6 +52,7 @@
 </script>
 
 <Dropdown
+	closeOnSelect
 	bind:show
 	align="end"
 	sideOffset={6}
@@ -72,8 +73,10 @@
 						'Format Markdown as you type and paste. Turn off to keep Markdown characters and paste plain text. Existing formatting is preserved.'
 					)}
 				>
+					<!-- svelte-ignore a11y-click-events-have-key-events a11y-no-static-element-interactions -->
 					<div
 						class="select-none flex h-[1.6875rem] items-center gap-2 rounded-xl px-2 text-[0.8125rem] hover:bg-gray-50/60 dark:hover:bg-gray-800/60"
+						on:click={(e) => e.preventDefault()}
 					>
 						<Bold className="size-3.5 shrink-0" strokeWidth="2" />
 						<span class="flex-1">{$i18n.t('Formatting')}</span>
@@ -332,7 +335,6 @@
 					class="select-none flex gap-2 items-center px-3 py-1.5 text-sm cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800 rounded-xl w-full"
 					on:click={() => {
 						onPin();
-						show = false;
 					}}
 				>
 					{#if isPinned}
