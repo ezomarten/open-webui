@@ -73,7 +73,7 @@ OLLAMA_BASE_URL=http://host.docker.internal:11434
 # OPENAI_API_KEY=sk-...
 ```
 
-To run the current published release image instead of a local build, set `OPENWEBUI_IMAGE=ghcr.io/ezomarten/open-webui:0.12.3-publicshare.1`.
+To run the current published release image instead of a local build, set `OPENWEBUI_IMAGE=ghcr.io/ezomarten/open-webui:0.12.3-publicshare.1` (digest `sha256:6a66c28212a2a702aec39183c5d47d0372f3dd404f50d97a3d45be713702cc0e`).
 
 Example `compose.yaml`:
 
