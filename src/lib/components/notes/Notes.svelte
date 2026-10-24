@@ -111,9 +111,13 @@
 	};
 
 	const getNoteUpdatedLabel = (note) =>
-		dayjs(note.updated_at / 1000000).locale($i18n.language).fromNow();
+		dayjs(note.updated_at / 1000000)
+			.locale($i18n.language)
+			.fromNow();
 	const getNoteUpdatedTooltip = (note) =>
-		dayjs(note.updated_at / 1000000).locale($i18n.language).format('LLLL');
+		dayjs(note.updated_at / 1000000)
+			.locale($i18n.language)
+			.format('LLLL');
 	const getNoteAuthorName = (note) =>
 		capitalizeFirstLetter(note?.user?.name ?? note?.user?.email ?? $i18n.t('Deleted User'));
 	const getNoteAuthorLabel = (note) =>
@@ -689,7 +693,8 @@
 																		</Tooltip>
 																	{:else}
 																		<NoteMenu
-																			onAccess={note.user_id === $user?.id || $user?.role === 'admin'
+																			onAccess={note.user_id === $user?.id ||
+																			$user?.role === 'admin'
 																				? () => accessModal.open(note.id)
 																				: null}
 																			onDownload={(type) => {
@@ -739,7 +744,7 @@
 															</div>
 														</div>
 
-					<div
+														<div
 															class=" text-xs text-gray-500 dark:text-gray-500 mb-3 line-clamp-3 min-h-10"
 														>
 															{#if note.data?.content?.md}

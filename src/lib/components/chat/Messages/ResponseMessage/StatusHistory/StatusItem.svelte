@@ -8,7 +8,7 @@
 	export let status = null;
 	export let done = false;
 	export let clamp = true;
-	export let readOnly = false;  // fork:public-share
+	export let readOnly = false; // fork:public-share
 </script>
 
 {#if !status?.hidden}

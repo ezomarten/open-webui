@@ -6,7 +6,7 @@
 	import equal from 'fast-deep-equal';
 	export let statusHistory = [];
 	export let expand = false;
-	export let readOnly = false;  // fork:public-share
+	export let readOnly = false; // fork:public-share
 
 	let showHistory = true;
 

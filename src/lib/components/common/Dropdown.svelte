@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { flyAndScale } from '$lib/utils/transitions';
 	import { tick } from 'svelte';
-	
+
 	/** Whether the dropdown is open */
 	export let show = false;
 
